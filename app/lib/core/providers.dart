@@ -71,6 +71,11 @@ final techniciansProvider = StreamProvider<List<Profile>>(
   (ref) => ref.watch(databaseProvider).watchTechnicians(),
 );
 
+/// Semua pengguna termasuk yang nonaktif. Khusus halaman kelola pengguna.
+final allProfilesProvider = StreamProvider<List<Profile>>(
+  (ref) => ref.watch(databaseProvider).watchAllProfiles(),
+);
+
 // ---------------------------------------------------------------------
 // Klaim
 // ---------------------------------------------------------------------

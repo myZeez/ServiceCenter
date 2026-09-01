@@ -5,6 +5,7 @@ pencatatan manual di Google Sheets.
 
 ```
 supabase/migrations/   skema database (dijalankan di Supabase SQL Editor)
+supabase/functions/    Edge Function (dijalankan di server Supabase)
 app/                   aplikasi Flutter
 ```
 
@@ -36,6 +37,12 @@ dilewati walaupun seseorang memanggil API-nya langsung tanpa aplikasi.
 | Ubah kolom lain | ✅ | ❌ |
 | Hapus klaim | ✅ | ❌ |
 | Lihat rekap | ✅ | ❌ |
+| Kelola pengguna | ✅ | ❌ |
+
+Pengguna yang dinonaktifkan masih bisa login, tetapi tidak melihat data apa
+pun dan tidak bisa menulis. Admin terakhir tidak bisa dinonaktifkan atau
+diturunkan perannya — dijaga trigger di database, supaya sistem tidak pernah
+kehilangan pengelola.
 
 Setiap perpindahan teknisi tercatat di tabel `claim_audit` — siapa yang
 mengubah, dari siapa ke siapa, jam berapa. Tidak bisa dihapus lewat API.
@@ -45,7 +52,9 @@ penyelesaian kalau ada perselisihan.
 ## Menyiapkan database
 
 1. Buat project di [supabase.com](https://supabase.com), region **Southeast Asia (Singapore)**.
-2. **SQL Editor** → paste isi `supabase/migrations/0001_init.sql` → Run.
+2. **SQL Editor** → jalankan migrasi berurutan:
+   - `supabase/migrations/0001_init.sql`
+   - `supabase/migrations/0002_active_user_guard.sql`
 3. **Authentication → Users → Add user**, centang *Auto Confirm User*.
 4. Jadikan user itu admin (ganti email dan namanya):
 
@@ -55,7 +64,21 @@ penyelesaian kalau ada perselisihan.
    where email = 'email-kamu@perusahaan.com';
    ```
 
-Teknisi ditambahkan dengan cara sama, `'admin'` diganti `'teknisi'`.
+Hanya admin **pertama** yang perlu dibuat lewat dashboard. Selanjutnya
+pengguna ditambahkan dari dalam aplikasi.
+
+## Deploy Edge Function
+
+Menambah pengguna butuh `service_role` key, dan kunci itu tidak boleh ada di
+dalam aplikasi — siapa pun yang membongkar APK akan bisa menembus seluruh
+aturan RLS. Karena itu pembuatan akun dijalankan di server.
+
+Dashboard → **Edge Functions** → **Deploy a new function** → **Via Editor**.
+Beri nama persis `create-technician`, lalu tempel isi
+`supabase/functions/create-technician/index.ts` dan deploy.
+
+Fungsi ini memeriksa sendiri bahwa pemanggilnya admin yang aktif sebelum
+membuat akun, jadi aman walaupun endpoint-nya diketahui orang.
 
 ## Menjalankan aplikasi
 
@@ -103,5 +126,5 @@ supaya data di perangkat yang sudah terpasang tidak hilang.
 
 - Impor data lama dari 8 tab spreadsheet
 - Perhitungan bagi hasil (masih di file Excel terpisah)
-- Manajemen user dari dalam aplikasi (sekarang lewat dashboard Supabase)
+- Ganti password sendiri dari dalam aplikasi
 - Ekspor rekap ke Excel/PDF

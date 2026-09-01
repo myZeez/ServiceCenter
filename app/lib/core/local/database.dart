@@ -120,6 +120,19 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<Profile>> watchTechnicians() =>
       (select(profiles)..where((t) => t.aktif)).watch();
 
+  /// Termasuk yang sudah dinonaktifkan. Dipakai halaman kelola pengguna,
+  /// karena admin tetap perlu melihat dan bisa mengaktifkan mereka lagi.
+  Stream<List<Profile>> watchAllProfiles() =>
+      (select(profiles)..orderBy([(t) => OrderingTerm.asc(t.nama)])).watch();
+
+  Future<void> setProfileActive(String id, bool aktif) =>
+      (update(profiles)..where((t) => t.id.equals(id)))
+          .write(ProfilesCompanion(aktif: Value(aktif)));
+
+  Future<void> setProfileRole(String id, String role) =>
+      (update(profiles)..where((t) => t.id.equals(id)))
+          .write(ProfilesCompanion(role: Value(role)));
+
   Future<List<Profile>> allProfiles() => select(profiles).get();
 
   Future<Profile?> profileById(String id) =>

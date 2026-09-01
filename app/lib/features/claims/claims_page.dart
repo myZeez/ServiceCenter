@@ -6,6 +6,7 @@ import '../../core/local/database.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/sync/sync_service.dart';
+import '../admin/users_page.dart';
 import '../reports/reports_page.dart';
 import 'claim_detail_page.dart';
 import 'claim_form_page.dart';
@@ -36,7 +37,7 @@ class ClaimsPage extends ConsumerWidget {
         ),
         actions: [
           const _SyncIndicator(),
-          if (isAdmin)
+          if (isAdmin) ...[
             IconButton(
               tooltip: 'Rekap',
               icon: const Icon(Icons.bar_chart),
@@ -44,6 +45,14 @@ class ClaimsPage extends ConsumerWidget {
                 MaterialPageRoute(builder: (_) => const ReportsPage()),
               ),
             ),
+            IconButton(
+              tooltip: 'Kelola Pengguna',
+              icon: const Icon(Icons.group_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const UsersPage()),
+              ),
+            ),
+          ],
           IconButton(
             tooltip: 'Keluar',
             icon: const Icon(Icons.logout),

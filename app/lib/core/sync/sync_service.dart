@@ -168,6 +168,43 @@ class SyncService {
           );
     }
 
+    // Data bagi hasil. Aturan akses di server yang menentukan siapa
+    // menerima apa: teknisi menarik nol baris, jadi angka fee tidak pernah
+    // sampai ke perangkat mereka.
+    final feeRows = await _client.from('brand_fees').select();
+    await _db.replaceBrandFees([
+      for (final r in feeRows)
+        BrandFeeEntriesCompanion.insert(
+          id: Value(r['id'] as int),
+          brandId: r['brand_id'] as int,
+          fee: (r['fee'] as num).toDouble(),
+          berlakuDari: DateTime.parse(r['berlaku_dari'] as String),
+        ),
+    ]);
+
+    final configRows =
+        await _client.from('revenue_settings').select().eq('id', 1);
+    for (final r in configRows) {
+      await _db.upsertRevenueConfig(
+        RevenueConfigsCompanion.insert(
+          id: Value(r['id'] as int),
+          persenToko: (r['persen_toko'] as num).toDouble(),
+          persenAdmin: (r['persen_admin'] as num).toDouble(),
+          persenTeknisi: (r['persen_teknisi'] as num).toDouble(),
+          metodeTeknisi: r['metode_teknisi'] as String,
+        ),
+      );
+    }
+
+    final shareRows = await _client.from('technician_shares').select();
+    await _db.replaceTechnicianShares([
+      for (final r in shareRows)
+        TechnicianShareEntriesCompanion.insert(
+          profileId: r['profile_id'] as String,
+          persen: (r['persen'] as num).toDouble(),
+        ),
+    ]);
+
     final profileRows = await _client.from('profiles').select();
     for (final r in profileRows) {
       await _db.into(_db.profiles).insertOnConflictUpdate(

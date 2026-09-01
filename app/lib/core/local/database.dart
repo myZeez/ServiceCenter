@@ -83,6 +83,42 @@ class ClaimParts extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// Tiga tabel berikut ikut disinkronkan supaya perhitungan bagi hasil bisa
+// berjalan tanpa koneksi, sama seperti bagian aplikasi lainnya. Isinya
+// kecil: beberapa baris fee dan satu baris aturan.
+//
+// Aturan akses di server yang menentukan siapa menerima apa -- teknisi
+// menarik nol baris, jadi angka fee tidak pernah sampai ke perangkat mereka.
+
+class BrandFeeEntries extends Table {
+  IntColumn get id => integer()();
+  IntColumn get brandId => integer()();
+  RealColumn get fee => real()();
+  DateTimeColumn get berlakuDari => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class RevenueConfigs extends Table {
+  IntColumn get id => integer()();
+  RealColumn get persenToko => real()();
+  RealColumn get persenAdmin => real()();
+  RealColumn get persenTeknisi => real()();
+  TextColumn get metodeTeknisi => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class TechnicianShareEntries extends Table {
+  TextColumn get profileId => text()();
+  RealColumn get persen => real()();
+
+  @override
+  Set<Column> get primaryKey => {profileId};
+}
+
 /// Penyimpanan kunci-nilai untuk keperluan sinkron, mis. kapan terakhir
 /// menarik data dari server.
 class SyncMeta extends Table {
@@ -94,7 +130,17 @@ class SyncMeta extends Table {
 }
 
 @DriftDatabase(
-  tables: [Brands, PartTypes, Profiles, Claims, ClaimParts, SyncMeta],
+  tables: [
+    Brands,
+    PartTypes,
+    Profiles,
+    Claims,
+    ClaimParts,
+    SyncMeta,
+    BrandFeeEntries,
+    RevenueConfigs,
+    TechnicianShareEntries,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'sc_management'));
@@ -102,17 +148,22 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
           // Perangkat yang sudah terpasang tidak boleh kehilangan antrean
-          // klaim yang belum terkirim, jadi kolom ditambahkan, bukan tabel
-          // dibuat ulang.
+          // klaim yang belum terkirim, jadi perubahan dilakukan bertahap,
+          // bukan dengan membuat ulang seluruh tabel.
           if (from < 2) {
             await m.addColumn(claimParts, claimParts.pendingDelete);
+          }
+          if (from < 3) {
+            await m.createTable(brandFeeEntries);
+            await m.createTable(revenueConfigs);
+            await m.createTable(technicianShareEntries);
           }
         },
       );
@@ -285,6 +336,54 @@ class AppDatabase extends _$AppDatabase {
         .getSingleOrNull();
     return row != null;
   }
+
+  // ------------------------------------------------------------------
+  // Bagi hasil
+  // ------------------------------------------------------------------
+
+  /// Klaim yang ikut dihitung: hanya yang berstatus selesai, karena fee
+  /// dibayarkan brand setelah perbaikan tuntas.
+  Stream<List<Claim>> watchClosedClaims(DateTime dari, DateTime sampai) {
+    return (select(claims)
+          ..where(
+            (t) =>
+                t.status.equals('close') &
+                t.tanggal.isBiggerOrEqualValue(dari) &
+                t.tanggal.isSmallerOrEqualValue(sampai),
+          ))
+        .watch();
+  }
+
+  Stream<List<BrandFeeEntry>> watchBrandFees() => select(brandFeeEntries).watch();
+
+  Stream<RevenueConfig?> watchRevenueConfig() =>
+      (select(revenueConfigs)..where((t) => t.id.equals(1)))
+          .watchSingleOrNull();
+
+  Stream<List<TechnicianShareEntry>> watchTechnicianShares() =>
+      select(technicianShareEntries).watch();
+
+  /// Diganti seluruhnya tiap sinkron. Tabelnya kecil, dan cara ini membuat
+  /// baris yang dihapus di server ikut hilang di perangkat -- fee yang
+  /// sudah dicabut tidak boleh tertinggal dan dipakai menghitung.
+  Future<void> replaceBrandFees(List<BrandFeeEntriesCompanion> rows) async {
+    await batch((b) {
+      b.deleteAll(brandFeeEntries);
+      b.insertAll(brandFeeEntries, rows);
+    });
+  }
+
+  Future<void> replaceTechnicianShares(
+    List<TechnicianShareEntriesCompanion> rows,
+  ) async {
+    await batch((b) {
+      b.deleteAll(technicianShareEntries);
+      b.insertAll(technicianShareEntries, rows);
+    });
+  }
+
+  Future<void> upsertRevenueConfig(RevenueConfigsCompanion row) =>
+      into(revenueConfigs).insertOnConflictUpdate(row);
 
   Future<bool> hasPendingPart(String id) async {
     final row = await (select(claimParts)

@@ -2,66 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/local/database.dart';
 import '../../core/providers.dart';
+import '../../core/revenue/revenue_calculator.dart';
+import '../../core/revenue/revenue_providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
 
 final _rp = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
-final _iso = DateFormat('yyyy-MM-dd');
-
-/// Rentang waktu perhitungan. Kuartal dipakai sebagai bawaan karena begitulah
-/// bagi hasil selama ini dihitung.
-class Periode {
-  const Periode(this.label, this.dari, this.sampai);
-
-  final String label;
-  final DateTime dari;
-  final DateTime sampai;
-
-  static List<Periode> terakhir({int tahunKeBelakang = 2}) {
-    final now = DateTime.now();
-    final out = <Periode>[];
-
-    for (var y = now.year; y >= now.year - tahunKeBelakang; y--) {
-      for (var q = 4; q >= 1; q--) {
-        final mulai = DateTime(y, (q - 1) * 3 + 1, 1);
-        if (mulai.isAfter(now)) continue;
-        // Akhir kuartal = sehari sebelum awal kuartal berikutnya.
-        final akhir = DateTime(y, q * 3 + 1, 1).subtract(const Duration(days: 1));
-        out.add(Periode('Q$q $y', mulai, akhir));
-      }
-    }
-    return out;
-  }
-}
-
-final periodeProvider = StateProvider<Periode>(
-  (ref) => Periode.terakhir().first,
-);
-
-typedef _Rows = List<Map<String, dynamic>>;
-
-final _ringkasan = FutureProvider.autoDispose<_Rows>(
-  (ref) => _rpcRead(ref, 'ringkasan_pendapatan'),
-);
-final _perTeknisi = FutureProvider.autoDispose<_Rows>(
-  (ref) => _rpcRead(ref, 'pendapatan_teknisi'),
-);
-final _perBrand = FutureProvider.autoDispose<_Rows>(
-  (ref) => _rpcRead(ref, 'pendapatan_brand'),
-);
-
-Future<_Rows> _rpcRead(Ref ref, String fn) async {
-  final p = ref.watch(periodeProvider);
-  final res = await ref.read(supabaseProvider).rpc(
-    fn,
-    params: {
-      'p_dari': _iso.format(p.dari),
-      'p_sampai': _iso.format(p.sampai),
-    },
-  );
-  return List<Map<String, dynamic>>.from(res as List);
-}
 
 class RevenueView extends ConsumerWidget {
   const RevenueView({super.key});
@@ -69,6 +17,7 @@ class RevenueView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final periode = ref.watch(periodeProvider);
+    final hasil = ref.watch(revenueResultProvider);
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -80,31 +29,26 @@ class RevenueView extends ConsumerWidget {
         children: [
           PageHeader(
             title: 'Pendapatan',
-            subtitle:
-                '${DateFormat('d MMM').format(periode.dari)} — '
-                '${DateFormat('d MMM yyyy').format(periode.sampai)}  ·  '
-                'hanya klaim berstatus Selesai',
-            actions: [
-              _PeriodeDropdown(selected: periode),
-              const SizedBox(width: AppSpacing.xs),
-              OutlinedButton.icon(
-                onPressed: () {
-                  ref.invalidate(_ringkasan);
-                  ref.invalidate(_perTeknisi);
-                  ref.invalidate(_perBrand);
-                },
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('MUAT ULANG'),
-              ),
-            ],
+            subtitle: '${DateFormat('d MMM').format(periode.dari)} — '
+                '${DateFormat('d MMM yyyy').format(periode.sampai)}'
+                '  ·  hanya klaim berstatus Selesai',
+            actions: const [_PeriodeDropdown()],
           ),
           const SizedBox(height: AppSpacing.s),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, c) => c.maxWidth > 900
-                  ? const _WideGrid()
-                  : const _NarrowStack(),
-            ),
+            child: hasil == null
+                ? const Center(
+                    child: SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : LayoutBuilder(
+                    builder: (context, c) => c.maxWidth > 900
+                        ? _WideGrid(hasil)
+                        : _NarrowStack(hasil),
+                  ),
           ),
         ],
       ),
@@ -113,302 +57,326 @@ class RevenueView extends ConsumerWidget {
 }
 
 class _WideGrid extends StatelessWidget {
-  const _WideGrid();
+  const _WideGrid(this.hasil);
+
+  final RevenueResult hasil;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: const [
+      children: [
         Expanded(
           flex: 4,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: _TotalCard()),
-              SizedBox(width: AppSpacing.s),
-              Expanded(child: _SplitCard()),
-              SizedBox(width: AppSpacing.s),
-              Expanded(child: _BrandCard()),
+              Expanded(child: _TotalCard(hasil)),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(child: _SplitCard(hasil)),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(child: _BrandCard(hasil)),
             ],
           ),
         ),
-        SizedBox(height: AppSpacing.s),
-        Expanded(flex: 5, child: _TechCard()),
+        const SizedBox(height: AppSpacing.s),
+        Expanded(flex: 5, child: _TechCard(hasil)),
       ],
     );
   }
 }
 
 class _NarrowStack extends StatelessWidget {
-  const _NarrowStack();
+  const _NarrowStack(this.hasil);
+
+  final RevenueResult hasil;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      children: const [
-        SizedBox(height: 200, child: _TotalCard()),
-        SizedBox(height: AppSpacing.s),
-        SizedBox(height: 230, child: _SplitCard()),
-        SizedBox(height: AppSpacing.s),
-        SizedBox(height: 300, child: _TechCard()),
-        SizedBox(height: AppSpacing.s),
-        SizedBox(height: 260, child: _BrandCard()),
-        SizedBox(height: AppSpacing.sm),
+      children: [
+        SizedBox(height: 210, child: _TotalCard(hasil)),
+        const SizedBox(height: AppSpacing.s),
+        SizedBox(height: 230, child: _SplitCard(hasil)),
+        const SizedBox(height: AppSpacing.s),
+        SizedBox(height: 300, child: _TechCard(hasil)),
+        const SizedBox(height: AppSpacing.s),
+        SizedBox(height: 260, child: _BrandCard(hasil)),
+        const SizedBox(height: AppSpacing.sm),
       ],
     );
   }
 }
 
-class _TotalCard extends ConsumerWidget {
-  const _TotalCard();
+class _TotalCard extends StatelessWidget {
+  const _TotalCard(this.hasil);
+
+  final RevenueResult hasil;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return BentoCard(
       title: 'Total Pendapatan',
       accent: AppColors.red,
-      child: _Async(
-        value: ref.watch(_ringkasan),
-        builder: (rows) {
-          final r = rows.first;
-          final tanpaFee = (r['unit_tanpa_fee'] as num).toInt();
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  _rp.format(r['total_nilai'] as num),
-                  style: const TextStyle(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -1.5,
-                    height: 1,
-                  ),
-                ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _rp.format(hasil.totalNilai),
+              style: const TextStyle(
+                fontSize: 34,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -1.5,
+                height: 1,
               ),
-              const SizedBox(height: 6),
-              Text(
-                '${r['total_unit']} UNIT SELESAI',
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-              if (tanpaFee > 0) ...[
-                const SizedBox(height: AppSpacing.s),
-                // Diangkat terang-terangan: klaim tanpa fee membuat total
-                // terlihat lebih kecil dari yang sebenarnya.
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.xs),
-                  decoration: const BoxDecoration(
-                    color: Color(0x0DD82C2C),
-                    border: Border(
-                      left: BorderSide(color: AppColors.red, width: 3),
-                    ),
-                  ),
-                  child: Text(
-                    '$tanpaFee unit brand-nya belum punya fee, '
-                    'jadi dihitung nol.',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      height: 1.4,
-                      color: AppColors.red,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          );
-        },
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${hasil.totalUnit} UNIT SELESAI',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+          // Kekurangan data diangkat terang-terangan: keduanya membuat
+          // angka di atas lebih kecil dari yang seharusnya.
+          if (hasil.unitTanpaFee > 0) ...[
+            const SizedBox(height: AppSpacing.xs),
+            _Warning('${hasil.unitTanpaFee} unit brand-nya belum punya fee, '
+                'jadi dihitung nol.'),
+          ],
+          if (hasil.unitTanpaTeknisi > 0) ...[
+            const SizedBox(height: AppSpacing.xs),
+            _Warning('${hasil.unitTanpaTeknisi} unit belum ada teknisinya, '
+                'jadi bagiannya tidak jatuh ke siapa pun.'),
+          ],
+        ],
       ),
     );
   }
 }
 
-class _SplitCard extends ConsumerWidget {
-  const _SplitCard();
+class _SplitCard extends StatelessWidget {
+  const _SplitCard(this.hasil);
+
+  final RevenueResult hasil;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final total = hasil.totalNilai;
+
+    Widget baris(String label, int nilai, Color c) => BentoBarRow(
+          label: label,
+          value: _rp.format(nilai),
+          fraction: total == 0 ? 0 : nilai / total,
+          color: c,
+        );
+
     return BentoCard(
       title: 'Pembagian',
-      child: _Async(
-        value: ref.watch(_ringkasan),
-        builder: (rows) {
-          final r = rows.first;
-          final total = (r['total_nilai'] as num).toDouble();
-
-          Widget baris(String label, String key, Color c) {
-            final v = (r[key] as num).toDouble();
-            return BentoBarRow(
-              label: label,
-              value: _rp.format(v),
-              fraction: total == 0 ? 0 : v / total,
-              color: c,
-            );
-          }
-
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              baris('Toko', 'bagian_toko', AppColors.black),
-              baris('Admin', 'bagian_admin', AppColors.blue),
-              baris('Teknisi', 'bagian_teknisi', AppColors.red),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Persentase diatur di Pengaturan → Bagi Hasil',
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-            ],
-          );
-        },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          baris('Toko', hasil.bagianToko, AppColors.black),
+          baris('Admin', hasil.bagianAdmin, AppColors.blue),
+          baris('Teknisi', hasil.bagianTeknisi, AppColors.red),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Diatur di Pengaturan → Bagi Hasil',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ],
       ),
     );
   }
 }
 
 class _TechCard extends ConsumerWidget {
-  const _TechCard();
+  const _TechCard(this.hasil);
+
+  final RevenueResult hasil;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final nama = {
+      for (final p
+          in ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[])
+        p.id: p.nama,
+    };
+    final sisa = hasil.teknisiBelumDialokasikan;
+
     return BentoCard(
       title: 'Pendapatan Teknisi',
       padding: EdgeInsets.zero,
-      child: _Async(
-        value: ref.watch(_perTeknisi),
-        emptyText: 'Belum ada klaim selesai atas nama teknisi di periode ini.',
-        builder: (rows) => Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.sm,
-                AppSpacing.xs,
-                AppSpacing.sm,
-                6,
+      trailing: sisa > 0
+          ? Text(
+              '${_rp.format(sisa)} belum dialokasikan',
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.red,
               ),
-              child: Row(
-                children: [
-                  Expanded(child: _Head('Teknisi')),
-                  SizedBox(width: 70, child: _Head('Unit', right: true)),
-                  SizedBox(width: 130, child: _Head('Nilai', right: true)),
-                  SizedBox(width: 80, child: _Head('Porsi', right: true)),
-                  SizedBox(width: 140, child: _Head('Pendapatan', right: true)),
-                ],
+            )
+          : null,
+      child: hasil.teknisi.isEmpty
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.sm),
+                child: Text(
+                  'Belum ada klaim selesai atas nama teknisi di periode ini.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.grey, fontSize: 13),
+                ),
               ),
-            ),
-            const Divider(),
-            Expanded(
-              child: ListView.separated(
-                padding: EdgeInsets.zero,
-                itemCount: rows.length,
-                separatorBuilder: (_, _) => const Divider(),
-                itemBuilder: (context, i) {
-                  final r = rows[i];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: 11,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            r['nama'] as String,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+            )
+          : Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.sm,
+                    AppSpacing.xs,
+                    AppSpacing.sm,
+                    6,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(child: _Head('Teknisi')),
+                      SizedBox(width: 64, child: _Head('Unit', right: true)),
+                      SizedBox(width: 124, child: _Head('Nilai', right: true)),
+                      SizedBox(width: 72, child: _Head('Porsi', right: true)),
+                      SizedBox(
+                        width: 134,
+                        child: _Head('Pendapatan', right: true),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                Expanded(
+                  child: ListView.separated(
+                    padding: EdgeInsets.zero,
+                    itemCount: hasil.teknisi.length,
+                    separatorBuilder: (_, _) => const Divider(),
+                    itemBuilder: (context, i) {
+                      final t = hasil.teknisi[i];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: 11,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                nama[t.teknisiId] ?? '—',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            SizedBox(width: 64, child: _Num('${t.unit}')),
+                            SizedBox(
+                              width: 124,
+                              child: _Num(_rp.format(t.nilai), muted: true),
+                            ),
+                            SizedBox(
+                              width: 72,
+                              child: _Num(
+                                '${t.porsi.toStringAsFixed(1)}%',
+                                muted: true,
+                              ),
+                            ),
+                            SizedBox(
+                              width: 134,
+                              child: _Num(
+                                _rp.format(t.pendapatan),
+                                bold: true,
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(
-                          width: 70,
-                          child: _Num('${r['unit']}'),
-                        ),
-                        SizedBox(
-                          width: 130,
-                          child: _Num(_rp.format(r['nilai'] as num), muted: true),
-                        ),
-                        SizedBox(
-                          width: 80,
-                          child: _Num('${r['porsi']}%', muted: true),
-                        ),
-                        SizedBox(
-                          width: 140,
-                          child: _Num(
-                            _rp.format(r['pendapatan'] as num),
-                            bold: true,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
     );
   }
 }
 
 class _BrandCard extends ConsumerWidget {
-  const _BrandCard();
+  const _BrandCard(this.hasil);
+
+  final RevenueResult hasil;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final nama = {
+      for (final b
+          in ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[])
+        b.id: b.nama,
+    };
+
     return BentoCard(
       title: 'Per Brand',
       padding: EdgeInsets.zero,
-      child: _Async(
-        value: ref.watch(_perBrand),
-        emptyText: 'Belum ada klaim selesai di periode ini.',
-        builder: (rows) => ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-          itemCount: rows.length,
-          separatorBuilder: (_, _) => const Divider(),
-          itemBuilder: (context, i) {
-            final r = rows[i];
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          r['brand'] as String,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        Text(
-                          '${r['unit']} unit  ·  @${_rp.format(r['fee_satuan'] as num)}',
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    _rp.format(r['nilai'] as num),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+      child: hasil.brands.isEmpty
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.sm),
+                child: Text(
+                  'Belum ada klaim selesai di periode ini.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.grey, fontSize: 13),
+                ),
               ),
-            );
-          },
-        ),
-      ),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              itemCount: hasil.brands.length,
+              separatorBuilder: (_, _) => const Divider(),
+              itemBuilder: (context, i) {
+                final b = hasil.brands[i];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              nama[b.brandId] ?? '—',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                            Text(
+                              '${b.unit} unit  ·  @${_rp.format(b.feeRataRata)}',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        _rp.format(b.nilai),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
     );
   }
 }
@@ -416,13 +384,12 @@ class _BrandCard extends ConsumerWidget {
 // =====================================================================
 
 class _PeriodeDropdown extends ConsumerWidget {
-  const _PeriodeDropdown({required this.selected});
-
-  final Periode selected;
+  const _PeriodeDropdown();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final list = Periode.terakhir();
+    final list = Periode.daftar();
+    final selected = ref.watch(periodeProvider);
 
     return Container(
       height: 36,
@@ -444,10 +411,8 @@ class _PeriodeDropdown extends ConsumerWidget {
             letterSpacing: 0.6,
             color: AppColors.black,
           ),
-          onChanged: (v) {
-            final p = list.firstWhere((e) => e.label == v);
-            ref.read(periodeProvider.notifier).state = p;
-          },
+          onChanged: (v) => ref.read(periodeProvider.notifier).state =
+              list.firstWhere((e) => e.label == v),
           items: [
             for (final p in list)
               DropdownMenuItem(value: p.label, child: Text(p.label)),
@@ -456,6 +421,29 @@ class _PeriodeDropdown extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _Warning extends StatelessWidget {
+  const _Warning(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(AppSpacing.xs),
+        decoration: const BoxDecoration(
+          color: Color(0x0DD82C2C),
+          border: Border(left: BorderSide(color: AppColors.red, width: 3)),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 11,
+            height: 1.4,
+            color: AppColors.red,
+          ),
+        ),
+      );
 }
 
 class _Head extends StatelessWidget {
@@ -493,66 +481,5 @@ class _Num extends StatelessWidget {
           fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
           color: muted ? AppColors.grey : AppColors.black,
         ),
-      );
-}
-
-class _Async extends StatelessWidget {
-  const _Async({
-    required this.value,
-    required this.builder,
-    this.emptyText = 'Belum ada data.',
-  });
-
-  final AsyncValue<_Rows> value;
-  final Widget Function(_Rows) builder;
-  final String emptyText;
-
-  @override
-  Widget build(BuildContext context) => value.when(
-        loading: () => const Center(
-          child: SizedBox(
-            height: 18,
-            width: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.cloud_off_outlined,
-                  size: 20,
-                  color: AppColors.grey,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  'Perlu koneksi',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Perhitungan dijalankan di server.',
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ],
-            ),
-          ),
-        ),
-        data: (rows) => rows.isEmpty
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  child: Text(
-                    emptyText,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.grey, fontSize: 13),
-                  ),
-                ),
-              )
-            : builder(rows),
       );
 }

@@ -2333,6 +2333,889 @@ class SyncMetaCompanion extends UpdateCompanion<SyncMetaData> {
   }
 }
 
+class $BrandFeeEntriesTable extends BrandFeeEntries
+    with TableInfo<$BrandFeeEntriesTable, BrandFeeEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BrandFeeEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _brandIdMeta = const VerificationMeta(
+    'brandId',
+  );
+  @override
+  late final GeneratedColumn<int> brandId = GeneratedColumn<int>(
+    'brand_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _feeMeta = const VerificationMeta('fee');
+  @override
+  late final GeneratedColumn<double> fee = GeneratedColumn<double>(
+    'fee',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _berlakuDariMeta = const VerificationMeta(
+    'berlakuDari',
+  );
+  @override
+  late final GeneratedColumn<DateTime> berlakuDari = GeneratedColumn<DateTime>(
+    'berlaku_dari',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, brandId, fee, berlakuDari];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'brand_fee_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BrandFeeEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('brand_id')) {
+      context.handle(
+        _brandIdMeta,
+        brandId.isAcceptableOrUnknown(data['brand_id']!, _brandIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_brandIdMeta);
+    }
+    if (data.containsKey('fee')) {
+      context.handle(
+        _feeMeta,
+        fee.isAcceptableOrUnknown(data['fee']!, _feeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_feeMeta);
+    }
+    if (data.containsKey('berlaku_dari')) {
+      context.handle(
+        _berlakuDariMeta,
+        berlakuDari.isAcceptableOrUnknown(
+          data['berlaku_dari']!,
+          _berlakuDariMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_berlakuDariMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BrandFeeEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BrandFeeEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      brandId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}brand_id'],
+      )!,
+      fee: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}fee'],
+      )!,
+      berlakuDari: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}berlaku_dari'],
+      )!,
+    );
+  }
+
+  @override
+  $BrandFeeEntriesTable createAlias(String alias) {
+    return $BrandFeeEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class BrandFeeEntry extends DataClass implements Insertable<BrandFeeEntry> {
+  final int id;
+  final int brandId;
+  final double fee;
+  final DateTime berlakuDari;
+  const BrandFeeEntry({
+    required this.id,
+    required this.brandId,
+    required this.fee,
+    required this.berlakuDari,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['brand_id'] = Variable<int>(brandId);
+    map['fee'] = Variable<double>(fee);
+    map['berlaku_dari'] = Variable<DateTime>(berlakuDari);
+    return map;
+  }
+
+  BrandFeeEntriesCompanion toCompanion(bool nullToAbsent) {
+    return BrandFeeEntriesCompanion(
+      id: Value(id),
+      brandId: Value(brandId),
+      fee: Value(fee),
+      berlakuDari: Value(berlakuDari),
+    );
+  }
+
+  factory BrandFeeEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BrandFeeEntry(
+      id: serializer.fromJson<int>(json['id']),
+      brandId: serializer.fromJson<int>(json['brandId']),
+      fee: serializer.fromJson<double>(json['fee']),
+      berlakuDari: serializer.fromJson<DateTime>(json['berlakuDari']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'brandId': serializer.toJson<int>(brandId),
+      'fee': serializer.toJson<double>(fee),
+      'berlakuDari': serializer.toJson<DateTime>(berlakuDari),
+    };
+  }
+
+  BrandFeeEntry copyWith({
+    int? id,
+    int? brandId,
+    double? fee,
+    DateTime? berlakuDari,
+  }) => BrandFeeEntry(
+    id: id ?? this.id,
+    brandId: brandId ?? this.brandId,
+    fee: fee ?? this.fee,
+    berlakuDari: berlakuDari ?? this.berlakuDari,
+  );
+  BrandFeeEntry copyWithCompanion(BrandFeeEntriesCompanion data) {
+    return BrandFeeEntry(
+      id: data.id.present ? data.id.value : this.id,
+      brandId: data.brandId.present ? data.brandId.value : this.brandId,
+      fee: data.fee.present ? data.fee.value : this.fee,
+      berlakuDari: data.berlakuDari.present
+          ? data.berlakuDari.value
+          : this.berlakuDari,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BrandFeeEntry(')
+          ..write('id: $id, ')
+          ..write('brandId: $brandId, ')
+          ..write('fee: $fee, ')
+          ..write('berlakuDari: $berlakuDari')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, brandId, fee, berlakuDari);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BrandFeeEntry &&
+          other.id == this.id &&
+          other.brandId == this.brandId &&
+          other.fee == this.fee &&
+          other.berlakuDari == this.berlakuDari);
+}
+
+class BrandFeeEntriesCompanion extends UpdateCompanion<BrandFeeEntry> {
+  final Value<int> id;
+  final Value<int> brandId;
+  final Value<double> fee;
+  final Value<DateTime> berlakuDari;
+  const BrandFeeEntriesCompanion({
+    this.id = const Value.absent(),
+    this.brandId = const Value.absent(),
+    this.fee = const Value.absent(),
+    this.berlakuDari = const Value.absent(),
+  });
+  BrandFeeEntriesCompanion.insert({
+    this.id = const Value.absent(),
+    required int brandId,
+    required double fee,
+    required DateTime berlakuDari,
+  }) : brandId = Value(brandId),
+       fee = Value(fee),
+       berlakuDari = Value(berlakuDari);
+  static Insertable<BrandFeeEntry> custom({
+    Expression<int>? id,
+    Expression<int>? brandId,
+    Expression<double>? fee,
+    Expression<DateTime>? berlakuDari,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (brandId != null) 'brand_id': brandId,
+      if (fee != null) 'fee': fee,
+      if (berlakuDari != null) 'berlaku_dari': berlakuDari,
+    });
+  }
+
+  BrandFeeEntriesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? brandId,
+    Value<double>? fee,
+    Value<DateTime>? berlakuDari,
+  }) {
+    return BrandFeeEntriesCompanion(
+      id: id ?? this.id,
+      brandId: brandId ?? this.brandId,
+      fee: fee ?? this.fee,
+      berlakuDari: berlakuDari ?? this.berlakuDari,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (brandId.present) {
+      map['brand_id'] = Variable<int>(brandId.value);
+    }
+    if (fee.present) {
+      map['fee'] = Variable<double>(fee.value);
+    }
+    if (berlakuDari.present) {
+      map['berlaku_dari'] = Variable<DateTime>(berlakuDari.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BrandFeeEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('brandId: $brandId, ')
+          ..write('fee: $fee, ')
+          ..write('berlakuDari: $berlakuDari')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RevenueConfigsTable extends RevenueConfigs
+    with TableInfo<$RevenueConfigsTable, RevenueConfig> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RevenueConfigsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _persenTokoMeta = const VerificationMeta(
+    'persenToko',
+  );
+  @override
+  late final GeneratedColumn<double> persenToko = GeneratedColumn<double>(
+    'persen_toko',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _persenAdminMeta = const VerificationMeta(
+    'persenAdmin',
+  );
+  @override
+  late final GeneratedColumn<double> persenAdmin = GeneratedColumn<double>(
+    'persen_admin',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _persenTeknisiMeta = const VerificationMeta(
+    'persenTeknisi',
+  );
+  @override
+  late final GeneratedColumn<double> persenTeknisi = GeneratedColumn<double>(
+    'persen_teknisi',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _metodeTeknisiMeta = const VerificationMeta(
+    'metodeTeknisi',
+  );
+  @override
+  late final GeneratedColumn<String> metodeTeknisi = GeneratedColumn<String>(
+    'metode_teknisi',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    persenToko,
+    persenAdmin,
+    persenTeknisi,
+    metodeTeknisi,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'revenue_configs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RevenueConfig> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('persen_toko')) {
+      context.handle(
+        _persenTokoMeta,
+        persenToko.isAcceptableOrUnknown(data['persen_toko']!, _persenTokoMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_persenTokoMeta);
+    }
+    if (data.containsKey('persen_admin')) {
+      context.handle(
+        _persenAdminMeta,
+        persenAdmin.isAcceptableOrUnknown(
+          data['persen_admin']!,
+          _persenAdminMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_persenAdminMeta);
+    }
+    if (data.containsKey('persen_teknisi')) {
+      context.handle(
+        _persenTeknisiMeta,
+        persenTeknisi.isAcceptableOrUnknown(
+          data['persen_teknisi']!,
+          _persenTeknisiMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_persenTeknisiMeta);
+    }
+    if (data.containsKey('metode_teknisi')) {
+      context.handle(
+        _metodeTeknisiMeta,
+        metodeTeknisi.isAcceptableOrUnknown(
+          data['metode_teknisi']!,
+          _metodeTeknisiMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_metodeTeknisiMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RevenueConfig map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RevenueConfig(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      persenToko: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}persen_toko'],
+      )!,
+      persenAdmin: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}persen_admin'],
+      )!,
+      persenTeknisi: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}persen_teknisi'],
+      )!,
+      metodeTeknisi: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}metode_teknisi'],
+      )!,
+    );
+  }
+
+  @override
+  $RevenueConfigsTable createAlias(String alias) {
+    return $RevenueConfigsTable(attachedDatabase, alias);
+  }
+}
+
+class RevenueConfig extends DataClass implements Insertable<RevenueConfig> {
+  final int id;
+  final double persenToko;
+  final double persenAdmin;
+  final double persenTeknisi;
+  final String metodeTeknisi;
+  const RevenueConfig({
+    required this.id,
+    required this.persenToko,
+    required this.persenAdmin,
+    required this.persenTeknisi,
+    required this.metodeTeknisi,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['persen_toko'] = Variable<double>(persenToko);
+    map['persen_admin'] = Variable<double>(persenAdmin);
+    map['persen_teknisi'] = Variable<double>(persenTeknisi);
+    map['metode_teknisi'] = Variable<String>(metodeTeknisi);
+    return map;
+  }
+
+  RevenueConfigsCompanion toCompanion(bool nullToAbsent) {
+    return RevenueConfigsCompanion(
+      id: Value(id),
+      persenToko: Value(persenToko),
+      persenAdmin: Value(persenAdmin),
+      persenTeknisi: Value(persenTeknisi),
+      metodeTeknisi: Value(metodeTeknisi),
+    );
+  }
+
+  factory RevenueConfig.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RevenueConfig(
+      id: serializer.fromJson<int>(json['id']),
+      persenToko: serializer.fromJson<double>(json['persenToko']),
+      persenAdmin: serializer.fromJson<double>(json['persenAdmin']),
+      persenTeknisi: serializer.fromJson<double>(json['persenTeknisi']),
+      metodeTeknisi: serializer.fromJson<String>(json['metodeTeknisi']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'persenToko': serializer.toJson<double>(persenToko),
+      'persenAdmin': serializer.toJson<double>(persenAdmin),
+      'persenTeknisi': serializer.toJson<double>(persenTeknisi),
+      'metodeTeknisi': serializer.toJson<String>(metodeTeknisi),
+    };
+  }
+
+  RevenueConfig copyWith({
+    int? id,
+    double? persenToko,
+    double? persenAdmin,
+    double? persenTeknisi,
+    String? metodeTeknisi,
+  }) => RevenueConfig(
+    id: id ?? this.id,
+    persenToko: persenToko ?? this.persenToko,
+    persenAdmin: persenAdmin ?? this.persenAdmin,
+    persenTeknisi: persenTeknisi ?? this.persenTeknisi,
+    metodeTeknisi: metodeTeknisi ?? this.metodeTeknisi,
+  );
+  RevenueConfig copyWithCompanion(RevenueConfigsCompanion data) {
+    return RevenueConfig(
+      id: data.id.present ? data.id.value : this.id,
+      persenToko: data.persenToko.present
+          ? data.persenToko.value
+          : this.persenToko,
+      persenAdmin: data.persenAdmin.present
+          ? data.persenAdmin.value
+          : this.persenAdmin,
+      persenTeknisi: data.persenTeknisi.present
+          ? data.persenTeknisi.value
+          : this.persenTeknisi,
+      metodeTeknisi: data.metodeTeknisi.present
+          ? data.metodeTeknisi.value
+          : this.metodeTeknisi,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RevenueConfig(')
+          ..write('id: $id, ')
+          ..write('persenToko: $persenToko, ')
+          ..write('persenAdmin: $persenAdmin, ')
+          ..write('persenTeknisi: $persenTeknisi, ')
+          ..write('metodeTeknisi: $metodeTeknisi')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, persenToko, persenAdmin, persenTeknisi, metodeTeknisi);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RevenueConfig &&
+          other.id == this.id &&
+          other.persenToko == this.persenToko &&
+          other.persenAdmin == this.persenAdmin &&
+          other.persenTeknisi == this.persenTeknisi &&
+          other.metodeTeknisi == this.metodeTeknisi);
+}
+
+class RevenueConfigsCompanion extends UpdateCompanion<RevenueConfig> {
+  final Value<int> id;
+  final Value<double> persenToko;
+  final Value<double> persenAdmin;
+  final Value<double> persenTeknisi;
+  final Value<String> metodeTeknisi;
+  const RevenueConfigsCompanion({
+    this.id = const Value.absent(),
+    this.persenToko = const Value.absent(),
+    this.persenAdmin = const Value.absent(),
+    this.persenTeknisi = const Value.absent(),
+    this.metodeTeknisi = const Value.absent(),
+  });
+  RevenueConfigsCompanion.insert({
+    this.id = const Value.absent(),
+    required double persenToko,
+    required double persenAdmin,
+    required double persenTeknisi,
+    required String metodeTeknisi,
+  }) : persenToko = Value(persenToko),
+       persenAdmin = Value(persenAdmin),
+       persenTeknisi = Value(persenTeknisi),
+       metodeTeknisi = Value(metodeTeknisi);
+  static Insertable<RevenueConfig> custom({
+    Expression<int>? id,
+    Expression<double>? persenToko,
+    Expression<double>? persenAdmin,
+    Expression<double>? persenTeknisi,
+    Expression<String>? metodeTeknisi,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (persenToko != null) 'persen_toko': persenToko,
+      if (persenAdmin != null) 'persen_admin': persenAdmin,
+      if (persenTeknisi != null) 'persen_teknisi': persenTeknisi,
+      if (metodeTeknisi != null) 'metode_teknisi': metodeTeknisi,
+    });
+  }
+
+  RevenueConfigsCompanion copyWith({
+    Value<int>? id,
+    Value<double>? persenToko,
+    Value<double>? persenAdmin,
+    Value<double>? persenTeknisi,
+    Value<String>? metodeTeknisi,
+  }) {
+    return RevenueConfigsCompanion(
+      id: id ?? this.id,
+      persenToko: persenToko ?? this.persenToko,
+      persenAdmin: persenAdmin ?? this.persenAdmin,
+      persenTeknisi: persenTeknisi ?? this.persenTeknisi,
+      metodeTeknisi: metodeTeknisi ?? this.metodeTeknisi,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (persenToko.present) {
+      map['persen_toko'] = Variable<double>(persenToko.value);
+    }
+    if (persenAdmin.present) {
+      map['persen_admin'] = Variable<double>(persenAdmin.value);
+    }
+    if (persenTeknisi.present) {
+      map['persen_teknisi'] = Variable<double>(persenTeknisi.value);
+    }
+    if (metodeTeknisi.present) {
+      map['metode_teknisi'] = Variable<String>(metodeTeknisi.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RevenueConfigsCompanion(')
+          ..write('id: $id, ')
+          ..write('persenToko: $persenToko, ')
+          ..write('persenAdmin: $persenAdmin, ')
+          ..write('persenTeknisi: $persenTeknisi, ')
+          ..write('metodeTeknisi: $metodeTeknisi')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TechnicianShareEntriesTable extends TechnicianShareEntries
+    with TableInfo<$TechnicianShareEntriesTable, TechnicianShareEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TechnicianShareEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _persenMeta = const VerificationMeta('persen');
+  @override
+  late final GeneratedColumn<double> persen = GeneratedColumn<double>(
+    'persen',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [profileId, persen];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'technician_share_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TechnicianShareEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_profileIdMeta);
+    }
+    if (data.containsKey('persen')) {
+      context.handle(
+        _persenMeta,
+        persen.isAcceptableOrUnknown(data['persen']!, _persenMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_persenMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {profileId};
+  @override
+  TechnicianShareEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TechnicianShareEntry(
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
+      persen: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}persen'],
+      )!,
+    );
+  }
+
+  @override
+  $TechnicianShareEntriesTable createAlias(String alias) {
+    return $TechnicianShareEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class TechnicianShareEntry extends DataClass
+    implements Insertable<TechnicianShareEntry> {
+  final String profileId;
+  final double persen;
+  const TechnicianShareEntry({required this.profileId, required this.persen});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['profile_id'] = Variable<String>(profileId);
+    map['persen'] = Variable<double>(persen);
+    return map;
+  }
+
+  TechnicianShareEntriesCompanion toCompanion(bool nullToAbsent) {
+    return TechnicianShareEntriesCompanion(
+      profileId: Value(profileId),
+      persen: Value(persen),
+    );
+  }
+
+  factory TechnicianShareEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TechnicianShareEntry(
+      profileId: serializer.fromJson<String>(json['profileId']),
+      persen: serializer.fromJson<double>(json['persen']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'profileId': serializer.toJson<String>(profileId),
+      'persen': serializer.toJson<double>(persen),
+    };
+  }
+
+  TechnicianShareEntry copyWith({String? profileId, double? persen}) =>
+      TechnicianShareEntry(
+        profileId: profileId ?? this.profileId,
+        persen: persen ?? this.persen,
+      );
+  TechnicianShareEntry copyWithCompanion(TechnicianShareEntriesCompanion data) {
+    return TechnicianShareEntry(
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      persen: data.persen.present ? data.persen.value : this.persen,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TechnicianShareEntry(')
+          ..write('profileId: $profileId, ')
+          ..write('persen: $persen')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(profileId, persen);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TechnicianShareEntry &&
+          other.profileId == this.profileId &&
+          other.persen == this.persen);
+}
+
+class TechnicianShareEntriesCompanion
+    extends UpdateCompanion<TechnicianShareEntry> {
+  final Value<String> profileId;
+  final Value<double> persen;
+  final Value<int> rowid;
+  const TechnicianShareEntriesCompanion({
+    this.profileId = const Value.absent(),
+    this.persen = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TechnicianShareEntriesCompanion.insert({
+    required String profileId,
+    required double persen,
+    this.rowid = const Value.absent(),
+  }) : profileId = Value(profileId),
+       persen = Value(persen);
+  static Insertable<TechnicianShareEntry> custom({
+    Expression<String>? profileId,
+    Expression<double>? persen,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (profileId != null) 'profile_id': profileId,
+      if (persen != null) 'persen': persen,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TechnicianShareEntriesCompanion copyWith({
+    Value<String>? profileId,
+    Value<double>? persen,
+    Value<int>? rowid,
+  }) {
+    return TechnicianShareEntriesCompanion(
+      profileId: profileId ?? this.profileId,
+      persen: persen ?? this.persen,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
+    if (persen.present) {
+      map['persen'] = Variable<double>(persen.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TechnicianShareEntriesCompanion(')
+          ..write('profileId: $profileId, ')
+          ..write('persen: $persen, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2342,6 +3225,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ClaimsTable claims = $ClaimsTable(this);
   late final $ClaimPartsTable claimParts = $ClaimPartsTable(this);
   late final $SyncMetaTable syncMeta = $SyncMetaTable(this);
+  late final $BrandFeeEntriesTable brandFeeEntries = $BrandFeeEntriesTable(
+    this,
+  );
+  late final $RevenueConfigsTable revenueConfigs = $RevenueConfigsTable(this);
+  late final $TechnicianShareEntriesTable technicianShareEntries =
+      $TechnicianShareEntriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2353,6 +3242,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     claims,
     claimParts,
     syncMeta,
+    brandFeeEntries,
+    revenueConfigs,
+    technicianShareEntries,
   ];
 }
 
@@ -3573,6 +4465,551 @@ typedef $$SyncMetaTableProcessedTableManager =
       SyncMetaData,
       PrefetchHooks Function()
     >;
+typedef $$BrandFeeEntriesTableCreateCompanionBuilder =
+    BrandFeeEntriesCompanion Function({
+      Value<int> id,
+      required int brandId,
+      required double fee,
+      required DateTime berlakuDari,
+    });
+typedef $$BrandFeeEntriesTableUpdateCompanionBuilder =
+    BrandFeeEntriesCompanion Function({
+      Value<int> id,
+      Value<int> brandId,
+      Value<double> fee,
+      Value<DateTime> berlakuDari,
+    });
+
+class $$BrandFeeEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $BrandFeeEntriesTable> {
+  $$BrandFeeEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get brandId => $composableBuilder(
+    column: $table.brandId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get fee => $composableBuilder(
+    column: $table.fee,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get berlakuDari => $composableBuilder(
+    column: $table.berlakuDari,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BrandFeeEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $BrandFeeEntriesTable> {
+  $$BrandFeeEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get brandId => $composableBuilder(
+    column: $table.brandId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get fee => $composableBuilder(
+    column: $table.fee,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get berlakuDari => $composableBuilder(
+    column: $table.berlakuDari,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BrandFeeEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BrandFeeEntriesTable> {
+  $$BrandFeeEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get brandId =>
+      $composableBuilder(column: $table.brandId, builder: (column) => column);
+
+  GeneratedColumn<double> get fee =>
+      $composableBuilder(column: $table.fee, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get berlakuDari => $composableBuilder(
+    column: $table.berlakuDari,
+    builder: (column) => column,
+  );
+}
+
+class $$BrandFeeEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BrandFeeEntriesTable,
+          BrandFeeEntry,
+          $$BrandFeeEntriesTableFilterComposer,
+          $$BrandFeeEntriesTableOrderingComposer,
+          $$BrandFeeEntriesTableAnnotationComposer,
+          $$BrandFeeEntriesTableCreateCompanionBuilder,
+          $$BrandFeeEntriesTableUpdateCompanionBuilder,
+          (
+            BrandFeeEntry,
+            BaseReferences<_$AppDatabase, $BrandFeeEntriesTable, BrandFeeEntry>,
+          ),
+          BrandFeeEntry,
+          PrefetchHooks Function()
+        > {
+  $$BrandFeeEntriesTableTableManager(
+    _$AppDatabase db,
+    $BrandFeeEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BrandFeeEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BrandFeeEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BrandFeeEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> brandId = const Value.absent(),
+                Value<double> fee = const Value.absent(),
+                Value<DateTime> berlakuDari = const Value.absent(),
+              }) => BrandFeeEntriesCompanion(
+                id: id,
+                brandId: brandId,
+                fee: fee,
+                berlakuDari: berlakuDari,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int brandId,
+                required double fee,
+                required DateTime berlakuDari,
+              }) => BrandFeeEntriesCompanion.insert(
+                id: id,
+                brandId: brandId,
+                fee: fee,
+                berlakuDari: berlakuDari,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BrandFeeEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BrandFeeEntriesTable,
+      BrandFeeEntry,
+      $$BrandFeeEntriesTableFilterComposer,
+      $$BrandFeeEntriesTableOrderingComposer,
+      $$BrandFeeEntriesTableAnnotationComposer,
+      $$BrandFeeEntriesTableCreateCompanionBuilder,
+      $$BrandFeeEntriesTableUpdateCompanionBuilder,
+      (
+        BrandFeeEntry,
+        BaseReferences<_$AppDatabase, $BrandFeeEntriesTable, BrandFeeEntry>,
+      ),
+      BrandFeeEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$RevenueConfigsTableCreateCompanionBuilder =
+    RevenueConfigsCompanion Function({
+      Value<int> id,
+      required double persenToko,
+      required double persenAdmin,
+      required double persenTeknisi,
+      required String metodeTeknisi,
+    });
+typedef $$RevenueConfigsTableUpdateCompanionBuilder =
+    RevenueConfigsCompanion Function({
+      Value<int> id,
+      Value<double> persenToko,
+      Value<double> persenAdmin,
+      Value<double> persenTeknisi,
+      Value<String> metodeTeknisi,
+    });
+
+class $$RevenueConfigsTableFilterComposer
+    extends Composer<_$AppDatabase, $RevenueConfigsTable> {
+  $$RevenueConfigsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get persenToko => $composableBuilder(
+    column: $table.persenToko,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get persenAdmin => $composableBuilder(
+    column: $table.persenAdmin,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get persenTeknisi => $composableBuilder(
+    column: $table.persenTeknisi,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get metodeTeknisi => $composableBuilder(
+    column: $table.metodeTeknisi,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RevenueConfigsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RevenueConfigsTable> {
+  $$RevenueConfigsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get persenToko => $composableBuilder(
+    column: $table.persenToko,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get persenAdmin => $composableBuilder(
+    column: $table.persenAdmin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get persenTeknisi => $composableBuilder(
+    column: $table.persenTeknisi,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get metodeTeknisi => $composableBuilder(
+    column: $table.metodeTeknisi,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RevenueConfigsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RevenueConfigsTable> {
+  $$RevenueConfigsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get persenToko => $composableBuilder(
+    column: $table.persenToko,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get persenAdmin => $composableBuilder(
+    column: $table.persenAdmin,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get persenTeknisi => $composableBuilder(
+    column: $table.persenTeknisi,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get metodeTeknisi => $composableBuilder(
+    column: $table.metodeTeknisi,
+    builder: (column) => column,
+  );
+}
+
+class $$RevenueConfigsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RevenueConfigsTable,
+          RevenueConfig,
+          $$RevenueConfigsTableFilterComposer,
+          $$RevenueConfigsTableOrderingComposer,
+          $$RevenueConfigsTableAnnotationComposer,
+          $$RevenueConfigsTableCreateCompanionBuilder,
+          $$RevenueConfigsTableUpdateCompanionBuilder,
+          (
+            RevenueConfig,
+            BaseReferences<_$AppDatabase, $RevenueConfigsTable, RevenueConfig>,
+          ),
+          RevenueConfig,
+          PrefetchHooks Function()
+        > {
+  $$RevenueConfigsTableTableManager(
+    _$AppDatabase db,
+    $RevenueConfigsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RevenueConfigsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RevenueConfigsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RevenueConfigsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<double> persenToko = const Value.absent(),
+                Value<double> persenAdmin = const Value.absent(),
+                Value<double> persenTeknisi = const Value.absent(),
+                Value<String> metodeTeknisi = const Value.absent(),
+              }) => RevenueConfigsCompanion(
+                id: id,
+                persenToko: persenToko,
+                persenAdmin: persenAdmin,
+                persenTeknisi: persenTeknisi,
+                metodeTeknisi: metodeTeknisi,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required double persenToko,
+                required double persenAdmin,
+                required double persenTeknisi,
+                required String metodeTeknisi,
+              }) => RevenueConfigsCompanion.insert(
+                id: id,
+                persenToko: persenToko,
+                persenAdmin: persenAdmin,
+                persenTeknisi: persenTeknisi,
+                metodeTeknisi: metodeTeknisi,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RevenueConfigsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RevenueConfigsTable,
+      RevenueConfig,
+      $$RevenueConfigsTableFilterComposer,
+      $$RevenueConfigsTableOrderingComposer,
+      $$RevenueConfigsTableAnnotationComposer,
+      $$RevenueConfigsTableCreateCompanionBuilder,
+      $$RevenueConfigsTableUpdateCompanionBuilder,
+      (
+        RevenueConfig,
+        BaseReferences<_$AppDatabase, $RevenueConfigsTable, RevenueConfig>,
+      ),
+      RevenueConfig,
+      PrefetchHooks Function()
+    >;
+typedef $$TechnicianShareEntriesTableCreateCompanionBuilder =
+    TechnicianShareEntriesCompanion Function({
+      required String profileId,
+      required double persen,
+      Value<int> rowid,
+    });
+typedef $$TechnicianShareEntriesTableUpdateCompanionBuilder =
+    TechnicianShareEntriesCompanion Function({
+      Value<String> profileId,
+      Value<double> persen,
+      Value<int> rowid,
+    });
+
+class $$TechnicianShareEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $TechnicianShareEntriesTable> {
+  $$TechnicianShareEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get persen => $composableBuilder(
+    column: $table.persen,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TechnicianShareEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $TechnicianShareEntriesTable> {
+  $$TechnicianShareEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get persen => $composableBuilder(
+    column: $table.persen,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TechnicianShareEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TechnicianShareEntriesTable> {
+  $$TechnicianShareEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
+
+  GeneratedColumn<double> get persen =>
+      $composableBuilder(column: $table.persen, builder: (column) => column);
+}
+
+class $$TechnicianShareEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TechnicianShareEntriesTable,
+          TechnicianShareEntry,
+          $$TechnicianShareEntriesTableFilterComposer,
+          $$TechnicianShareEntriesTableOrderingComposer,
+          $$TechnicianShareEntriesTableAnnotationComposer,
+          $$TechnicianShareEntriesTableCreateCompanionBuilder,
+          $$TechnicianShareEntriesTableUpdateCompanionBuilder,
+          (
+            TechnicianShareEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $TechnicianShareEntriesTable,
+              TechnicianShareEntry
+            >,
+          ),
+          TechnicianShareEntry,
+          PrefetchHooks Function()
+        > {
+  $$TechnicianShareEntriesTableTableManager(
+    _$AppDatabase db,
+    $TechnicianShareEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TechnicianShareEntriesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$TechnicianShareEntriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$TechnicianShareEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> profileId = const Value.absent(),
+                Value<double> persen = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TechnicianShareEntriesCompanion(
+                profileId: profileId,
+                persen: persen,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String profileId,
+                required double persen,
+                Value<int> rowid = const Value.absent(),
+              }) => TechnicianShareEntriesCompanion.insert(
+                profileId: profileId,
+                persen: persen,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TechnicianShareEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TechnicianShareEntriesTable,
+      TechnicianShareEntry,
+      $$TechnicianShareEntriesTableFilterComposer,
+      $$TechnicianShareEntriesTableOrderingComposer,
+      $$TechnicianShareEntriesTableAnnotationComposer,
+      $$TechnicianShareEntriesTableCreateCompanionBuilder,
+      $$TechnicianShareEntriesTableUpdateCompanionBuilder,
+      (
+        TechnicianShareEntry,
+        BaseReferences<
+          _$AppDatabase,
+          $TechnicianShareEntriesTable,
+          TechnicianShareEntry
+        >,
+      ),
+      TechnicianShareEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3589,4 +5026,13 @@ class $AppDatabaseManager {
       $$ClaimPartsTableTableManager(_db, _db.claimParts);
   $$SyncMetaTableTableManager get syncMeta =>
       $$SyncMetaTableTableManager(_db, _db.syncMeta);
+  $$BrandFeeEntriesTableTableManager get brandFeeEntries =>
+      $$BrandFeeEntriesTableTableManager(_db, _db.brandFeeEntries);
+  $$RevenueConfigsTableTableManager get revenueConfigs =>
+      $$RevenueConfigsTableTableManager(_db, _db.revenueConfigs);
+  $$TechnicianShareEntriesTableTableManager get technicianShareEntries =>
+      $$TechnicianShareEntriesTableTableManager(
+        _db,
+        _db.technicianShareEntries,
+      );
 }

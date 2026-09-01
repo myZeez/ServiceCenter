@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/local/database.dart';
 import '../../core/providers.dart';
+import '../../core/revenue/revenue_providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
 import '../../core/widgets/swiss_widgets.dart';
@@ -14,44 +15,9 @@ final _rp = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 
 final _tgl = DateFormat('d MMM yyyy');
 final _iso = DateFormat('yyyy-MM-dd');
 
-/// Fee yang berlaku saat ini untuk tiap brand.
-final brandFeesProvider =
-    FutureProvider.autoDispose<Map<int, Map<String, dynamic>>>((ref) async {
-  final rows = await ref
-      .read(supabaseProvider)
-      .from('brand_fees')
-      .select()
-      .order('berlaku_dari', ascending: false);
-
-  // Baris pertama tiap brand adalah yang berlaku, karena sudah diurutkan
-  // dari tanggal terbaru.
-  final out = <int, Map<String, dynamic>>{};
-  for (final r in List<Map<String, dynamic>>.from(rows)) {
-    out.putIfAbsent(r['brand_id'] as int, () => r);
-  }
-  return out;
-});
-
-final revenueSettingsProvider =
-    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  final row = await ref
-      .read(supabaseProvider)
-      .from('revenue_settings')
-      .select()
-      .eq('id', 1)
-      .single();
-  return Map<String, dynamic>.from(row);
-});
-
-final technicianSharesProvider =
-    FutureProvider.autoDispose<Map<String, double>>((ref) async {
-  final rows =
-      await ref.read(supabaseProvider).from('technician_shares').select();
-  return {
-    for (final r in List<Map<String, dynamic>>.from(rows))
-      r['profile_id'] as String: (r['persen'] as num).toDouble(),
-  };
-});
+// Pembacaan memakai data lokal supaya halaman ini tetap terbaca saat
+// offline. Penyimpanan tetap langsung ke server -- aturan bagi hasil
+// berlaku untuk semua perangkat, jadi tidak boleh diantrekan dan bentrok.
 
 // =====================================================================
 // Fee per brand
@@ -63,37 +29,26 @@ class BrandFeesCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final brands = ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[];
-    final fees = ref.watch(brandFeesProvider);
+    final fees = ref.watch(currentFeesProvider);
 
     return BentoCard(
       title: 'Fee per Brand',
       padding: EdgeInsets.zero,
-      child: fees.when(
-        loading: () => const Center(
-          child: SizedBox(
-            height: 18,
-            width: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-        error: (e, _) => _CardMessage('Gagal memuat fee. $e'),
-        data: (map) => brands.isEmpty
-            ? const _CardMessage('Belum ada brand.')
-            : ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-                itemCount: brands.length,
-                separatorBuilder: (_, _) => const Divider(),
-                itemBuilder: (context, i) {
-                  final b = brands[i];
-                  final fee = map[b.id];
-                  return _FeeRow(
-                    brand: b,
-                    fee: fee,
-                    onEdit: () => _editFee(context, ref, b, fee),
-                  );
-                },
-              ),
-      ),
+      child: brands.isEmpty
+          ? const _CardMessage('Belum ada brand.')
+          : ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              itemCount: brands.length,
+              separatorBuilder: (_, _) => const Divider(),
+              itemBuilder: (context, i) {
+                final b = brands[i];
+                return _FeeRow(
+                  brand: b,
+                  fee: fees[b.id],
+                  onEdit: () => _editFee(context, ref, b, fees[b.id]),
+                );
+              },
+            ),
     );
   }
 
@@ -101,13 +56,13 @@ class BrandFeesCard extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     Brand brand,
-    Map<String, dynamic>? current,
+    BrandFeeEntry? current,
   ) async {
     final result = await showDialog<({double fee, DateTime dari})>(
       context: context,
       builder: (_) => _FeeDialog(
         brand: brand.nama,
-        initialFee: current == null ? '' : '${(current['fee'] as num).toInt()}',
+        initialFee: current == null ? '' : '${current.fee.toInt()}',
       ),
     );
     if (result == null || !context.mounted) return;
@@ -124,11 +79,12 @@ class BrandFeesCard extends ConsumerWidget {
         },
         onConflict: 'brand_id,berlaku_dari',
       );
-      ref.invalidate(brandFeesProvider);
+      await ref.read(syncServiceProvider).syncNow();
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Gagal menyimpan fee. $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menyimpan fee. Perlu koneksi. $e')),
+      );
     }
   }
 }
@@ -137,7 +93,7 @@ class _FeeRow extends StatelessWidget {
   const _FeeRow({required this.brand, required this.fee, required this.onEdit});
 
   final Brand brand;
-  final Map<String, dynamic>? fee;
+  final BrandFeeEntry? fee;
   final VoidCallback onEdit;
 
   @override
@@ -162,14 +118,14 @@ class _FeeRow extends StatelessWidget {
                 ),
                 if (!belum)
                   Text(
-                    'berlaku sejak ${_tgl.format(DateTime.parse(fee!['berlaku_dari'] as String))}',
+                    'berlaku sejak ${_tgl.format(fee!.berlakuDari)}',
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
               ],
             ),
           ),
           Text(
-            belum ? 'BELUM DIATUR' : _rp.format(fee!['fee'] as num),
+            belum ? 'BELUM DIATUR' : _rp.format(fee!.fee),
             style: TextStyle(
               fontSize: belum ? 10 : 14,
               fontWeight: FontWeight.w700,
@@ -198,6 +154,7 @@ class _FeeDialog extends StatefulWidget {
 class _FeeDialogState extends State<_FeeDialog> {
   final _formKey = GlobalKey<FormState>();
   late final _fee = TextEditingController(text: widget.initialFee);
+
   // Bawaannya awal kuartal berjalan, karena begitulah fee biasanya berubah.
   DateTime _dari = DateTime(
     DateTime.now().year,
@@ -235,8 +192,9 @@ class _FeeDialogState extends State<_FeeDialog> {
                   decoration: const InputDecoration(prefixText: 'Rp '),
                   validator: (v) {
                     final n = int.tryParse(v ?? '');
-                    if (n == null || n <= 0) return 'Isi angka lebih dari 0';
-                    return null;
+                    return (n == null || n <= 0)
+                        ? 'Isi angka lebih dari 0'
+                        : null;
                   },
                 ),
               ),
@@ -286,10 +244,7 @@ class _FeeDialogState extends State<_FeeDialog> {
         FilledButton(
           onPressed: () {
             if (!_formKey.currentState!.validate()) return;
-            Navigator.pop(context, (
-              fee: double.parse(_fee.text),
-              dari: _dari,
-            ));
+            Navigator.pop(context, (fee: double.parse(_fee.text), dari: _dari));
           },
           child: const Text('SIMPAN'),
         ),
@@ -330,18 +285,13 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
     super.dispose();
   }
 
+  double _num(TextEditingController c) => double.tryParse(c.text) ?? 0;
+
   double get _sisaPeran =>
-      100 -
-      (double.tryParse(_toko.text) ?? 0) -
-      (double.tryParse(_admin.text) ?? 0) -
-      (double.tryParse(_teknisi.text) ?? 0);
+      100 - _num(_toko) - _num(_admin) - _num(_teknisi);
 
   double get _sisaTeknisi =>
-      100 -
-      _shares.values.fold<double>(
-        0,
-        (a, c) => a + (double.tryParse(c.text) ?? 0),
-      );
+      100 - _shares.values.fold<double>(0, (a, c) => a + _num(c));
 
   Future<void> _save() async {
     if (_sisaPeran != 0) return;
@@ -350,9 +300,9 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
     try {
       final client = ref.read(supabaseProvider);
       await client.from('revenue_settings').update({
-        'persen_toko': double.parse(_toko.text),
-        'persen_admin': double.parse(_admin.text),
-        'persen_teknisi': double.parse(_teknisi.text),
+        'persen_toko': _num(_toko),
+        'persen_admin': _num(_admin),
+        'persen_teknisi': _num(_teknisi),
         'metode_teknisi': _metode,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', 1);
@@ -361,13 +311,12 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
         for (final e in _shares.entries) {
           await client.from('technician_shares').upsert({
             'profile_id': e.key,
-            'persen': double.tryParse(e.value.text) ?? 0,
+            'persen': _num(e.value),
           });
         }
       }
 
-      ref.invalidate(revenueSettingsProvider);
-      ref.invalidate(technicianSharesProvider);
+      await ref.read(syncServiceProvider).syncNow();
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -377,6 +326,11 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menyimpan. Perlu koneksi.')),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -384,110 +338,96 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = ref.watch(revenueSettingsProvider);
-    final shares = ref.watch(technicianSharesProvider).valueOrNull ?? const {};
+    final config = ref.watch(revenueConfigProvider).valueOrNull;
+    final shares = ref.watch(technicianSharesMapProvider);
     final techs = ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
+
+    if (!_loaded) {
+      _toko.text = '${(config?.persenToko ?? 30).toInt()}';
+      _admin.text = '${(config?.persenAdmin ?? 10).toInt()}';
+      _teknisi.text = '${(config?.persenTeknisi ?? 60).toInt()}';
+      _metode = config?.metodeTeknisi ?? 'per_unit';
+      // Menunggu sampai aturan benar-benar tersedia, supaya isian tidak
+      // terlanjur terkunci pada nilai bawaan lalu menimpa yang asli.
+      if (config != null) _loaded = true;
+    }
+    for (final t in techs) {
+      _shares.putIfAbsent(
+        t.id,
+        () => TextEditingController(text: '${(shares[t.id] ?? 0).toInt()}'),
+      );
+    }
 
     return BentoCard(
       title: 'Bagi Hasil',
-      child: settings.when(
-        loading: () => const Center(
-          child: SizedBox(
-            height: 18,
-            width: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-        error: (e, _) => _CardMessage('Gagal memuat aturan. $e'),
-        data: (s) {
-          if (!_loaded) {
-            _toko.text = '${(s['persen_toko'] as num).toInt()}';
-            _admin.text = '${(s['persen_admin'] as num).toInt()}';
-            _teknisi.text = '${(s['persen_teknisi'] as num).toInt()}';
-            _metode = s['metode_teknisi'] as String;
-            _loaded = true;
-          }
-          for (final t in techs) {
-            _shares.putIfAbsent(
-              t.id,
-              () => TextEditingController(
-                text: '${(shares[t.id] ?? 0).toInt()}',
-              ),
-            );
-          }
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _PercentRow(label: 'Toko', controller: _toko, onChanged: _touch),
+            _PercentRow(label: 'Admin', controller: _admin, onChanged: _touch),
+            _PercentRow(
+              label: 'Teknisi',
+              controller: _teknisi,
+              onChanged: _touch,
+            ),
+            const Divider(),
+            _Remaining(sisa: _sisaPeran),
 
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _PercentRow(label: 'Toko', controller: _toko, onChanged: _touch),
-                _PercentRow(label: 'Admin', controller: _admin, onChanged: _touch),
+            const SizedBox(height: AppSpacing.s),
+            Text(
+              'PEMBAGIAN ANTAR TEKNISI',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+            const SizedBox(height: 6),
+            _MethodOption(
+              value: 'per_unit',
+              group: _metode,
+              title: 'Per unit dikerjakan',
+              subtitle: 'Sesuai nilai yang dihasilkan masing-masing. Tidak '
+                  'perlu diubah saat jumlah teknisi berubah.',
+              recommended: true,
+              onTap: (v) => setState(() => _metode = v),
+            ),
+            _MethodOption(
+              value: 'rata',
+              group: _metode,
+              title: 'Rata',
+              subtitle: 'Jatah teknisi dibagi sama besar, berapa pun unit '
+                  'yang dikerjakan.',
+              onTap: (v) => setState(() => _metode = v),
+            ),
+            _MethodOption(
+              value: 'manual',
+              group: _metode,
+              title: 'Manual',
+              subtitle: 'Persentase tetap per orang, diatur sendiri.',
+              onTap: (v) => setState(() => _metode = v),
+            ),
+
+            if (_metode == 'manual') ...[
+              const SizedBox(height: AppSpacing.xs),
+              const Divider(),
+              const SizedBox(height: AppSpacing.xs),
+              for (final t in techs)
                 _PercentRow(
-                  label: 'Teknisi',
-                  controller: _teknisi,
+                  label: t.nama,
+                  controller: _shares[t.id]!,
                   onChanged: _touch,
                 ),
-                const Divider(),
-                _Remaining(sisa: _sisaPeran, konteks: 'peran'),
+              _Remaining(sisa: _sisaTeknisi),
+            ],
 
-                const SizedBox(height: AppSpacing.s),
-                Text(
-                  'PEMBAGIAN ANTAR TEKNISI',
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-                const SizedBox(height: 6),
-                _MethodOption(
-                  value: 'per_unit',
-                  group: _metode,
-                  title: 'Per unit dikerjakan',
-                  subtitle: 'Sesuai nilai yang dihasilkan masing-masing. '
-                      'Tidak perlu diubah saat jumlah teknisi berubah.',
-                  recommended: true,
-                  onTap: (v) => setState(() => _metode = v),
-                ),
-                _MethodOption(
-                  value: 'rata',
-                  group: _metode,
-                  title: 'Rata',
-                  subtitle: 'Jatah teknisi dibagi sama besar, berapa pun '
-                      'unit yang dikerjakan.',
-                  onTap: (v) => setState(() => _metode = v),
-                ),
-                _MethodOption(
-                  value: 'manual',
-                  group: _metode,
-                  title: 'Manual',
-                  subtitle: 'Persentase tetap per orang, diatur sendiri.',
-                  onTap: (v) => setState(() => _metode = v),
-                ),
-
-                if (_metode == 'manual') ...[
-                  const SizedBox(height: AppSpacing.s),
-                  const Divider(),
-                  const SizedBox(height: AppSpacing.xs),
-                  for (final t in techs)
-                    _PercentRow(
-                      label: t.nama,
-                      controller: _shares[t.id]!,
-                      onChanged: _touch,
-                    ),
-                  _Remaining(sisa: _sisaTeknisi, konteks: 'teknisi'),
-                ],
-
-                const SizedBox(height: AppSpacing.s),
-                FilledButton(
-                  onPressed: (_busy || _sisaPeran != 0) ? null : _save,
-                  child: Text(
-                    _sisaPeran == 0
-                        ? 'SIMPAN ATURAN'
-                        : 'TOTAL PERAN HARUS 100%',
-                  ),
-                ),
-              ],
+            const SizedBox(height: AppSpacing.s),
+            FilledButton(
+              onPressed: (_busy || _sisaPeran != 0) ? null : _save,
+              child: Text(
+                _sisaPeran == 0 ? 'SIMPAN ATURAN' : 'TOTAL HARUS 100%',
+              ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
@@ -520,7 +460,7 @@ class _PercentRow extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: 78,
+            width: 76,
             child: TextField(
               controller: controller,
               textAlign: TextAlign.right,
@@ -546,15 +486,13 @@ class _PercentRow extends StatelessWidget {
 /// Penunjuk sisa persen. Inilah yang membuat pengaturan manual bisa
 /// dilakukan tanpa menebak-nebak.
 class _Remaining extends StatelessWidget {
-  const _Remaining({required this.sisa, required this.konteks});
+  const _Remaining({required this.sisa});
 
   final double sisa;
-  final String konteks;
 
   @override
   Widget build(BuildContext context) {
     final pas = sisa == 0;
-    final lebih = sisa < 0;
     final warna = pas ? AppColors.blue : AppColors.red;
 
     return Container(
@@ -566,17 +504,13 @@ class _Remaining extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            pas ? Icons.check : Icons.priority_high,
-            size: 13,
-            color: warna,
-          ),
+          Icon(pas ? Icons.check : Icons.priority_high, size: 13, color: warna),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               pas
                   ? 'Pas 100%'
-                  : lebih
+                  : sisa < 0
                       ? 'Kelebihan ${sisa.abs().toStringAsFixed(0)}%'
                       : 'Sisa ${sisa.toStringAsFixed(0)}% belum dialokasikan',
               style: TextStyle(

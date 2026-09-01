@@ -49,3 +49,6 @@ app.*.map.json
 
 # Kredensial Supabase - jangan pernah di-commit
 env.json
+
+# DLL yang disalin sementara untuk tool/dump_local_db.dart
+sqlite3.dll

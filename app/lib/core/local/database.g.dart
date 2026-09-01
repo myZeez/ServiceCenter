@@ -1748,6 +1748,21 @@ class $ClaimPartsTable extends ClaimParts
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _pendingDeleteMeta = const VerificationMeta(
+    'pendingDelete',
+  );
+  @override
+  late final GeneratedColumn<bool> pendingDelete = GeneratedColumn<bool>(
+    'pending_delete',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("pending_delete" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1755,6 +1770,7 @@ class $ClaimPartsTable extends ClaimParts
     partTypeId,
     snBadPart,
     syncPending,
+    pendingDelete,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1807,6 +1823,15 @@ class $ClaimPartsTable extends ClaimParts
         ),
       );
     }
+    if (data.containsKey('pending_delete')) {
+      context.handle(
+        _pendingDeleteMeta,
+        pendingDelete.isAcceptableOrUnknown(
+          data['pending_delete']!,
+          _pendingDeleteMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1836,6 +1861,10 @@ class $ClaimPartsTable extends ClaimParts
         DriftSqlType.bool,
         data['${effectivePrefix}sync_pending'],
       )!,
+      pendingDelete: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}pending_delete'],
+      )!,
     );
   }
 
@@ -1851,12 +1880,20 @@ class ClaimPart extends DataClass implements Insertable<ClaimPart> {
   final int partTypeId;
   final String? snBadPart;
   final bool syncPending;
+
+  /// Ditandai hapus, tapi belum sempat dihapus di server.
+  ///
+  /// Baris tidak langsung dibuang supaya penghapusan yang dilakukan saat
+  /// offline tetap sampai ke server. Baris ini disembunyikan dari tampilan
+  /// dan dibuang setelah server mengonfirmasi.
+  final bool pendingDelete;
   const ClaimPart({
     required this.id,
     required this.claimId,
     required this.partTypeId,
     this.snBadPart,
     required this.syncPending,
+    required this.pendingDelete,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1868,6 +1905,7 @@ class ClaimPart extends DataClass implements Insertable<ClaimPart> {
       map['sn_bad_part'] = Variable<String>(snBadPart);
     }
     map['sync_pending'] = Variable<bool>(syncPending);
+    map['pending_delete'] = Variable<bool>(pendingDelete);
     return map;
   }
 
@@ -1880,6 +1918,7 @@ class ClaimPart extends DataClass implements Insertable<ClaimPart> {
           ? const Value.absent()
           : Value(snBadPart),
       syncPending: Value(syncPending),
+      pendingDelete: Value(pendingDelete),
     );
   }
 
@@ -1894,6 +1933,7 @@ class ClaimPart extends DataClass implements Insertable<ClaimPart> {
       partTypeId: serializer.fromJson<int>(json['partTypeId']),
       snBadPart: serializer.fromJson<String?>(json['snBadPart']),
       syncPending: serializer.fromJson<bool>(json['syncPending']),
+      pendingDelete: serializer.fromJson<bool>(json['pendingDelete']),
     );
   }
   @override
@@ -1905,6 +1945,7 @@ class ClaimPart extends DataClass implements Insertable<ClaimPart> {
       'partTypeId': serializer.toJson<int>(partTypeId),
       'snBadPart': serializer.toJson<String?>(snBadPart),
       'syncPending': serializer.toJson<bool>(syncPending),
+      'pendingDelete': serializer.toJson<bool>(pendingDelete),
     };
   }
 
@@ -1914,12 +1955,14 @@ class ClaimPart extends DataClass implements Insertable<ClaimPart> {
     int? partTypeId,
     Value<String?> snBadPart = const Value.absent(),
     bool? syncPending,
+    bool? pendingDelete,
   }) => ClaimPart(
     id: id ?? this.id,
     claimId: claimId ?? this.claimId,
     partTypeId: partTypeId ?? this.partTypeId,
     snBadPart: snBadPart.present ? snBadPart.value : this.snBadPart,
     syncPending: syncPending ?? this.syncPending,
+    pendingDelete: pendingDelete ?? this.pendingDelete,
   );
   ClaimPart copyWithCompanion(ClaimPartsCompanion data) {
     return ClaimPart(
@@ -1932,6 +1975,9 @@ class ClaimPart extends DataClass implements Insertable<ClaimPart> {
       syncPending: data.syncPending.present
           ? data.syncPending.value
           : this.syncPending,
+      pendingDelete: data.pendingDelete.present
+          ? data.pendingDelete.value
+          : this.pendingDelete,
     );
   }
 
@@ -1942,14 +1988,21 @@ class ClaimPart extends DataClass implements Insertable<ClaimPart> {
           ..write('claimId: $claimId, ')
           ..write('partTypeId: $partTypeId, ')
           ..write('snBadPart: $snBadPart, ')
-          ..write('syncPending: $syncPending')
+          ..write('syncPending: $syncPending, ')
+          ..write('pendingDelete: $pendingDelete')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, claimId, partTypeId, snBadPart, syncPending);
+  int get hashCode => Object.hash(
+    id,
+    claimId,
+    partTypeId,
+    snBadPart,
+    syncPending,
+    pendingDelete,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1958,7 +2011,8 @@ class ClaimPart extends DataClass implements Insertable<ClaimPart> {
           other.claimId == this.claimId &&
           other.partTypeId == this.partTypeId &&
           other.snBadPart == this.snBadPart &&
-          other.syncPending == this.syncPending);
+          other.syncPending == this.syncPending &&
+          other.pendingDelete == this.pendingDelete);
 }
 
 class ClaimPartsCompanion extends UpdateCompanion<ClaimPart> {
@@ -1967,6 +2021,7 @@ class ClaimPartsCompanion extends UpdateCompanion<ClaimPart> {
   final Value<int> partTypeId;
   final Value<String?> snBadPart;
   final Value<bool> syncPending;
+  final Value<bool> pendingDelete;
   final Value<int> rowid;
   const ClaimPartsCompanion({
     this.id = const Value.absent(),
@@ -1974,6 +2029,7 @@ class ClaimPartsCompanion extends UpdateCompanion<ClaimPart> {
     this.partTypeId = const Value.absent(),
     this.snBadPart = const Value.absent(),
     this.syncPending = const Value.absent(),
+    this.pendingDelete = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ClaimPartsCompanion.insert({
@@ -1982,6 +2038,7 @@ class ClaimPartsCompanion extends UpdateCompanion<ClaimPart> {
     required int partTypeId,
     this.snBadPart = const Value.absent(),
     this.syncPending = const Value.absent(),
+    this.pendingDelete = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        claimId = Value(claimId),
@@ -1992,6 +2049,7 @@ class ClaimPartsCompanion extends UpdateCompanion<ClaimPart> {
     Expression<int>? partTypeId,
     Expression<String>? snBadPart,
     Expression<bool>? syncPending,
+    Expression<bool>? pendingDelete,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2000,6 +2058,7 @@ class ClaimPartsCompanion extends UpdateCompanion<ClaimPart> {
       if (partTypeId != null) 'part_type_id': partTypeId,
       if (snBadPart != null) 'sn_bad_part': snBadPart,
       if (syncPending != null) 'sync_pending': syncPending,
+      if (pendingDelete != null) 'pending_delete': pendingDelete,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2010,6 +2069,7 @@ class ClaimPartsCompanion extends UpdateCompanion<ClaimPart> {
     Value<int>? partTypeId,
     Value<String?>? snBadPart,
     Value<bool>? syncPending,
+    Value<bool>? pendingDelete,
     Value<int>? rowid,
   }) {
     return ClaimPartsCompanion(
@@ -2018,6 +2078,7 @@ class ClaimPartsCompanion extends UpdateCompanion<ClaimPart> {
       partTypeId: partTypeId ?? this.partTypeId,
       snBadPart: snBadPart ?? this.snBadPart,
       syncPending: syncPending ?? this.syncPending,
+      pendingDelete: pendingDelete ?? this.pendingDelete,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2040,6 +2101,9 @@ class ClaimPartsCompanion extends UpdateCompanion<ClaimPart> {
     if (syncPending.present) {
       map['sync_pending'] = Variable<bool>(syncPending.value);
     }
+    if (pendingDelete.present) {
+      map['pending_delete'] = Variable<bool>(pendingDelete.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2054,6 +2118,7 @@ class ClaimPartsCompanion extends UpdateCompanion<ClaimPart> {
           ..write('partTypeId: $partTypeId, ')
           ..write('snBadPart: $snBadPart, ')
           ..write('syncPending: $syncPending, ')
+          ..write('pendingDelete: $pendingDelete, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3163,6 +3228,7 @@ typedef $$ClaimPartsTableCreateCompanionBuilder = ClaimPartsCompanion Function({
   required int partTypeId,
   Value<String?> snBadPart,
   Value<bool> syncPending,
+  Value<bool> pendingDelete,
   Value<int> rowid,
 });
 typedef $$ClaimPartsTableUpdateCompanionBuilder = ClaimPartsCompanion Function({
@@ -3171,6 +3237,7 @@ typedef $$ClaimPartsTableUpdateCompanionBuilder = ClaimPartsCompanion Function({
   Value<int> partTypeId,
   Value<String?> snBadPart,
   Value<bool> syncPending,
+  Value<bool> pendingDelete,
   Value<int> rowid,
 });
 
@@ -3205,6 +3272,11 @@ class $$ClaimPartsTableFilterComposer
 
   ColumnFilters<bool> get syncPending => $composableBuilder(
     column: $table.syncPending,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get pendingDelete => $composableBuilder(
+    column: $table.pendingDelete,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3242,6 +3314,11 @@ class $$ClaimPartsTableOrderingComposer
     column: $table.syncPending,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get pendingDelete => $composableBuilder(
+    column: $table.pendingDelete,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ClaimPartsTableAnnotationComposer
@@ -3269,6 +3346,11 @@ class $$ClaimPartsTableAnnotationComposer
 
   GeneratedColumn<bool> get syncPending => $composableBuilder(
     column: $table.syncPending,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get pendingDelete => $composableBuilder(
+    column: $table.pendingDelete,
     builder: (column) => column,
   );
 }
@@ -3309,6 +3391,7 @@ class $$ClaimPartsTableTableManager
                 Value<int> partTypeId = const Value.absent(),
                 Value<String?> snBadPart = const Value.absent(),
                 Value<bool> syncPending = const Value.absent(),
+                Value<bool> pendingDelete = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ClaimPartsCompanion(
                 id: id,
@@ -3316,6 +3399,7 @@ class $$ClaimPartsTableTableManager
                 partTypeId: partTypeId,
                 snBadPart: snBadPart,
                 syncPending: syncPending,
+                pendingDelete: pendingDelete,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3325,6 +3409,7 @@ class $$ClaimPartsTableTableManager
                 required int partTypeId,
                 Value<String?> snBadPart = const Value.absent(),
                 Value<bool> syncPending = const Value.absent(),
+                Value<bool> pendingDelete = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ClaimPartsCompanion.insert(
                 id: id,
@@ -3332,6 +3417,7 @@ class $$ClaimPartsTableTableManager
                 partTypeId: partTypeId,
                 snBadPart: snBadPart,
                 syncPending: syncPending,
+                pendingDelete: pendingDelete,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

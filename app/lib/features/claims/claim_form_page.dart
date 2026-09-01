@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/local/database.dart';
@@ -11,17 +12,29 @@ import '../../core/widgets/swiss_widgets.dart';
 import '../scan/scan_page.dart';
 
 const _uuid = Uuid();
+final _dateFmt = DateFormat('dd MMMM yyyy');
 
 /// Satu baris part yang diklaim, beserta SN part rusaknya.
 class _PartEntry {
-  _PartEntry();
+  _PartEntry({this.existingId, this.partTypeId, String? sn})
+      : snController = TextEditingController(text: sn ?? '');
+
+  /// Terisi bila baris ini sudah tersimpan sebelumnya.
+  final String? existingId;
   int? partTypeId;
-  final snController = TextEditingController();
+  final TextEditingController snController;
+
   void dispose() => snController.dispose();
 }
 
+/// Formulir klaim. Tanpa argumen berarti membuat baru; dengan [claim]
+/// berarti menyunting -- dan penyuntingan penuh hanya dibuka untuk admin.
 class ClaimFormPage extends ConsumerStatefulWidget {
-  const ClaimFormPage({super.key});
+  const ClaimFormPage({super.key, this.claim});
+
+  final Claim? claim;
+
+  bool get isEdit => claim != null;
 
   @override
   ConsumerState<ClaimFormPage> createState() => _ClaimFormPageState();
@@ -40,8 +53,59 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
   int? _brandId;
   String? _teknisiId;
   String _status = ClaimStatus.open;
-  final List<_PartEntry> _parts = [_PartEntry()];
+  late DateTime _tanggal;
+
+  List<_PartEntry> _parts = [];
+
+  /// Part yang dibuang di layar tapi belum dihapus dari basis data.
+  final List<String> _removedPartIds = [];
+
   bool _busy = false;
+  bool _partsLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final c = widget.claim;
+    if (c == null) {
+      _tanggal = DateTime.now();
+      _parts = [_PartEntry()];
+      _partsLoaded = true;
+      return;
+    }
+
+    _tanggal = c.tanggal;
+    _brandId = c.brandId;
+    _teknisiId = c.teknisiId;
+    _status = c.status;
+    _nama.text = c.namaPelanggan;
+    _telp.text = c.telp ?? '';
+    _sn.text = c.sn;
+    _keluhan.text = c.keluhan ?? '';
+    _noPerbaikan.text = c.noPerbaikan ?? '';
+    _catatan.text = c.catatan ?? '';
+
+    _loadParts(c.id);
+  }
+
+  Future<void> _loadParts(String claimId) async {
+    final rows = await ref.read(databaseProvider).partsOf(claimId);
+    if (!mounted) return;
+    setState(() {
+      _parts = rows.isEmpty
+          ? [_PartEntry()]
+          : [
+              for (final r in rows)
+                _PartEntry(
+                  existingId: r.id,
+                  partTypeId: r.partTypeId,
+                  sn: r.snBadPart,
+                ),
+            ];
+      _partsLoaded = true;
+    });
+  }
 
   @override
   void dispose() {
@@ -57,6 +121,26 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
     super.dispose();
   }
 
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _tanggal,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (picked == null) return;
+    setState(() {
+      // Jam aslinya dipertahankan; yang dikoreksi biasanya tanggalnya.
+      _tanggal = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        _tanggal.hour,
+        _tanggal.minute,
+      );
+    });
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -67,39 +151,66 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
 
     final db = ref.read(databaseProvider);
     final now = DateTime.now();
-    final claimId = _uuid.v4();
+    final claimId = widget.claim?.id ?? _uuid.v4();
 
-    await db.upsertClaimLocal(
-      ClaimsCompanion.insert(
-        id: claimId,
-        // Jam lokal saat diinput, bukan saat tersinkron ke server.
-        tanggal: now,
-        brandId: _brandId!,
-        namaPelanggan: _nama.text.trim(),
-        telp: Value(_telp.text.trim().isEmpty ? null : _telp.text.trim()),
-        sn: _sn.text.trim(),
-        teknisiId: Value(_teknisiId),
-        keluhan: Value(_keluhan.text.trim().isEmpty ? null : _keluhan.text.trim()),
-        noPerbaikan: Value(
-          _noPerbaikan.text.trim().isEmpty ? null : _noPerbaikan.text.trim(),
+    String? nullIfEmpty(TextEditingController c) =>
+        c.text.trim().isEmpty ? null : c.text.trim();
+
+    if (widget.isEdit) {
+      await db.updateClaimFull(
+        claimId,
+        ClaimsCompanion(
+          tanggal: Value(_tanggal),
+          brandId: Value(_brandId!),
+          namaPelanggan: Value(_nama.text.trim()),
+          telp: Value(nullIfEmpty(_telp)),
+          sn: Value(_sn.text.trim()),
+          teknisiId: Value(_teknisiId),
+          keluhan: Value(nullIfEmpty(_keluhan)),
+          noPerbaikan: Value(nullIfEmpty(_noPerbaikan)),
+          status: Value(_status),
+          catatan: Value(nullIfEmpty(_catatan)),
+          updatedAt: Value(now),
+          syncPending: const Value(true),
         ),
-        status: Value(_status),
-        catatan: Value(_catatan.text.trim().isEmpty ? null : _catatan.text.trim()),
-        createdBy: user.id,
-        createdAt: now,
-        updatedAt: now,
-        syncPending: const Value(true),
-      ),
-    );
+      );
+    } else {
+      await db.upsertClaimLocal(
+        ClaimsCompanion.insert(
+          id: claimId,
+          // Jam lokal saat diinput, bukan saat tersinkron ke server.
+          tanggal: _tanggal,
+          brandId: _brandId!,
+          namaPelanggan: _nama.text.trim(),
+          telp: Value(nullIfEmpty(_telp)),
+          sn: _sn.text.trim(),
+          teknisiId: Value(_teknisiId),
+          keluhan: Value(nullIfEmpty(_keluhan)),
+          noPerbaikan: Value(nullIfEmpty(_noPerbaikan)),
+          status: Value(_status),
+          catatan: Value(nullIfEmpty(_catatan)),
+          createdBy: user.id,
+          createdAt: now,
+          updatedAt: now,
+          syncPending: const Value(true),
+        ),
+      );
+    }
+
+    for (final id in _removedPartIds) {
+      await db.markPartDeleted(id);
+    }
 
     for (final p in _parts.where((e) => e.partTypeId != null)) {
       await db.upsertPartLocal(
         ClaimPartsCompanion.insert(
-          id: _uuid.v4(),
+          id: p.existingId ?? _uuid.v4(),
           claimId: claimId,
           partTypeId: p.partTypeId!,
           snBadPart: Value(
-            p.snController.text.trim().isEmpty ? null : p.snController.text.trim(),
+            p.snController.text.trim().isEmpty
+                ? null
+                : p.snController.text.trim(),
           ),
           syncPending: const Value(true),
         ),
@@ -113,8 +224,21 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
     if (!mounted) return;
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Klaim tersimpan')),
+      SnackBar(
+        content: Text(
+          widget.isEdit ? 'Perubahan tersimpan' : 'Klaim tersimpan',
+        ),
+      ),
     );
+  }
+
+  void _removePart(int i) {
+    setState(() {
+      final removed = _parts.removeAt(i);
+      if (removed.existingId != null) _removedPartIds.add(removed.existingId!);
+      removed.dispose();
+      if (_parts.isEmpty) _parts.add(_PartEntry());
+    });
   }
 
   @override
@@ -126,12 +250,24 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
 
     // Default teknisi = yang sedang login, karena umumnya dialah yang
     // menerima unit di meja.
-    _teknisiId ??= ref.read(currentUserProvider)?.id;
+    if (!widget.isEdit) _teknisiId ??= ref.read(currentUserProvider)?.id;
+
+    if (!_partsLoaded) {
+      return const Scaffold(
+        body: Center(
+          child: SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
         titleSpacing: AppSpacing.sm,
-        title: const Text('Klaim Baru'),
+        title: Text(widget.isEdit ? 'Ubah Klaim' : 'Klaim Baru'),
       ),
       body: Form(
         key: _formKey,
@@ -151,6 +287,34 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                   children: [
                     const SectionLabel('Unit'),
                     const SizedBox(height: AppSpacing.s),
+
+                    // Tanggal hanya bisa dikoreksi saat menyunting. Pada
+                    // klaim baru ia terisi otomatis dan tidak boleh diutak-atik.
+                    if (widget.isEdit) ...[
+                      LabeledField(
+                        label: 'Tanggal Masuk',
+                        child: OutlinedButton.icon(
+                          onPressed: _pickDate,
+                          icon: const Icon(Icons.calendar_today, size: 16),
+                          label: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(_dateFmt.format(_tanggal)),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            alignment: Alignment.centerLeft,
+                            side: const BorderSide(
+                              color: Color(0xFFCFD5D4),
+                              width: 1,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.s,
+                              vertical: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.s),
+                    ],
 
                     LabeledField(
                       label: 'Brand',
@@ -283,15 +447,12 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                                 ),
                               ),
                             ),
-                            if (_parts.length > 1)
-                              IconButton(
-                                iconSize: 18,
-                                color: AppColors.red,
-                                icon: const Icon(Icons.close),
-                                onPressed: () => setState(() {
-                                  _parts.removeAt(i).dispose();
-                                }),
-                              ),
+                            IconButton(
+                              iconSize: 18,
+                              color: AppColors.red,
+                              icon: const Icon(Icons.close),
+                              onPressed: () => _removePart(i),
+                            ),
                           ],
                         ),
                       ),
@@ -330,7 +491,7 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                     ),
                     const SizedBox(height: AppSpacing.s),
                     LabeledField(
-                      label: 'No Perbaikan',
+                      label: 'No Perbaikan / RMA',
                       child: TextFormField(
                         controller: _noPerbaikan,
                         textCapitalization: TextCapitalization.characters,
@@ -342,21 +503,24 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                     const SizedBox(height: AppSpacing.s),
                     LabeledField(
                       label: 'Catatan',
-                      child: TextFormField(
-                        controller: _catatan,
-                        maxLines: 3,
-                      ),
+                      child: TextFormField(controller: _catatan, maxLines: 3),
                     ),
 
                     const SizedBox(height: AppSpacing.md),
                     FilledButton(
                       onPressed: _busy ? null : _save,
-                      child: const Text('SIMPAN KLAIM'),
+                      child: Text(
+                        widget.isEdit ? 'SIMPAN PERUBAHAN' : 'SIMPAN KLAIM',
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.s),
                     Text(
-                      'Tanggal terisi otomatis. Data tersimpan di perangkat '
-                      'lebih dulu, lalu dikirim begitu ada koneksi.',
+                      widget.isEdit
+                          ? 'Perubahan tersimpan di perangkat lebih dulu, '
+                              'lalu dikirim begitu ada koneksi.'
+                          : 'Tanggal terisi otomatis. Data tersimpan di '
+                              'perangkat lebih dulu, lalu dikirim begitu ada '
+                              'koneksi.',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ],

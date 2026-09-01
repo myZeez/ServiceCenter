@@ -71,6 +71,14 @@ class ClaimParts extends Table {
   TextColumn get snBadPart => text().nullable()();
   BoolColumn get syncPending => boolean().withDefault(const Constant(false))();
 
+  /// Ditandai hapus, tapi belum sempat dihapus di server.
+  ///
+  /// Baris tidak langsung dibuang supaya penghapusan yang dilakukan saat
+  /// offline tetap sampai ke server. Baris ini disembunyikan dari tampilan
+  /// dan dibuang setelah server mengonfirmasi.
+  BoolColumn get pendingDelete =>
+      boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -94,7 +102,20 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          // Perangkat yang sudah terpasang tidak boleh kehilangan antrean
+          // klaim yang belum terkirim, jadi kolom ditambahkan, bukan tabel
+          // dibuat ulang.
+          if (from < 2) {
+            await m.addColumn(claimParts, claimParts.pendingDelete);
+          }
+        },
+      );
 
   // ------------------------------------------------------------------
   // Baca
@@ -155,7 +176,14 @@ class AppDatabase extends _$AppDatabase {
       (select(profiles)..where((t) => t.id.equals(id))).watchSingleOrNull();
 
   Stream<List<ClaimPart>> watchPartsOf(String claimId) =>
-      (select(claimParts)..where((t) => t.claimId.equals(claimId))).watch();
+      (select(claimParts)
+            ..where((t) => t.claimId.equals(claimId) & t.pendingDelete.not()))
+          .watch();
+
+  Future<List<ClaimPart>> partsOf(String claimId) =>
+      (select(claimParts)
+            ..where((t) => t.claimId.equals(claimId) & t.pendingDelete.not()))
+          .get();
 
   Stream<Claim?> watchClaim(String id) =>
       (select(claims)..where((t) => t.id.equals(id))).watchSingleOrNull();
@@ -191,6 +219,24 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// Menyimpan hasil penyuntingan penuh oleh admin. Pemanggil bertanggung
+  /// jawab mengisi updatedAt dan syncPending.
+  Future<void> updateClaimFull(String claimId, ClaimsCompanion values) =>
+      (update(claims)..where((t) => t.id.equals(claimId))).write(values);
+
+  /// Menandai part untuk dihapus. Baris baru benar-benar dibuang setelah
+  /// server mengonfirmasi, supaya penghapusan saat offline tidak hilang.
+  Future<void> markPartDeleted(String id) =>
+      (update(claimParts)..where((t) => t.id.equals(id))).write(
+        const ClaimPartsCompanion(
+          pendingDelete: Value(true),
+          syncPending: Value(true),
+        ),
+      );
+
+  Future<void> deletePartLocal(String id) =>
+      (delete(claimParts)..where((t) => t.id.equals(id))).go();
+
   Future<void> updateStatus(String claimId, String status) {
     return (update(claims)..where((t) => t.id.equals(claimId))).write(
       ClaimsCompanion(
@@ -223,6 +269,13 @@ class AppDatabase extends _$AppDatabase {
   Future<bool> hasPendingChange(String claimId) async {
     final row = await (select(claims)
           ..where((t) => t.id.equals(claimId) & t.syncPending.equals(true)))
+        .getSingleOrNull();
+    return row != null;
+  }
+
+  Future<bool> hasPendingPart(String id) async {
+    final row = await (select(claimParts)
+          ..where((t) => t.id.equals(id) & t.syncPending.equals(true)))
         .getSingleOrNull();
     return row != null;
   }

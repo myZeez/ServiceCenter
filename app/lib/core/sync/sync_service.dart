@@ -82,24 +82,40 @@ class SyncService {
   // Dorong ke server
   // ------------------------------------------------------------------
 
+  /// Apakah pengguna yang sedang login berperan admin.
+  ///
+  /// Menentukan seberapa banyak kolom yang boleh ikut terkirim. Server tetap
+  /// menegakkan aturannya sendiri; ini hanya mencegah permintaan yang sudah
+  /// pasti akan ditolak.
+  Future<bool> _isAdmin() async {
+    final id = _client.auth.currentUser?.id;
+    if (id == null) return false;
+    final profile = await _db.profileById(id);
+    return profile?.role == 'admin';
+  }
+
   Future<void> _pushClaims() async {
-    for (final c in await _db.pendingClaims()) {
+    final pending = await _db.pendingClaims();
+    if (pending.isEmpty) return;
+
+    final admin = await _isAdmin();
+
+    for (final c in pending) {
       try {
         await _client.from('claims').insert(_claimToRow(c));
       } on PostgrestException catch (e) {
-        // 23505 = baris sudah ada di server, berarti ini perubahan bukan
-        // klaim baru. Kirim hanya kolom yang memang bisa berubah setelah
-        // klaim dibuat, supaya tidak bentrok dengan aturan di server yang
-        // melarang teknisi menyentuh kolom lain.
-        if (e.code == '23505') {
-          await _client.from('claims').update({
-            'teknisi_id': c.teknisiId,
-            'status': c.status,
-            'catatan': c.catatan,
-          }).eq('id', c.id);
-        } else {
-          rethrow;
-        }
+        // 23505 = baris sudah ada di server, jadi ini penyuntingan, bukan
+        // klaim baru.
+        if (e.code != '23505') rethrow;
+
+        // Admin boleh mengubah seluruh isi klaim. Teknisi hanya kolom
+        // teknisi -- mengirim kolom lain akan ditolak trigger di server,
+        // dan nilainya bisa saja sudah usang di perangkat ini.
+        final changes = admin
+            ? _claimToRow(c)
+            : {'teknisi_id': c.teknisiId};
+
+        await _client.from('claims').update(changes).eq('id', c.id);
       }
       await _db.markClaimSynced(c.id);
     }
@@ -107,16 +123,19 @@ class SyncService {
 
   Future<void> _pushParts() async {
     for (final p in await _db.pendingParts()) {
-      try {
-        await _client.from('claim_parts').insert({
-          'id': p.id,
-          'claim_id': p.claimId,
-          'part_type_id': p.partTypeId,
-          'sn_bad_part': p.snBadPart,
-        });
-      } on PostgrestException catch (e) {
-        if (e.code != '23505') rethrow;
+      if (p.pendingDelete) {
+        await _client.from('claim_parts').delete().eq('id', p.id);
+        // Baru dibuang dari perangkat setelah server mengonfirmasi.
+        await _db.deletePartLocal(p.id);
+        continue;
       }
+
+      await _client.from('claim_parts').upsert({
+        'id': p.id,
+        'claim_id': p.claimId,
+        'part_type_id': p.partTypeId,
+        'sn_bad_part': p.snBadPart,
+      });
       await _db.markPartSynced(p.id);
     }
   }
@@ -201,6 +220,10 @@ class SyncService {
       final partRows =
           await _client.from('claim_parts').select().eq('claim_id', id);
       for (final p in partRows) {
+        // Part yang perubahannya belum terkirim tidak boleh ditimpa -- kalau
+        // tidak, part yang baru ditandai hapus akan hidup lagi.
+        if (await _db.hasPendingPart(p['id'] as String)) continue;
+
         await _db.upsertPartLocal(
           ClaimPartsCompanion.insert(
             id: p['id'] as String,

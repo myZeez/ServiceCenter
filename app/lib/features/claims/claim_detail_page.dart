@@ -7,6 +7,7 @@ import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
+import 'claim_form_page.dart';
 
 final _dateFmt = DateFormat('dd MMMM yyyy · HH:mm');
 
@@ -198,14 +199,26 @@ class ClaimDetailPage extends ConsumerWidget {
                   ],
 
                   const SizedBox(height: AppSpacing.md),
-                  if (isAdmin)
+                  if (isAdmin) ...[
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ClaimFormPage(claim: claim),
+                        ),
+                      ),
+                      child: const Text('UBAH DATA KLAIM'),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    // Jalan pintas: mengubah status adalah tindakan yang
+                    // paling sering dilakukan, tidak perlu lewat formulir.
                     OutlinedButton(
                       onPressed: () => _pickStatus(context, ref, claim),
-                      child: const Text('UBAH STATUS'),
-                    )
-                  else
+                      child: const Text('UBAH STATUS SAJA'),
+                    ),
+                  ] else
                     Text(
-                      'Hanya admin yang dapat mengubah status klaim.',
+                      'Teknisi hanya dapat mengubah nama teknisi. '
+                      'Perubahan data lain dilakukan admin.',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                 ],

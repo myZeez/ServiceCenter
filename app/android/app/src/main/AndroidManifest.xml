@@ -1,6 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Template Flutter hanya memberi INTERNET pada build debug dan profile.
+         Tanpa baris ini APK rilis tetap terpasang dan terbuka, tapi gagal
+         menghubungi Supabase tanpa pesan error yang jelas.
+         ACCESS_NETWORK_STATE dipakai untuk mendeteksi kembalinya sinyal
+         supaya antrean offline langsung dikirim. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
     <application
-        android:label="sc_management"
+        android:label="Klaim Garansi"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

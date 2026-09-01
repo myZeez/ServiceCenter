@@ -26,8 +26,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
-  if (!window.Create(L"sc_management", origin, size)) {
+  // Tabel klaim butuh sekitar 1180px agar seluruh kolom muat tanpa geser
+  // mendatar; 1400 memberi ruang lebih.
+  Win32Window::Size size(1400, 820);
+  if (!window.Create(L"Klaim Garansi", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

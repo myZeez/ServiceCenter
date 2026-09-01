@@ -14,9 +14,9 @@ import '../reports/reports_page.dart';
 import '../scan/scan_page.dart';
 import 'claim_detail_page.dart';
 import 'claim_form_page.dart';
+import 'widgets/claims_table.dart';
 
 final _dateFmt = DateFormat('dd/MM/yy');
-final _dateFmtLong = DateFormat('dd/MM/yyyy');
 
 class ClaimsPage extends ConsumerWidget {
   const ClaimsPage({super.key});
@@ -26,10 +26,12 @@ class ClaimsPage extends ConsumerWidget {
     final claims = ref.watch(claimsProvider);
     final isAdmin = ref.watch(isAdminProvider);
     final profile = ref.watch(currentProfileProvider).valueOrNull;
+    final isWide = MediaQuery.sizeOf(context).width > 900;
 
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: AppSpacing.sm,
+        toolbarHeight: isWide ? 72 : kToolbarHeight,
+        titleSpacing: isWide ? AppSpacing.md : AppSpacing.sm,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -49,39 +51,58 @@ class ClaimsPage extends ConsumerWidget {
         ),
         actions: [
           const _SyncIndicator(),
-          // Menu tunggal agar app bar di HP tidak penuh ikon.
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, size: 20),
-            position: PopupMenuPosition.under,
-            onSelected: (v) {
-              switch (v) {
-                case 'rekap':
-                  _push(context, const ReportsPage());
-                case 'pengguna':
-                  _push(context, const UsersPage());
-                case 'master':
-                  _push(context, const MasterDataPage());
-                case 'keluar':
-                  ref.read(supabaseProvider).auth.signOut();
-              }
-            },
-            itemBuilder: (_) => [
-              if (isAdmin) ...[
-                const PopupMenuItem(value: 'rekap', child: Text('Rekap')),
-                const PopupMenuItem(
-                  value: 'pengguna',
-                  child: Text('Kelola Pengguna'),
-                ),
-                const PopupMenuItem(
-                  value: 'master',
-                  child: Text('Data Master'),
-                ),
-                const PopupMenuDivider(),
-              ],
-              const PopupMenuItem(value: 'keluar', child: Text('Keluar')),
+          // Di layar lebar, navigasi ditulis sebagai teks. Gaya ini bekerja
+          // lewat tipografi, dan label yang terbaca mengalahkan ikon yang
+          // harus ditebak. Di HP tidak muat, jadi kembali ke satu menu.
+          if (isWide) ...[
+            const SizedBox(width: AppSpacing.s),
+            if (isAdmin) ...[
+              _NavLink('Rekap', () => _push(context, const ReportsPage())),
+              _NavLink('Pengguna', () => _push(context, const UsersPage())),
+              _NavLink(
+                'Data Master',
+                () => _push(context, const MasterDataPage()),
+              ),
             ],
-          ),
-          const SizedBox(width: AppSpacing.xs),
+            _NavLink(
+              'Keluar',
+              () => ref.read(supabaseProvider).auth.signOut(),
+            ),
+            const SizedBox(width: AppSpacing.md),
+          ] else ...[
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, size: 20),
+              position: PopupMenuPosition.under,
+              onSelected: (v) {
+                switch (v) {
+                  case 'rekap':
+                    _push(context, const ReportsPage());
+                  case 'pengguna':
+                    _push(context, const UsersPage());
+                  case 'master':
+                    _push(context, const MasterDataPage());
+                  case 'keluar':
+                    ref.read(supabaseProvider).auth.signOut();
+                }
+              },
+              itemBuilder: (_) => [
+                if (isAdmin) ...[
+                  const PopupMenuItem(value: 'rekap', child: Text('Rekap')),
+                  const PopupMenuItem(
+                    value: 'pengguna',
+                    child: Text('Kelola Pengguna'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'master',
+                    child: Text('Data Master'),
+                  ),
+                  const PopupMenuDivider(),
+                ],
+                const PopupMenuItem(value: 'keluar', child: Text('Keluar')),
+              ],
+            ),
+            const SizedBox(width: AppSpacing.xs),
+          ],
         ],
       ),
       body: Column(
@@ -134,6 +155,60 @@ class ClaimsPage extends ConsumerWidget {
 
   static void _push(BuildContext context, Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
+}
+
+/// Navigasi desktop sebagai teks, bukan ikon.
+class _NavLink extends StatefulWidget {
+  const _NavLink(this.label, this.onTap);
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<_NavLink> createState() => _NavLinkState();
+}
+
+class _NavLinkState extends State<_NavLink> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s,
+            vertical: AppSpacing.xs,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.label.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.9,
+                  color: AppColors.black,
+                ),
+              ),
+              const SizedBox(height: 4),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 2,
+                width: _hover ? 20 : 0,
+                color: AppColors.red,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -222,20 +297,30 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
   Widget build(BuildContext context) {
     final filter = ref.watch(claimFilterProvider);
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
+    final isWide = MediaQuery.sizeOf(context).width > 900;
+    final side = isWide ? AppSpacing.md : AppSpacing.sm;
 
     return Container(
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.black, width: 1)),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.black,
+            // Di desktop pemisah ini bertemu langsung dengan garis tebal
+            // kepala tabel, jadi dibuat tipis agar tidak menumpuk.
+            width: isWide ? 0.5 : 1,
+          ),
+        ),
       ),
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.sm,
-        0,
-        AppSpacing.sm,
-        AppSpacing.s,
-      ),
+      padding: EdgeInsets.fromLTRB(side, 0, side, AppSpacing.s),
       child: Column(
         children: [
-          TextField(
+          // Kolom pencarian tidak dibiarkan selebar layar di desktop --
+          // baris isian sepanjang 1900px tidak nyaman dibaca maupun diisi.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+              width: isWide ? 520 : double.infinity,
+              child: TextField(
             controller: _search,
             decoration: InputDecoration(
               hintText: 'Cari nama, SN, no perbaikan, telp',
@@ -269,6 +354,8 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
               ),
             ),
             onChanged: _setQuery,
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.s),
           SizedBox(
@@ -546,7 +633,8 @@ class _ClaimCard extends StatelessWidget {
   }
 }
 
-/// Tampilan desktop, tetap menyerupai spreadsheet lama.
+/// Tampilan desktop, tetap menyerupai spreadsheet lama supaya tim tidak
+/// perlu mengubah kebiasaan membaca datanya.
 class _ClaimTable extends ConsumerWidget {
   const _ClaimTable(this.items);
 
@@ -554,71 +642,20 @@ class _ClaimTable extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final brands = {
-      for (final b
-          in ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[])
-        b.id: b.nama,
-    };
-    final techs = {
-      for (final p
-          in ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[])
-        p.id: p.nama,
-    };
-
-    return SingleChildScrollView(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columnSpacing: 28,
-          headingRowHeight: 44,
-          dataRowMinHeight: 44,
-          dataRowMaxHeight: 56,
-          headingTextStyle: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1,
-            color: AppColors.black,
-          ),
-          dataTextStyle: const TextStyle(fontSize: 13, color: AppColors.black),
-          columns: const [
-            DataColumn(label: Text('TANGGAL')),
-            DataColumn(label: Text('BRAND')),
-            DataColumn(label: Text('PELANGGAN')),
-            DataColumn(label: Text('TELP')),
-            DataColumn(label: Text('SN')),
-            DataColumn(label: Text('TEKNISI')),
-            DataColumn(label: Text('KELUHAN')),
-            DataColumn(label: Text('NO PERBAIKAN')),
-            DataColumn(label: Text('STATUS')),
-          ],
-          rows: [
-            for (final c in items)
-              DataRow(
-                onSelectChanged: (_) => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => ClaimDetailPage(c.id)),
-                ),
-                cells: [
-                  DataCell(Text(_dateFmtLong.format(c.tanggal))),
-                  DataCell(Text(brands[c.brandId] ?? '—')),
-                  DataCell(Text(c.namaPelanggan)),
-                  DataCell(Text(c.telp ?? '—')),
-                  DataCell(Text(c.sn)),
-                  DataCell(Text(techs[c.teknisiId] ?? '—')),
-                  DataCell(
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 220),
-                      child: Text(
-                        c.keluhan ?? '—',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  DataCell(Text(c.noPerbaikan ?? '—')),
-                  DataCell(StatusChip(c.status)),
-                ],
-              ),
-          ],
-        ),
+    return ClaimsTable(
+      items: items,
+      brands: {
+        for (final b
+            in ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[])
+          b.id: b.nama,
+      },
+      technicians: {
+        for (final p
+            in ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[])
+          p.id: p.nama,
+      },
+      onOpen: (c) => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ClaimDetailPage(c.id)),
       ),
     );
   }

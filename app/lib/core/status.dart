@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'theme.dart';
+
 /// Nilai status harus sama persis dengan enum claim_status di Postgres.
 class ClaimStatus {
   static const open = 'open';
@@ -18,36 +20,58 @@ class ClaimStatus {
     batal: 'Batal',
   };
 
+  // Palet Swiss hanya punya tiga warna kerja, jadi pembeda status memakai
+  // warna DAN isian. Yang menuntut tindakan diberi bobot visual paling
+  // besar; yang sudah selesai sengaja mundur ke belakang supaya perhatian
+  // jatuh ke pekerjaan yang masih berjalan.
   static const _colors = {
-    open: Color(0xFF0EA5E9),
-    proses: Color(0xFFF59E0B),
-    tungguPart: Color(0xFFA855F7),
-    close: Color(0xFF10B981),
-    batal: Color(0xFF6B7280),
+    open: AppColors.blue,
+    proses: AppColors.blue,
+    tungguPart: AppColors.red,
+    close: AppColors.black,
+    batal: AppColors.grey,
+  };
+
+  static const _filled = {
+    open: false,
+    proses: true,
+    tungguPart: true,
+    close: false,
+    batal: false,
   };
 
   static String label(String s) => _labels[s] ?? s;
-  static Color color(String s) => _colors[s] ?? const Color(0xFF6B7280);
+  static Color color(String s) => _colors[s] ?? AppColors.grey;
+  static bool isFilled(String s) => _filled[s] ?? false;
 }
 
 class StatusChip extends StatelessWidget {
-  const StatusChip(this.status, {super.key});
+  const StatusChip(this.status, {super.key, this.compact = false});
 
   final String status;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final c = ClaimStatus.color(status);
+    final filled = ClaimStatus.isFilled(status);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8, vertical: 3),
       decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: c.withValues(alpha: 0.4)),
+        color: filled ? c : Colors.transparent,
+        border: Border.all(color: c, width: 1),
+        borderRadius: BorderRadius.circular(AppRadius.small),
       ),
       child: Text(
-        ClaimStatus.label(status),
-        style: TextStyle(color: c, fontSize: 11, fontWeight: FontWeight.w600),
+        ClaimStatus.label(status).toUpperCase(),
+        style: TextStyle(
+          color: filled ? AppColors.white : c,
+          fontSize: compact ? 9 : 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.7,
+          height: 1.2,
+        ),
       ),
     );
   }

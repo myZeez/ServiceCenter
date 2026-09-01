@@ -111,11 +111,20 @@ class AppDatabase extends _$AppDatabase {
     return q.watch();
   }
 
+  /// Hanya yang aktif -- untuk pilihan saat input klaim baru.
   Stream<List<Brand>> watchBrands() =>
       (select(brands)..where((t) => t.aktif)).watch();
 
   Stream<List<PartType>> watchPartTypes() =>
       (select(partTypes)..where((t) => t.aktif)).watch();
+
+  /// Termasuk yang nonaktif -- untuk menampilkan klaim lama yang terlanjur
+  /// memakainya, dan untuk halaman data master.
+  Stream<List<Brand>> watchAllBrands() =>
+      (select(brands)..orderBy([(t) => OrderingTerm.asc(t.nama)])).watch();
+
+  Stream<List<PartType>> watchAllPartTypes() =>
+      (select(partTypes)..orderBy([(t) => OrderingTerm.asc(t.kode)])).watch();
 
   Stream<List<Profile>> watchTechnicians() =>
       (select(profiles)..where((t) => t.aktif)).watch();

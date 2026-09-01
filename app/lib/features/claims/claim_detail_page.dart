@@ -5,8 +5,10 @@ import 'package:intl/intl.dart';
 import '../../core/local/database.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
+import '../../core/theme.dart';
+import '../../core/widgets/swiss_widgets.dart';
 
-final _dateFmt = DateFormat('dd MMMM yyyy, HH:mm');
+final _dateFmt = DateFormat('dd MMMM yyyy · HH:mm');
 
 class ClaimDetailPage extends ConsumerWidget {
   const ClaimDetailPage(this.claimId, {super.key});
@@ -19,130 +21,193 @@ class ClaimDetailPage extends ConsumerWidget {
     final isAdmin = ref.watch(isAdminProvider);
 
     if (claim == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(
+          child: SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
     }
 
     final brands = {
-      for (final b in ref.watch(brandsProvider).valueOrNull ?? const []) b.id: b.nama
+      for (final b
+          in ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[])
+        b.id: b.nama,
     };
     final techs = {
-      for (final p in ref.watch(techniciansProvider).valueOrNull ?? const [])
-        p.id: p.nama
+      for (final p
+          in ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[])
+        p.id: p.nama,
     };
     final partTypes = {
-      for (final p in ref.watch(partTypesProvider).valueOrNull ?? const [])
-        p.id: p.nama
+      for (final p
+          in ref.watch(allPartTypesProvider).valueOrNull ?? const <PartType>[])
+        p.id: p,
     };
-    final parts = ref.watch(partsOfClaimProvider(claimId)).valueOrNull ?? const [];
+    final parts =
+        ref.watch(partsOfClaimProvider(claimId)).valueOrNull ?? const [];
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: AppSpacing.sm,
         title: Text(claim.noPerbaikan ?? 'Detail Klaim'),
         actions: [
           if (claim.syncPending)
             const Padding(
-              padding: EdgeInsets.only(right: 12),
+              padding: EdgeInsets.only(right: AppSpacing.sm),
               child: Tooltip(
                 message: 'Belum terkirim ke server',
-                child: Icon(Icons.schedule, color: Colors.orange),
+                child: Icon(Icons.schedule, size: 18, color: AppColors.red),
               ),
             ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.sm,
+          AppSpacing.s,
+          AppSpacing.sm,
+          AppSpacing.md,
+        ),
         children: [
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
+              constraints: const BoxConstraints(maxWidth: 560),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Kepala: pelanggan sebagai judul, status di sampingnya.
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      StatusChip(claim.status),
-                      const Spacer(),
-                      Text(
-                        _dateFmt.format(claim.tanggal),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                      Expanded(
+                        child: Text(
+                          claim.namaPelanggan,
+                          style: Theme.of(context).textTheme.headlineMedium,
                         ),
+                      ),
+                      const SizedBox(width: AppSpacing.s),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: StatusChip(claim.status),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-
-                  _Field('Brand', brands[claim.brandId] ?? '-'),
-                  _Field('Nama Pelanggan', claim.namaPelanggan),
-                  _Field('Telp', claim.telp ?? '-'),
-                  _Field('Serial Number', claim.sn),
-                  _Field('Keluhan', claim.keluhan ?? '-'),
-                  _Field('No Perbaikan', claim.noPerbaikan ?? '-'),
-                  _Field('Catatan', claim.catatan ?? '-'),
-
-                  const SizedBox(height: 8),
-                  const Divider(),
-                  const SizedBox(height: 8),
-
-                  // Teknisi ditonjolkan karena ini satu-satunya kolom yang
-                  // boleh diubah teknisi, dan yang menentukan bagi hasil.
-                  Card(
-                    margin: EdgeInsets.zero,
-                    child: ListTile(
-                      leading: const Icon(Icons.engineering),
-                      title: const Text('Teknisi'),
-                      subtitle: Text(
-                        techs[claim.teknisiId] ?? 'Belum ditugaskan',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      trailing: TextButton(
-                        onPressed: () => _pickTechnician(context, ref, claim),
-                        child: const Text('Ganti'),
-                      ),
-                    ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${brands[claim.brandId] ?? '—'}   ${_dateFmt.format(claim.tanggal)}',
+                    style: Theme.of(context).textTheme.labelSmall,
                   ),
 
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Part yang Diklaim',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.md),
+                  const SectionLabel('Unit'),
+                  const SizedBox(height: AppSpacing.s),
+                  FieldValue('Serial Number', claim.sn, emphasis: true),
+                  const SizedBox(height: AppSpacing.s),
+                  FieldValue('Keluhan', claim.keluhan ?? '—'),
+                  const SizedBox(height: AppSpacing.s),
+                  FieldValue('No Perbaikan', claim.noPerbaikan ?? '—'),
+
+                  const SizedBox(height: AppSpacing.md),
+                  const SectionLabel('Pelanggan'),
+                  const SizedBox(height: AppSpacing.s),
+                  FieldValue('Telepon', claim.telp ?? '—'),
+
+                  const SizedBox(height: AppSpacing.md),
+                  const SectionLabel('Part yang Diklaim'),
+                  const SizedBox(height: AppSpacing.s),
                   if (parts.isEmpty)
                     Text(
                       'Tidak ada part yang diklaim.',
-                      style: TextStyle(color: Colors.grey.shade600),
+                      style: const TextStyle(color: AppColors.grey),
                     )
                   else
                     for (final p in parts)
-                      Card(
-                        margin: const EdgeInsets.only(bottom: 6),
-                        child: ListTile(
-                          dense: true,
-                          leading: const Icon(Icons.memory, size: 20),
-                          title: Text(partTypes[p.partTypeId] ?? '-'),
-                          subtitle: Text('SN bad part: ${p.snBadPart ?? '-'}'),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 92,
+                              child: Text(
+                                partTypes[p.partTypeId]?.kode ?? '—',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    partTypes[p.partTypeId]?.nama ?? '—',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                  Text(
+                                    'SN BAD PART  ${p.snBadPart ?? '—'}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.md),
+                  const SectionLabel('Penanganan'),
+                  const SizedBox(height: AppSpacing.s),
+
+                  // Teknisi ditonjolkan: ini satu-satunya kolom yang boleh
+                  // diubah teknisi, dan yang menentukan bagi hasil.
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.s),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.black, width: 1.5),
+                      borderRadius: BorderRadius.circular(AppRadius.base),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: FieldValue(
+                            'Teknisi',
+                            techs[claim.teknisiId] ?? 'Belum ditugaskan',
+                            emphasis: true,
+                          ),
+                        ),
+                        OutlinedButton(
+                          onPressed: () => _pickTechnician(context, ref, claim),
+                          child: const Text('GANTI'),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  if ((claim.catatan ?? '').isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.s),
+                    FieldValue('Catatan', claim.catatan!),
+                  ],
+
+                  const SizedBox(height: AppSpacing.md),
                   if (isAdmin)
-                    OutlinedButton.icon(
+                    OutlinedButton(
                       onPressed: () => _pickStatus(context, ref, claim),
-                      icon: const Icon(Icons.flag_outlined),
-                      label: const Text('Ubah Status'),
+                      child: const Text('UBAH STATUS'),
                     )
                   else
                     Text(
                       'Hanya admin yang dapat mengubah status klaim.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      style: Theme.of(context).textTheme.labelSmall,
                     ),
-                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -161,23 +226,11 @@ class ClaimDetailPage extends ConsumerWidget {
 
     final picked = await showDialog<String>(
       context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Pilih Teknisi'),
-        children: [
+      builder: (ctx) => _PickerDialog(
+        title: 'Pilih Teknisi',
+        options: [
           for (final t in techs)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, t.id),
-              child: Row(
-                children: [
-                  if (t.id == claim.teknisiId)
-                    const Icon(Icons.check, size: 18)
-                  else
-                    const SizedBox(width: 18),
-                  const SizedBox(width: 8),
-                  Text(t.nama),
-                ],
-              ),
-            ),
+            _PickerOption(value: t.id, label: t.nama, selected: t.id == claim.teknisiId),
         ],
       ),
     );
@@ -202,22 +255,15 @@ class ClaimDetailPage extends ConsumerWidget {
   ) async {
     final picked = await showDialog<String>(
       context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Ubah Status'),
-        children: [
+      builder: (ctx) => _PickerDialog(
+        title: 'Ubah Status',
+        options: [
           for (final s in ClaimStatus.all)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, s),
-              child: Row(
-                children: [
-                  if (s == claim.status)
-                    const Icon(Icons.check, size: 18)
-                  else
-                    const SizedBox(width: 18),
-                  const SizedBox(width: 8),
-                  StatusChip(s),
-                ],
-              ),
+            _PickerOption(
+              value: s,
+              label: ClaimStatus.label(s),
+              selected: s == claim.status,
+              chip: StatusChip(s),
             ),
         ],
       ),
@@ -230,25 +276,66 @@ class ClaimDetailPage extends ConsumerWidget {
   }
 }
 
-class _Field extends StatelessWidget {
-  const _Field(this.label, this.value);
+class _PickerOption {
+  _PickerOption({
+    required this.value,
+    required this.label,
+    required this.selected,
+    this.chip,
+  });
 
-  final String label;
   final String value;
+  final String label;
+  final bool selected;
+  final Widget? chip;
+}
+
+class _PickerDialog extends StatelessWidget {
+  const _PickerDialog({required this.title, required this.options});
+
+  final String title;
+  final List<_PickerOption> options;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+  Widget build(BuildContext context) {
+    return SimpleDialog(
+      title: Text(title),
+      contentPadding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      children: [
+        for (final o in options)
+          InkWell(
+            onTap: () => Navigator.pop(context, o.value),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 14,
+              ),
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    color: o.selected ? AppColors.red : Colors.transparent,
+                    width: 3,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: o.chip ??
+                        Text(
+                          o.label,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight:
+                                o.selected ? FontWeight.w700 : FontWeight.w400,
+                          ),
+                        ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 2),
-            Text(value, style: const TextStyle(fontSize: 15)),
-          ],
-        ),
-      );
+          ),
+      ],
+    );
+  }
 }

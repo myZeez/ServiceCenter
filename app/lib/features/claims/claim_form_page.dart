@@ -6,6 +6,8 @@ import 'package:uuid/uuid.dart';
 import '../../core/local/database.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
+import '../../core/theme.dart';
+import '../../core/widgets/swiss_widgets.dart';
 
 const _uuid = Uuid();
 
@@ -118,162 +120,157 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
   Widget build(BuildContext context) {
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
     final techs = ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
-    final partTypes = ref.watch(partTypesProvider).valueOrNull ?? const <PartType>[];
+    final partTypes =
+        ref.watch(partTypesProvider).valueOrNull ?? const <PartType>[];
 
     // Default teknisi = yang sedang login, karena umumnya dialah yang
     // menerima unit di meja.
     _teknisiId ??= ref.read(currentUserProvider)?.id;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Klaim Baru')),
+      appBar: AppBar(
+        titleSpacing: AppSpacing.sm,
+        title: const Text('Klaim Baru'),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm,
+            AppSpacing.s,
+            AppSpacing.sm,
+            AppSpacing.md,
+          ),
           children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
+                constraints: const BoxConstraints(maxWidth: 560),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    DropdownButtonFormField<int>(
-                      initialValue: _brandId,
-                      decoration: const InputDecoration(labelText: 'Brand *'),
-                      items: [
-                        for (final b in brands)
-                          DropdownMenuItem(value: b.id, child: Text(b.nama)),
-                      ],
-                      onChanged: (v) => setState(() => _brandId = v),
-                      validator: (v) => v == null ? 'Brand wajib dipilih' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _nama,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration:
-                          const InputDecoration(labelText: 'Nama Pelanggan *'),
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Nama wajib diisi'
-                          : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _telp,
-                      keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        labelText: 'Telp',
-                        hintText: '0812-3456-7890',
+                    const SectionLabel('Unit'),
+                    const SizedBox(height: AppSpacing.s),
+
+                    LabeledField(
+                      label: 'Brand',
+                      required: true,
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _brandId,
+                        isExpanded: true,
+                        hint: const Text('Pilih brand'),
+                        items: [
+                          for (final b in brands)
+                            DropdownMenuItem(value: b.id, child: Text(b.nama)),
+                        ],
+                        onChanged: (v) => setState(() => _brandId = v),
+                        validator: (v) => v == null ? 'Brand wajib dipilih' : null,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _sn,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: const InputDecoration(
-                        labelText: 'Serial Number *',
-                      ),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'SN wajib diisi' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _teknisiId,
-                      decoration: const InputDecoration(labelText: 'Teknisi'),
-                      items: [
-                        for (final t in techs)
-                          DropdownMenuItem(value: t.id, child: Text(t.nama)),
-                      ],
-                      onChanged: (v) => setState(() => _teknisiId = v),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _keluhan,
-                      textCapitalization: TextCapitalization.characters,
-                      maxLines: 2,
-                      decoration: const InputDecoration(
-                        labelText: 'Keluhan',
-                        hintText: 'NO POWER, LCD ABNORMAL LINE, ...',
+                    const SizedBox(height: AppSpacing.s),
+                    LabeledField(
+                      label: 'Serial Number',
+                      required: true,
+                      child: TextFormField(
+                        controller: _sn,
+                        textCapitalization: TextCapitalization.characters,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'SN wajib diisi'
+                            : null,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _noPerbaikan,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: const InputDecoration(
-                        labelText: 'No Perbaikan',
-                        hintText: 'IDD7R20024',
+                    const SizedBox(height: AppSpacing.s),
+                    LabeledField(
+                      label: 'Keluhan',
+                      child: TextFormField(
+                        controller: _keluhan,
+                        textCapitalization: TextCapitalization.characters,
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                          hintText: 'NO POWER, LCD ABNORMAL LINE',
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _status,
-                      decoration: const InputDecoration(labelText: 'Status'),
-                      items: [
-                        for (final s in ClaimStatus.all)
-                          DropdownMenuItem(
-                            value: s,
-                            child: Text(ClaimStatus.label(s)),
-                          ),
-                      ],
-                      onChanged: (v) => setState(() => _status = v!),
                     ),
 
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        const Text(
-                          'Part yang Diklaim',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const Spacer(),
-                        TextButton.icon(
-                          onPressed: () =>
-                              setState(() => _parts.add(_PartEntry())),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('Tambah'),
-                        ),
-                      ],
+                    const SizedBox(height: AppSpacing.md),
+                    const SectionLabel('Pelanggan'),
+                    const SizedBox(height: AppSpacing.s),
+
+                    LabeledField(
+                      label: 'Nama',
+                      required: true,
+                      child: TextFormField(
+                        controller: _nama,
+                        textCapitalization: TextCapitalization.characters,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Nama wajib diisi'
+                            : null,
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.s),
+                    LabeledField(
+                      label: 'Telepon',
+                      child: TextFormField(
+                        controller: _telp,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          hintText: '0812-3456-7890',
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: AppSpacing.md),
+                    SectionLabel(
+                      'Part yang Diklaim',
+                      trailing: InlineAction(
+                        label: 'Tambah',
+                        onTap: () => setState(() => _parts.add(_PartEntry())),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s),
+
                     for (var i = 0; i < _parts.length; i++)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.only(bottom: AppSpacing.s),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Expanded(
                               flex: 2,
-                              child: DropdownButtonFormField<int>(
-                                initialValue: _parts[i].partTypeId,
-                                isExpanded: true,
-                                decoration:
-                                    const InputDecoration(labelText: 'Part'),
-                                items: [
-                                  for (final p in partTypes)
-                                    DropdownMenuItem(
-                                      value: p.id,
-                                      child: Text(p.kode),
-                                    ),
-                                ],
-                                onChanged: (v) =>
-                                    setState(() => _parts[i].partTypeId = v),
+                              child: LabeledField(
+                                label: 'Part',
+                                child: DropdownButtonFormField<int>(
+                                  initialValue: _parts[i].partTypeId,
+                                  isExpanded: true,
+                                  hint: const Text('—'),
+                                  items: [
+                                    for (final p in partTypes)
+                                      DropdownMenuItem(
+                                        value: p.id,
+                                        child: Text(p.kode),
+                                      ),
+                                  ],
+                                  onChanged: (v) =>
+                                      setState(() => _parts[i].partTypeId = v),
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.xs),
                             Expanded(
                               flex: 3,
-                              child: TextFormField(
-                                controller: _parts[i].snController,
-                                textCapitalization: TextCapitalization.characters,
-                                decoration: const InputDecoration(
-                                  labelText: 'SN Bad Part',
+                              child: LabeledField(
+                                label: 'SN Bad Part',
+                                child: TextFormField(
+                                  controller: _parts[i].snController,
+                                  textCapitalization:
+                                      TextCapitalization.characters,
                                 ),
                               ),
                             ),
                             if (_parts.length > 1)
                               IconButton(
-                                icon: const Icon(Icons.close, size: 18),
+                                iconSize: 18,
+                                color: AppColors.red,
+                                icon: const Icon(Icons.close),
                                 onPressed: () => setState(() {
                                   _parts.removeAt(i).dispose();
                                 }),
@@ -282,32 +279,69 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                         ),
                       ),
 
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _catatan,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Catatan',
-                        alignLabelWithHint: true,
+                    const SizedBox(height: AppSpacing.sm),
+                    const SectionLabel('Penanganan'),
+                    const SizedBox(height: AppSpacing.s),
+
+                    LabeledField(
+                      label: 'Teknisi',
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _teknisiId,
+                        isExpanded: true,
+                        items: [
+                          for (final t in techs)
+                            DropdownMenuItem(value: t.id, child: Text(t.nama)),
+                        ],
+                        onChanged: (v) => setState(() => _teknisiId = v),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    FilledButton.icon(
+                    const SizedBox(height: AppSpacing.s),
+                    LabeledField(
+                      label: 'Status',
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _status,
+                        isExpanded: true,
+                        items: [
+                          for (final s in ClaimStatus.all)
+                            DropdownMenuItem(
+                              value: s,
+                              child: Text(ClaimStatus.label(s)),
+                            ),
+                        ],
+                        onChanged: (v) => setState(() => _status = v!),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s),
+                    LabeledField(
+                      label: 'No Perbaikan',
+                      child: TextFormField(
+                        controller: _noPerbaikan,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: const InputDecoration(
+                          hintText: 'IDD7R20024',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s),
+                    LabeledField(
+                      label: 'Catatan',
+                      child: TextFormField(
+                        controller: _catatan,
+                        maxLines: 3,
+                      ),
+                    ),
+
+                    const SizedBox(height: AppSpacing.md),
+                    FilledButton(
                       onPressed: _busy ? null : _save,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      icon: const Icon(Icons.save),
-                      label: const Text('Simpan Klaim'),
+                      child: const Text('SIMPAN KLAIM'),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.s),
                     Text(
                       'Tanggal terisi otomatis. Data tersimpan di perangkat '
-                      'dulu, lalu dikirim ke server begitu ada koneksi.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      'lebih dulu, lalu dikirim begitu ada koneksi.',
+                      style: Theme.of(context).textTheme.labelSmall,
                     ),
-                    const SizedBox(height: 32),
                   ],
                 ),
               ),

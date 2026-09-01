@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config.dart';
 import 'core/providers.dart';
+import 'core/theme.dart';
 import 'features/auth/login_page.dart';
 import 'features/claims/claims_page.dart';
 
@@ -28,19 +29,10 @@ class ScManagementApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF0F766E));
-
     return MaterialApp(
-      title: 'Service Claim Garansi',
+      title: 'Klaim Garansi',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: scheme,
-        useMaterial3: true,
-        inputDecorationTheme: const InputDecorationTheme(
-          border: OutlineInputBorder(),
-          isDense: true,
-        ),
-      ),
+      theme: AppTheme.build(),
       home: const _AuthGate(),
     );
   }

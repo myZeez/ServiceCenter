@@ -43,5 +43,5 @@ void main() {
     }
   }
 
-  db.dispose();
+  db.close();
 }

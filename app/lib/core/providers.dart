@@ -63,12 +63,24 @@ final isAdminProvider = Provider<bool>((ref) {
 // Master data
 // ---------------------------------------------------------------------
 
+/// Hanya yang aktif -- dipakai untuk pilihan saat input klaim.
 final brandsProvider = StreamProvider<List<Brand>>(
   (ref) => ref.watch(databaseProvider).watchBrands(),
 );
 
 final partTypesProvider = StreamProvider<List<PartType>>(
   (ref) => ref.watch(databaseProvider).watchPartTypes(),
+);
+
+/// Termasuk yang nonaktif. Dipakai saat menerjemahkan brand_id dan
+/// part_type_id pada klaim lama menjadi nama -- tanpa ini, menonaktifkan
+/// sebuah brand membuat riwayat klaimnya tampil tanpa nama.
+final allBrandsProvider = StreamProvider<List<Brand>>(
+  (ref) => ref.watch(databaseProvider).watchAllBrands(),
+);
+
+final allPartTypesProvider = StreamProvider<List<PartType>>(
+  (ref) => ref.watch(databaseProvider).watchAllPartTypes(),
 );
 
 final techniciansProvider = StreamProvider<List<Profile>>(

@@ -44,11 +44,9 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
     final total = counts.values.fold(0, (a, b) => a + b);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.sm,
-        AppSpacing.md,
-        AppSpacing.sm,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.s,
+        vertical: AppSpacing.xs,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -137,26 +135,59 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
           ),
           const SizedBox(height: AppSpacing.s),
 
+          // Brand tetap sebagai item terpisah, bukan dropdown. Jumlahnya
+          // masih sedikit dan layar lebar punya ruang; satu klik lebih cepat
+          // daripada buka-pilih-tutup. Memakai Wrap, jadi merek baru turun
+          // ke baris berikutnya alih-alih memanjang keluar layar.
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _BrandDropdown(brands: brands, selected: filter.brandId),
+              Expanded(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _BrandChip(
+                      label: 'Semua Brand',
+                      selected: filter.brandId == null,
+                      onTap: () => ref
+                          .read(claimFilterProvider.notifier)
+                          .update((s) => s.copyWith(clearBrand: true)),
+                    ),
+                    for (final b in brands)
+                      _BrandChip(
+                        label: b.nama,
+                        selected: filter.brandId == b.id,
+                        onTap: () => ref
+                            .read(claimFilterProvider.notifier)
+                            .update((s) => s.copyWith(brandId: b.id)),
+                      ),
+                  ],
+                ),
+              ),
               const SizedBox(width: AppSpacing.s),
               if (filter.brandId != null ||
                   filter.status != null ||
                   filter.query.isNotEmpty)
-                InlineAction(
-                  label: 'Hapus semua filter',
-                  onTap: () {
-                    _search.clear();
-                    ref
-                        .read(claimFilterProvider.notifier)
-                        .update((_) => const ClaimFilter());
-                  },
+                Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: InlineAction(
+                    label: 'Hapus filter',
+                    onTap: () {
+                      _search.clear();
+                      ref
+                          .read(claimFilterProvider.notifier)
+                          .update((_) => const ClaimFilter());
+                    },
+                  ),
                 ),
-              const Spacer(),
-              Text(
-                '${claims.length} ditampilkan',
-                style: Theme.of(context).textTheme.labelSmall,
+              const SizedBox(width: AppSpacing.s),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '${claims.length} ditampilkan',
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
               ),
             ],
           ),
@@ -195,48 +226,58 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
   }
 }
 
-/// Brand dibuat dropdown, bukan deretan chip: jumlahnya bertambah setiap
-/// kali ada merek baru ditangani, dan deretan yang memanjang ke kanan
-/// akhirnya menutupi pilihan yang jarang dipakai.
-class _BrandDropdown extends ConsumerWidget {
-  const _BrandDropdown({required this.brands, required this.selected});
+class _BrandChip extends StatefulWidget {
+  const _BrandChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
-  final List<Brand> brands;
-  final int? selected;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      height: 34,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s),
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: selected == null ? const Color(0xFFCFD5D4) : AppColors.black,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.small),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int?>(
-          value: selected,
-          isDense: true,
-          borderRadius: BorderRadius.circular(AppRadius.base),
-          icon: const Icon(Icons.expand_more, size: 16),
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-            color: AppColors.black,
+  State<_BrandChip> createState() => _BrandChipState();
+}
+
+class _BrandChipState extends State<_BrandChip> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = widget.selected;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          height: 30,
+          padding: const EdgeInsets.symmetric(horizontal: 11),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active ? AppColors.black : AppColors.white,
+            border: Border.all(
+              color: active
+                  ? AppColors.black
+                  : (_hover ? AppColors.black : const Color(0xFFCFD5D4)),
+            ),
+            borderRadius: BorderRadius.circular(AppRadius.small),
           ),
-          onChanged: (v) => ref.read(claimFilterProvider.notifier).update(
-                (s) => v == null
-                    ? s.copyWith(clearBrand: true)
-                    : s.copyWith(brandId: v),
-              ),
-          items: [
-            const DropdownMenuItem(value: null, child: Text('SEMUA BRAND')),
-            for (final b in brands)
-              DropdownMenuItem(value: b.id, child: Text(b.nama.toUpperCase())),
-          ],
+          child: Text(
+            widget.label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: active ? AppColors.white : AppColors.black,
+            ),
+          ),
         ),
       ),
     );

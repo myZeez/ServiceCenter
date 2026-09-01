@@ -38,21 +38,27 @@ class _AdminShellState extends ConsumerState<AdminShell> {
 
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
-      body: Row(
-        children: [
-          _Sidebar(
-            sections: sections,
-            selected: index,
-            onSelect: (i) => setState(() => _index = i),
-          ),
-          Expanded(
-            child: switch (sections[index].label) {
-              'Rekap' => const ReportsView(),
-              'Pengaturan' => const SettingsView(),
-              _ => const ClaimsView(),
-            },
-          ),
-        ],
+      body: Padding(
+        // Jarak di keempat sisi membuat sidebar tampak mengambang di atas
+        // bidang, bukan menempel pada tepi jendela.
+        padding: const EdgeInsets.all(AppSpacing.s),
+        child: Row(
+          children: [
+            _Sidebar(
+              sections: sections,
+              selected: index,
+              onSelect: (i) => setState(() => _index = i),
+            ),
+            const SizedBox(width: AppSpacing.s),
+            Expanded(
+              child: switch (sections[index].label) {
+                'Rekap' => const ReportsView(),
+                'Pengaturan' => const SettingsView(),
+                _ => const ClaimsView(),
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -80,10 +86,12 @@ class _Sidebar extends ConsumerWidget {
     final profile = ref.watch(currentProfileProvider).valueOrNull;
 
     return Container(
-      width: 232,
-      decoration: const BoxDecoration(
+      width: 228,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
         color: AppColors.white,
-        border: Border(right: BorderSide(color: Color(0xFFE4E7E7))),
+        borderRadius: BorderRadius.circular(AppRadius.base),
+        border: Border.all(color: const Color(0xFFE4E7E7)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -324,6 +324,9 @@ class _FilterDropdown<T> extends StatelessWidget {
           isDense: true,
           isExpanded: true,
           borderRadius: BorderRadius.circular(AppRadius.base),
+          // Tanpa ini, Flutter melukis blok abu di belakang teks saat
+          // dropdown mendapat fokus -- terlihat seperti kerusakan tampilan.
+          focusColor: Colors.transparent,
           icon: const Icon(Icons.expand_more, size: 16),
           style: const TextStyle(
             fontSize: 10.5,

@@ -1,0 +1,244 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/local/database.dart';
+import '../../core/providers.dart';
+import '../../core/status.dart';
+import '../../core/theme.dart';
+import '../../core/widgets/bento.dart';
+import '../../core/widgets/swiss_widgets.dart';
+import '../scan/scan_page.dart';
+import 'claim_dialog.dart';
+import 'widgets/claims_table.dart';
+
+/// Halaman utama untuk layar lebar.
+class ClaimsView extends ConsumerStatefulWidget {
+  const ClaimsView({super.key});
+
+  @override
+  ConsumerState<ClaimsView> createState() => _ClaimsViewState();
+}
+
+class _ClaimsViewState extends ConsumerState<ClaimsView> {
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _setQuery(String v) =>
+      ref.read(claimFilterProvider.notifier).update((s) => s.copyWith(query: v));
+
+  @override
+  Widget build(BuildContext context) {
+    final claims = ref.watch(claimsProvider).valueOrNull ?? const <Claim>[];
+    final counts = ref.watch(statusCountsProvider).valueOrNull ?? const {};
+    final filter = ref.watch(claimFilterProvider);
+    final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
+    final allBrands =
+        ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[];
+    final techs = ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
+
+    final total = counts.values.fold(0, (a, b) => a + b);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PageHeader(
+            title: 'Klaim Garansi',
+            subtitle: '$total klaim tercatat',
+            actions: [
+              SizedBox(
+                width: 300,
+                child: TextField(
+                  controller: _search,
+                  decoration: InputDecoration(
+                    hintText: 'Cari nama, SN, RMA, telp',
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      size: 17,
+                      color: AppColors.grey,
+                    ),
+                    prefixIconConstraints: const BoxConstraints(minWidth: 36),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (filter.query.isNotEmpty)
+                          IconButton(
+                            iconSize: 16,
+                            color: AppColors.grey,
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              _search.clear();
+                              _setQuery('');
+                            },
+                          ),
+                        ScanFieldButton(
+                          title: 'Pindai SN untuk mencari',
+                          onScanned: (v) {
+                            _search.text = v;
+                            _setQuery(v);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  onChanged: _setQuery,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s),
+              FilledButton.icon(
+                onPressed: () => showClaimDialog(context),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('KLAIM BARU'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          // Ringkasan sekaligus penyaring. Angkanya menjawab "ada berapa
+          // yang tunggu part" tanpa perlu membuka apa pun.
+          Row(
+            children: [
+              Expanded(
+                child: StatTile(
+                  value: '$total',
+                  label: 'Semua klaim',
+                  selected: filter.status == null,
+                  onTap: () => ref
+                      .read(claimFilterProvider.notifier)
+                      .update((s) => s.copyWith(clearStatus: true)),
+                ),
+              ),
+              for (final s in ClaimStatus.all) ...[
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: StatTile(
+                    value: '${counts[s] ?? 0}',
+                    label: ClaimStatus.label(s),
+                    accent: ClaimStatus.color(s),
+                    selected: filter.status == s,
+                    onTap: () => ref
+                        .read(claimFilterProvider.notifier)
+                        .update((f) => f.copyWith(status: s)),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.s),
+
+          Row(
+            children: [
+              _BrandDropdown(brands: brands, selected: filter.brandId),
+              const SizedBox(width: AppSpacing.s),
+              if (filter.brandId != null ||
+                  filter.status != null ||
+                  filter.query.isNotEmpty)
+                InlineAction(
+                  label: 'Hapus semua filter',
+                  onTap: () {
+                    _search.clear();
+                    ref
+                        .read(claimFilterProvider.notifier)
+                        .update((_) => const ClaimFilter());
+                  },
+                ),
+              const Spacer(),
+              Text(
+                '${claims.length} ditampilkan',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.s),
+
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(AppRadius.base),
+                border: Border.all(color: const Color(0xFFE4E7E7)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: claims.isEmpty
+                  ? EmptyState(
+                      icon: Icons.inbox_outlined,
+                      title: 'Tidak ada klaim yang cocok',
+                      description:
+                          'Ubah filter di atas, atau catat klaim baru.',
+                      action: OutlinedButton(
+                        onPressed: () => showClaimDialog(context),
+                        child: const Text('CATAT KLAIM BARU'),
+                      ),
+                    )
+                  : ClaimsTable(
+                      items: claims,
+                      brands: {for (final b in allBrands) b.id: b.nama},
+                      technicians: {for (final p in techs) p.id: p.nama},
+                      onOpen: (c) => showClaimDialog(context, claim: c),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Brand dibuat dropdown, bukan deretan chip: jumlahnya bertambah setiap
+/// kali ada merek baru ditangani, dan deretan yang memanjang ke kanan
+/// akhirnya menutupi pilihan yang jarang dipakai.
+class _BrandDropdown extends ConsumerWidget {
+  const _BrandDropdown({required this.brands, required this.selected});
+
+  final List<Brand> brands;
+  final int? selected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: selected == null ? const Color(0xFFCFD5D4) : AppColors.black,
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.small),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int?>(
+          value: selected,
+          isDense: true,
+          borderRadius: BorderRadius.circular(AppRadius.base),
+          icon: const Icon(Icons.expand_more, size: 16),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+            color: AppColors.black,
+          ),
+          onChanged: (v) => ref.read(claimFilterProvider.notifier).update(
+                (s) => v == null
+                    ? s.copyWith(clearBrand: true)
+                    : s.copyWith(brandId: v),
+              ),
+          items: [
+            const DropdownMenuItem(value: null, child: Text('SEMUA BRAND')),
+            for (final b in brands)
+              DropdownMenuItem(value: b.id, child: Text(b.nama.toUpperCase())),
+          ],
+        ),
+      ),
+    );
+  }
+}

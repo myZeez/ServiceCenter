@@ -7,6 +7,7 @@ import 'core/providers.dart';
 import 'core/theme.dart';
 import 'features/auth/login_page.dart';
 import 'features/claims/claims_page.dart';
+import 'features/shell/admin_shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,7 +68,10 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
       });
     }
 
-    return const ClaimsPage();
+    // Layar lebar memakai kerangka bersidebar; layar sempit memakai
+    // navigasi berhalaman yang lebih cocok untuk satu tangan.
+    final wide = MediaQuery.sizeOf(context).width > 900;
+    return wide ? const AdminShell() : const ClaimsPage();
   }
 }
 

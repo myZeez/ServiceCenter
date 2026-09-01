@@ -188,6 +188,19 @@ class AppDatabase extends _$AppDatabase {
   Stream<Claim?> watchClaim(String id) =>
       (select(claims)..where((t) => t.id.equals(id))).watchSingleOrNull();
 
+  /// Jumlah klaim per status, dihitung di database bukan di memori supaya
+  /// tetap ringan saat datanya sudah ribuan baris.
+  Stream<Map<String, int>> watchStatusCounts() {
+    final jumlah = claims.id.count();
+    final q = selectOnly(claims)
+      ..addColumns([claims.status, jumlah])
+      ..groupBy([claims.status]);
+
+    return q.map((row) => MapEntry(row.read(claims.status)!, row.read(jumlah)!))
+        .watch()
+        .map(Map.fromEntries);
+  }
+
   /// Berapa banyak perubahan lokal yang masih mengantre.
   Stream<int> watchPendingCount() {
     final c = claims.id.count();

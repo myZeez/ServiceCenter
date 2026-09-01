@@ -143,6 +143,12 @@ final claimsProvider = StreamProvider<List<Claim>>((ref) {
   );
 });
 
+/// Jumlah klaim per status. Dipakai stat tile di halaman utama, yang
+/// sekaligus berfungsi sebagai filter status.
+final statusCountsProvider = StreamProvider<Map<String, int>>(
+  (ref) => ref.watch(databaseProvider).watchStatusCounts(),
+);
+
 final partsOfClaimProvider =
     StreamProvider.family<List<ClaimPart>, String>((ref, claimId) {
   return ref.watch(databaseProvider).watchPartsOf(claimId);

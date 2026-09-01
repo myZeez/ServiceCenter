@@ -8,16 +8,15 @@ import '../../core/status.dart';
 import '../../core/sync/sync_service.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
-import '../admin/master_data_page.dart';
-import '../admin/users_page.dart';
 import '../reports/reports_page.dart';
 import '../scan/scan_page.dart';
+import '../settings/settings_page.dart';
 import 'claim_detail_page.dart';
 import 'claim_form_page.dart';
-import 'widgets/claims_table.dart';
 
 final _dateFmt = DateFormat('dd/MM/yy');
 
+/// Halaman utama untuk layar sempit. Layar lebar memakai AdminShell.
 class ClaimsPage extends ConsumerWidget {
   const ClaimsPage({super.key});
 
@@ -26,12 +25,10 @@ class ClaimsPage extends ConsumerWidget {
     final claims = ref.watch(claimsProvider);
     final isAdmin = ref.watch(isAdminProvider);
     final profile = ref.watch(currentProfileProvider).valueOrNull;
-    final isWide = MediaQuery.sizeOf(context).width > 900;
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: isWide ? 72 : kToolbarHeight,
-        titleSpacing: isWide ? AppSpacing.md : AppSpacing.sm,
+        titleSpacing: AppSpacing.sm,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -51,58 +48,32 @@ class ClaimsPage extends ConsumerWidget {
         ),
         actions: [
           const _SyncIndicator(),
-          // Di layar lebar, navigasi ditulis sebagai teks. Gaya ini bekerja
-          // lewat tipografi, dan label yang terbaca mengalahkan ikon yang
-          // harus ditebak. Di HP tidak muat, jadi kembali ke satu menu.
-          if (isWide) ...[
-            const SizedBox(width: AppSpacing.s),
-            if (isAdmin) ...[
-              _NavLink('Rekap', () => _push(context, const ReportsPage())),
-              _NavLink('Pengguna', () => _push(context, const UsersPage())),
-              _NavLink(
-                'Data Master',
-                () => _push(context, const MasterDataPage()),
-              ),
-            ],
-            _NavLink(
-              'Keluar',
-              () => ref.read(supabaseProvider).auth.signOut(),
-            ),
-            const SizedBox(width: AppSpacing.md),
-          ] else ...[
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, size: 20),
-              position: PopupMenuPosition.under,
-              onSelected: (v) {
-                switch (v) {
-                  case 'rekap':
-                    _push(context, const ReportsPage());
-                  case 'pengguna':
-                    _push(context, const UsersPage());
-                  case 'master':
-                    _push(context, const MasterDataPage());
-                  case 'keluar':
-                    ref.read(supabaseProvider).auth.signOut();
-                }
-              },
-              itemBuilder: (_) => [
-                if (isAdmin) ...[
-                  const PopupMenuItem(value: 'rekap', child: Text('Rekap')),
-                  const PopupMenuItem(
-                    value: 'pengguna',
-                    child: Text('Kelola Pengguna'),
-                  ),
-                  const PopupMenuItem(
-                    value: 'master',
-                    child: Text('Data Master'),
-                  ),
-                  const PopupMenuDivider(),
-                ],
-                const PopupMenuItem(value: 'keluar', child: Text('Keluar')),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, size: 20),
+            position: PopupMenuPosition.under,
+            onSelected: (v) {
+              switch (v) {
+                case 'rekap':
+                  _push(context, const ReportsPage());
+                case 'pengaturan':
+                  _push(context, const SettingsPage());
+                case 'keluar':
+                  ref.read(supabaseProvider).auth.signOut();
+              }
+            },
+            itemBuilder: (_) => [
+              if (isAdmin) ...[
+                const PopupMenuItem(value: 'rekap', child: Text('Rekap')),
+                const PopupMenuItem(
+                  value: 'pengaturan',
+                  child: Text('Pengaturan'),
+                ),
+                const PopupMenuDivider(),
               ],
-            ),
-            const SizedBox(width: AppSpacing.xs),
-          ],
+              const PopupMenuItem(value: 'keluar', child: Text('Keluar')),
+            ],
+          ),
+          const SizedBox(width: AppSpacing.xs),
         ],
       ),
       body: Column(
@@ -122,25 +93,18 @@ class ClaimsPage extends ConsumerWidget {
                 title: 'Gagal memuat data',
                 description: '$e',
               ),
-              data: (list) {
-                if (list.isEmpty) {
-                  return EmptyState(
-                    icon: Icons.inbox_outlined,
-                    title: 'Belum ada klaim',
-                    description:
-                        'Klaim yang kamu catat akan muncul di sini, '
-                        'termasuk saat perangkat sedang offline.',
-                    action: OutlinedButton(
-                      onPressed: () => _push(context, const ClaimFormPage()),
-                      child: const Text('CATAT KLAIM PERTAMA'),
-                    ),
-                  );
-                }
-                return LayoutBuilder(
-                  builder: (context, c) =>
-                      c.maxWidth > 900 ? _ClaimTable(list) : _ClaimCards(list),
-                );
-              },
+              data: (list) => list.isEmpty
+                  ? EmptyState(
+                      icon: Icons.inbox_outlined,
+                      title: 'Belum ada klaim',
+                      description: 'Klaim yang kamu catat akan muncul di sini, '
+                          'termasuk saat perangkat sedang offline.',
+                      action: OutlinedButton(
+                        onPressed: () => _push(context, const ClaimFormPage()),
+                        child: const Text('CATAT KLAIM PERTAMA'),
+                      ),
+                    )
+                  : _ClaimCards(list),
             ),
           ),
         ],
@@ -158,61 +122,6 @@ class ClaimsPage extends ConsumerWidget {
   }
 }
 
-/// Navigasi desktop sebagai teks, bukan ikon.
-class _NavLink extends StatefulWidget {
-  const _NavLink(this.label, this.onTap);
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  State<_NavLink> createState() => _NavLinkState();
-}
-
-class _NavLinkState extends State<_NavLink> {
-  bool _hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.s,
-            vertical: AppSpacing.xs,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.label.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.9,
-                  color: AppColors.black,
-                ),
-              ),
-              const SizedBox(height: 4),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                height: 2,
-                width: _hover ? 20 : 0,
-                color: AppColors.red,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Lampu status sinkron. Angka = perubahan yang belum sampai server.
 class _SyncIndicator extends ConsumerWidget {
   const _SyncIndicator();
 
@@ -289,41 +198,31 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
     super.dispose();
   }
 
-  void _setQuery(String v) {
-    ref.read(claimFilterProvider.notifier).update((s) => s.copyWith(query: v));
-  }
+  void _setQuery(String v) =>
+      ref.read(claimFilterProvider.notifier).update((s) => s.copyWith(query: v));
 
   @override
   Widget build(BuildContext context) {
     final filter = ref.watch(claimFilterProvider);
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
-    final isWide = MediaQuery.sizeOf(context).width > 900;
-    final side = isWide ? AppSpacing.md : AppSpacing.sm;
+    final counts = ref.watch(statusCountsProvider).valueOrNull ?? const {};
 
     return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.black,
-            // Di desktop pemisah ini bertemu langsung dengan garis tebal
-            // kepala tabel, jadi dibuat tipis agar tidak menumpuk.
-            width: isWide ? 0.5 : 1,
-          ),
-        ),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.black)),
       ),
-      padding: EdgeInsets.fromLTRB(side, 0, side, AppSpacing.s),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        0,
+        AppSpacing.sm,
+        AppSpacing.s,
+      ),
       child: Column(
         children: [
-          // Kolom pencarian tidak dibiarkan selebar layar di desktop --
-          // baris isian sepanjang 1900px tidak nyaman dibaca maupun diisi.
-          Align(
-            alignment: Alignment.centerLeft,
-            child: SizedBox(
-              width: isWide ? 520 : double.infinity,
-              child: TextField(
+          TextField(
             controller: _search,
             decoration: InputDecoration(
-              hintText: 'Cari nama, SN, no perbaikan, telp',
+              hintText: 'Cari nama, SN, RMA, telp',
               prefixIcon:
                   const Icon(Icons.search, size: 18, color: AppColors.grey),
               prefixIconConstraints: const BoxConstraints(minWidth: 38),
@@ -332,7 +231,6 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
                 children: [
                   if (filter.query.isNotEmpty)
                     IconButton(
-                      tooltip: 'Hapus pencarian',
                       iconSize: 18,
                       color: AppColors.grey,
                       icon: const Icon(Icons.close),
@@ -341,8 +239,6 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
                         _setQuery('');
                       },
                     ),
-                  // Pindai unit yang baru datang untuk langsung melihat
-                  // apakah SN-nya pernah masuk sebelumnya.
                   ScanFieldButton(
                     title: 'Pindai SN untuk mencari',
                     onScanned: (v) {
@@ -354,50 +250,43 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
               ),
             ),
             onChanged: _setQuery,
-              ),
-            ),
           ),
-          const SizedBox(height: AppSpacing.s),
-          SizedBox(
-            height: 30,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.none,
-              children: [
-                _Chip(
-                  label: 'Semua',
-                  selected: filter.brandId == null,
-                  onTap: () => ref
-                      .read(claimFilterProvider.notifier)
-                      .update((s) => s.copyWith(clearBrand: true)),
+          const SizedBox(height: AppSpacing.xs),
+          // Di layar sempit, dua dropdown jauh lebih hemat ruang daripada
+          // deretan chip yang harus digeser ke kanan.
+          Row(
+            children: [
+              Expanded(
+                child: _FilterDropdown<int?>(
+                  value: filter.brandId,
+                  placeholder: 'SEMUA BRAND',
+                  items: [
+                    for (final b in brands) (b.id, b.nama.toUpperCase()),
+                  ],
+                  onChanged: (v) => ref.read(claimFilterProvider.notifier).update(
+                        (s) => v == null
+                            ? s.copyWith(clearBrand: true)
+                            : s.copyWith(brandId: v),
+                      ),
                 ),
-                for (final b in brands)
-                  _Chip(
-                    label: b.nama,
-                    selected: filter.brandId == b.id,
-                    onTap: () => ref
-                        .read(claimFilterProvider.notifier)
-                        .update((s) => s.copyWith(brandId: b.id)),
-                  ),
-                const _ChipDivider(),
-                _Chip(
-                  label: 'Semua Status',
-                  selected: filter.status == null,
-                  onTap: () => ref
-                      .read(claimFilterProvider.notifier)
-                      .update((s) => s.copyWith(clearStatus: true)),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: _FilterDropdown<String?>(
+                  value: filter.status,
+                  placeholder: 'SEMUA STATUS',
+                  items: [
+                    for (final s in ClaimStatus.all)
+                      (s, '${ClaimStatus.label(s).toUpperCase()}  ${counts[s] ?? 0}'),
+                  ],
+                  onChanged: (v) => ref.read(claimFilterProvider.notifier).update(
+                        (s) => v == null
+                            ? s.copyWith(clearStatus: true)
+                            : s.copyWith(status: v),
+                      ),
                 ),
-                for (final s in ClaimStatus.all)
-                  _Chip(
-                    label: ClaimStatus.label(s),
-                    selected: filter.status == s,
-                    accent: ClaimStatus.color(s),
-                    onTap: () => ref
-                        .read(claimFilterProvider.notifier)
-                        .update((f) => f.copyWith(status: s)),
-                  ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -405,66 +294,55 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.accent,
+class _FilterDropdown<T> extends StatelessWidget {
+  const _FilterDropdown({
+    required this.value,
+    required this.placeholder,
+    required this.items,
+    required this.onChanged,
   });
 
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final Color? accent;
+  final T value;
+  final String placeholder;
+  final List<(T, String)> items;
+  final ValueChanged<T> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final c = accent ?? AppColors.black;
-    return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: InkWell(
-        onTap: onTap,
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: value == null ? const Color(0xFFCFD5D4) : AppColors.black,
+        ),
         borderRadius: BorderRadius.circular(AppRadius.small),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 11),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? c : AppColors.white,
-            border: Border.all(
-              color: selected ? c : const Color(0xFFCFD5D4),
-            ),
-            borderRadius: BorderRadius.circular(AppRadius.small),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          isDense: true,
+          isExpanded: true,
+          borderRadius: BorderRadius.circular(AppRadius.base),
+          icon: const Icon(Icons.expand_more, size: 16),
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.4,
+            color: AppColors.black,
           ),
-          child: Text(
-            label.toUpperCase(),
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.4,
-              color: selected ? AppColors.white : AppColors.black,
-            ),
-          ),
+          onChanged: (v) => onChanged(v as T),
+          items: [
+            DropdownMenuItem<T>(value: null, child: Text(placeholder)),
+            for (final (v, label) in items)
+              DropdownMenuItem<T>(value: v, child: Text(label)),
+          ],
         ),
       ),
     );
   }
 }
 
-class _ChipDivider extends StatelessWidget {
-  const _ChipDivider();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: 1,
-        margin: const EdgeInsets.only(right: 6, top: 4, bottom: 4),
-        color: const Color(0xFFCFD5D4),
-      );
-}
-
-/// Tampilan HP. Hierarki dibangun dari bobot dan ukuran huruf, bukan warna.
 class _ClaimCards extends ConsumerWidget {
   const _ClaimCards(this.items);
 
@@ -492,17 +370,14 @@ class _ClaimCards extends ConsumerWidget {
       ),
       itemCount: items.length,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.xs),
-      itemBuilder: (context, i) {
-        final c = items[i];
-        return EntryAnimation(
-          index: i,
-          child: _ClaimCard(
-            claim: c,
-            brand: brands[c.brandId] ?? '—',
-            technician: techs[c.teknisiId],
-          ),
-        );
-      },
+      itemBuilder: (context, i) => EntryAnimation(
+        index: i,
+        child: _ClaimCard(
+          claim: items[i],
+          brand: brands[items[i].brandId] ?? '—',
+          technician: techs[items[i].teknisiId],
+        ),
+      ),
     );
   }
 }
@@ -531,7 +406,6 @@ class _ClaimCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Baris penanda: brand, tanggal, status.
               Row(
                 children: [
                   Text(
@@ -540,7 +414,6 @@ class _ClaimCard extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1,
-                      color: AppColors.black,
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -557,17 +430,13 @@ class _ClaimCard extends StatelessWidget {
                   if (claim.syncPending)
                     const Padding(
                       padding: EdgeInsets.only(right: 6),
-                      child: Icon(
-                        Icons.schedule,
-                        size: 13,
-                        color: AppColors.red,
-                      ),
+                      child:
+                          Icon(Icons.schedule, size: 13, color: AppColors.red),
                     ),
                   StatusChip(claim.status, compact: true),
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),
-
               Text(
                 claim.namaPelanggan,
                 style: Theme.of(context).textTheme.titleMedium,
@@ -585,7 +454,6 @@ class _ClaimCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-
               if ((claim.keluhan ?? '').isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(
@@ -595,7 +463,6 @@ class _ClaimCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
-
               const SizedBox(height: AppSpacing.xs),
               const Divider(),
               const SizedBox(height: 6),
@@ -606,10 +473,12 @@ class _ClaimCard extends StatelessWidget {
                       technician ?? 'Belum ditugaskan',
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight:
-                            technician == null ? FontWeight.w400 : FontWeight.w600,
-                        color:
-                            technician == null ? AppColors.grey : AppColors.black,
+                        fontWeight: technician == null
+                            ? FontWeight.w400
+                            : FontWeight.w600,
+                        color: technician == null
+                            ? AppColors.grey
+                            : AppColors.black,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -628,34 +497,6 @@ class _ClaimCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Tampilan desktop, tetap menyerupai spreadsheet lama supaya tim tidak
-/// perlu mengubah kebiasaan membaca datanya.
-class _ClaimTable extends ConsumerWidget {
-  const _ClaimTable(this.items);
-
-  final List<Claim> items;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ClaimsTable(
-      items: items,
-      brands: {
-        for (final b
-            in ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[])
-          b.id: b.nama,
-      },
-      technicians: {
-        for (final p
-            in ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[])
-          p.id: p.nama,
-      },
-      onOpen: (c) => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ClaimDetailPage(c.id)),
       ),
     );
   }

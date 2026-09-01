@@ -11,6 +11,7 @@ import '../../core/widgets/swiss_widgets.dart';
 import '../admin/master_data_page.dart';
 import '../admin/users_page.dart';
 import '../reports/reports_page.dart';
+import '../scan/scan_page.dart';
 import 'claim_detail_page.dart';
 import 'claim_form_page.dart';
 
@@ -197,11 +198,28 @@ class _SyncIndicator extends ConsumerWidget {
   }
 }
 
-class _FilterBar extends ConsumerWidget {
+class _FilterBar extends ConsumerStatefulWidget {
   const _FilterBar();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_FilterBar> createState() => _FilterBarState();
+}
+
+class _FilterBarState extends ConsumerState<_FilterBar> {
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _setQuery(String v) {
+    ref.read(claimFilterProvider.notifier).update((s) => s.copyWith(query: v));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final filter = ref.watch(claimFilterProvider);
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
 
@@ -218,14 +236,39 @@ class _FilterBar extends ConsumerWidget {
       child: Column(
         children: [
           TextField(
-            decoration: const InputDecoration(
+            controller: _search,
+            decoration: InputDecoration(
               hintText: 'Cari nama, SN, no perbaikan, telp',
-              prefixIcon: Icon(Icons.search, size: 18, color: AppColors.grey),
-              prefixIconConstraints: BoxConstraints(minWidth: 38),
+              prefixIcon:
+                  const Icon(Icons.search, size: 18, color: AppColors.grey),
+              prefixIconConstraints: const BoxConstraints(minWidth: 38),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (filter.query.isNotEmpty)
+                    IconButton(
+                      tooltip: 'Hapus pencarian',
+                      iconSize: 18,
+                      color: AppColors.grey,
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        _search.clear();
+                        _setQuery('');
+                      },
+                    ),
+                  // Pindai unit yang baru datang untuk langsung melihat
+                  // apakah SN-nya pernah masuk sebelumnya.
+                  ScanFieldButton(
+                    title: 'Pindai SN untuk mencari',
+                    onScanned: (v) {
+                      _search.text = v;
+                      _setQuery(v);
+                    },
+                  ),
+                ],
+              ),
             ),
-            onChanged: (v) => ref
-                .read(claimFilterProvider.notifier)
-                .update((s) => s.copyWith(query: v)),
+            onChanged: _setQuery,
           ),
           const SizedBox(height: AppSpacing.s),
           SizedBox(

@@ -8,6 +8,7 @@ import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
+import '../scan/scan_page.dart';
 
 const _uuid = Uuid();
 
@@ -170,9 +171,17 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                     LabeledField(
                       label: 'Serial Number',
                       required: true,
+                      hint: scanSupported
+                          ? 'Pindai barcode untuk menghindari salah ketik.'
+                          : null,
                       child: TextFormField(
                         controller: _sn,
                         textCapitalization: TextCapitalization.characters,
+                        decoration: InputDecoration(
+                          suffixIcon: ScanFieldButton(
+                            onScanned: (v) => setState(() => _sn.text = v),
+                          ),
+                        ),
                         validator: (v) => (v == null || v.trim().isEmpty)
                             ? 'SN wajib diisi'
                             : null,
@@ -263,6 +272,14 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                                   controller: _parts[i].snController,
                                   textCapitalization:
                                       TextCapitalization.characters,
+                                  decoration: InputDecoration(
+                                    suffixIcon: ScanFieldButton(
+                                      title: 'Pindai SN Bad Part',
+                                      onScanned: (v) => setState(
+                                        () => _parts[i].snController.text = v,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),

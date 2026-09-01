@@ -7,6 +7,7 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
 import '../../core/widgets/swiss_widgets.dart';
+import 'revenue_cards.dart';
 
 /// Semua pengaturan dalam satu layar.
 ///
@@ -55,14 +56,31 @@ class SettingsView extends ConsumerWidget {
             child: LayoutBuilder(
               builder: (context, c) {
                 if (c.maxWidth > 900) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  return Column(
                     children: const [
-                      Expanded(flex: 3, child: _UsersCard()),
-                      SizedBox(width: AppSpacing.s),
-                      Expanded(flex: 2, child: _BrandsCard()),
-                      SizedBox(width: AppSpacing.s),
-                      Expanded(flex: 2, child: _PartTypesCard()),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(flex: 3, child: _UsersCard()),
+                            SizedBox(width: AppSpacing.s),
+                            Expanded(flex: 2, child: _BrandsCard()),
+                            SizedBox(width: AppSpacing.s),
+                            Expanded(flex: 2, child: _PartTypesCard()),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: AppSpacing.s),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(flex: 3, child: BrandFeesCard()),
+                            SizedBox(width: AppSpacing.s),
+                            Expanded(flex: 4, child: RevenueSplitCard()),
+                          ],
+                        ),
+                      ),
                     ],
                   );
                 }
@@ -73,6 +91,10 @@ class SettingsView extends ConsumerWidget {
                     SizedBox(height: 300, child: _BrandsCard()),
                     SizedBox(height: AppSpacing.s),
                     SizedBox(height: 300, child: _PartTypesCard()),
+                    SizedBox(height: AppSpacing.s),
+                    SizedBox(height: 340, child: BrandFeesCard()),
+                    SizedBox(height: AppSpacing.s),
+                    SizedBox(height: 560, child: RevenueSplitCard()),
                     SizedBox(height: AppSpacing.sm),
                   ],
                 );

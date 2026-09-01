@@ -55,6 +55,7 @@ penyelesaian kalau ada perselisihan.
 2. **SQL Editor** → jalankan migrasi berurutan:
    - `supabase/migrations/0001_init.sql`
    - `supabase/migrations/0002_active_user_guard.sql`
+   - `supabase/migrations/0003_bagi_hasil.sql`
 3. **Authentication → Users → Add user**, centang *Auto Confirm User*.
 4. Jadikan user itu admin (ganti email dan namanya):
 
@@ -125,6 +126,28 @@ supaya data di perangkat yang sudah terpasang tidak hilang.
 ## Belum dikerjakan
 
 - Impor data lama dari 8 tab spreadsheet
-- Perhitungan bagi hasil (masih di file Excel terpisah)
+- Fee berbeda per tipe produk (Zenbook, Vivobook) dan per jenis part
 - Ganti password sendiri dari dalam aplikasi
 - Ekspor rekap ke Excel/PDF
+
+## Bagi hasil
+
+Fee dicatat **per brand dengan tanggal berlaku**, bukan satu angka yang
+ditimpa. Kalau fee lama ditimpa, rekap kuartal yang sudah lewat ikut berubah
+angkanya — dan pembagian yang terlanjur dibayarkan tidak lagi cocok dengan
+laporannya.
+
+Hanya klaim berstatus **Selesai** yang dihitung, karena fee dibayarkan brand
+setelah perbaikan tuntas.
+
+Nilai total dibagi tiga: toko, admin, dan jatah teknisi. Jatah teknisi
+dibagi lagi dengan salah satu dari tiga metode:
+
+| Metode | Cara kerja |
+|---|---|
+| **Per unit dikerjakan** | Menurut nilai rupiah yang dihasilkan tiap teknisi. Tidak perlu diubah saat jumlah teknisi berubah. |
+| Rata | Dibagi sama besar antar teknisi yang bekerja di periode itu |
+| Manual | Persentase tetap per orang |
+
+Angka fee, aturan pembagian, dan seluruh perhitungan hanya bisa dibaca admin
+— ditegakkan di database, bukan hanya disembunyikan di aplikasi.

@@ -44,10 +44,14 @@ final currentUserProvider = Provider<User?>((ref) {
 });
 
 /// Profil (nama + role) dari user yang sedang login.
-final currentProfileProvider = FutureProvider<Profile?>((ref) async {
+///
+/// Sengaja stream: saat login pertama, profilnya baru sampai di perangkat
+/// setelah sinkronisasi berjalan. Kalau dibaca sekali saja, hak akses admin
+/// tidak pernah muncul sampai aplikasi dijalankan ulang.
+final currentProfileProvider = StreamProvider<Profile?>((ref) {
   final user = ref.watch(currentUserProvider);
-  if (user == null) return null;
-  return ref.watch(databaseProvider).profileById(user.id);
+  if (user == null) return Stream.value(null);
+  return ref.watch(databaseProvider).watchProfileById(user.id);
 });
 
 final isAdminProvider = Provider<bool>((ref) {

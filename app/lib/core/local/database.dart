@@ -138,6 +138,13 @@ class AppDatabase extends _$AppDatabase {
   Future<Profile?> profileById(String id) =>
       (select(profiles)..where((t) => t.id.equals(id))).getSingleOrNull();
 
+  /// Harus stream, bukan future. Saat login pertama, baris profil belum ada
+  /// di perangkat sampai sinkronisasi menariknya. Kalau ini dibaca sekali
+  /// saja, hasilnya null dan aplikasi menganggap penggunanya bukan admin
+  /// untuk seterusnya.
+  Stream<Profile?> watchProfileById(String id) =>
+      (select(profiles)..where((t) => t.id.equals(id))).watchSingleOrNull();
+
   Stream<List<ClaimPart>> watchPartsOf(String claimId) =>
       (select(claimParts)..where((t) => t.claimId.equals(claimId))).watch();
 

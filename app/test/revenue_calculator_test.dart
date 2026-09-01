@@ -4,19 +4,24 @@ import 'package:sc_management/core/revenue/revenue_calculator.dart';
 /// Angka pada berkas ini diambil dari contoh nyata yang dipakai saat
 /// merancang fitur, supaya hasilnya bisa dicocokkan dengan hitungan tangan.
 void main() {
+  const asusId = 1;
+  const lenovoId = 2;
+
   final asus = BrandFee(
-    brandId: 1,
+    brandId: asusId,
     fee: 100000,
     berlakuDari: DateTime(2026, 1, 1),
   );
   final lenovo = BrandFee(
-    brandId: 2,
+    brandId: lenovoId,
     fee: 150000,
     berlakuDari: DateTime(2026, 1, 1),
   );
 
   const budi = 'budi';
   const irwan = 'irwan';
+  const reza = 'reza';
+  const agus = 'agus';
 
   List<RevenueClaim> klaim(int jumlah, int brandId, String? teknisi) => [
         for (var i = 0; i < jumlah; i++)
@@ -27,10 +32,13 @@ void main() {
           ),
       ];
 
+  TechnicianEarning cari(List<TechnicianEarning> list, String id) =>
+      list.firstWhere((e) => e.teknisiId == id);
+
   group('Pembagian menurut peran', () {
     test('100 unit ASUS menghasilkan 10 juta, terbagi 30/10/60', () {
       final hasil = hitungPendapatan(
-        claims: klaim(100, 1, budi),
+        claims: klaim(100, asusId, budi),
         fees: [asus],
         settings: const RevenueSettings(),
       );
@@ -41,19 +49,67 @@ void main() {
       expect(hasil.bagianTeknisi, 6000000);
     });
 
-    test('seluruh bagian selalu berjumlah persis sama dengan total', () {
-      // Angka ganjil sengaja dipilih agar pembulatan benar-benar diuji.
+    test('tiap brand dihitung sendiri lalu dijumlahkan', () {
       final hasil = hitungPendapatan(
-        claims: klaim(7, 1, budi),
+        claims: [...klaim(100, asusId, budi), ...klaim(20, lenovoId, irwan)],
+        fees: [asus, lenovo],
+        settings: const RevenueSettings(),
+      );
+
+      expect(hasil.brands.length, 2);
+      expect(hasil.totalNilai, 13000000);
+
+      final a = hasil.brands.firstWhere((b) => b.brandId == asusId);
+      final l = hasil.brands.firstWhere((b) => b.brandId == lenovoId);
+      expect(a.nilai, 10000000);
+      expect(l.nilai, 3000000);
+      expect(a.bagianTeknisi + l.bagianTeknisi, hasil.bagianTeknisi);
+    });
+
+    test('brand boleh punya aturan pembagian sendiri', () {
+      final hasil = hitungPendapatan(
+        claims: [...klaim(100, asusId, budi), ...klaim(20, lenovoId, irwan)],
+        fees: [asus, lenovo],
+        settings: const RevenueSettings(
+          aturanBrand: {
+            // Lenovo memberi porsi lebih besar untuk teknisi.
+            lenovoId: AturanBagi(
+              persenToko: 20,
+              persenAdmin: 10,
+              persenTeknisi: 70,
+            ),
+          },
+        ),
+      );
+
+      final l = hasil.brands.firstWhere((b) => b.brandId == lenovoId);
+      expect(l.bagianToko, 600000);
+      expect(l.bagianTeknisi, 2100000);
+
+      // ASUS tetap memakai aturan umum.
+      final a = hasil.brands.firstWhere((b) => b.brandId == asusId);
+      expect(a.bagianToko, 3000000);
+
+      expect(hasil.bagianToko, 3600000);
+    });
+
+    test('seluruh bagian tiap brand berjumlah persis nilai brand itu', () {
+      final hasil = hitungPendapatan(
+        claims: klaim(7, asusId, budi),
         fees: [
-          BrandFee(brandId: 1, fee: 33333, berlakuDari: DateTime(2026, 1, 1)),
+          BrandFee(
+            brandId: asusId,
+            fee: 33333,
+            berlakuDari: DateTime(2026, 1, 1),
+          ),
         ],
         settings: const RevenueSettings(),
       );
 
+      final b = hasil.brands.single;
       expect(
-        hasil.bagianToko + hasil.bagianAdmin + hasil.bagianTeknisi,
-        hasil.totalNilai.round(),
+        b.bagianToko + b.bagianAdmin + b.bagianTeknisi,
+        b.nilai.round(),
       );
     });
   });
@@ -61,29 +117,22 @@ void main() {
   group('Metode per unit dikerjakan', () {
     test('Budi 40 unit dan Irwan 60 unit dibagi 2,4 juta dan 3,6 juta', () {
       final hasil = hitungPendapatan(
-        claims: [...klaim(40, 1, budi), ...klaim(60, 1, irwan)],
+        claims: [...klaim(40, asusId, budi), ...klaim(60, asusId, irwan)],
         fees: [asus],
         settings: const RevenueSettings(),
       );
 
-      final b = hasil.teknisi.firstWhere((e) => e.teknisiId == budi);
-      final i = hasil.teknisi.firstWhere((e) => e.teknisiId == irwan);
-
-      expect(b.unit, 40);
-      expect(i.unit, 60);
-      expect(b.pendapatan, 2400000);
-      expect(i.pendapatan, 3600000);
-      expect(b.pendapatan + i.pendapatan, hasil.bagianTeknisi);
+      expect(cari(hasil.teknisi, budi).pendapatan, 2400000);
+      expect(cari(hasil.teknisi, irwan).pendapatan, 3600000);
     });
 
     test('unit bernilai lebih tinggi memberi porsi lebih besar', () {
       // Budi 40 ASUS = 4 juta. Irwan 40 ASUS + 20 Lenovo = 7 juta.
-      // Jumlah unit Irwan hanya 1,5 kali Budi, tapi nilainya 1,75 kali.
       final hasil = hitungPendapatan(
         claims: [
-          ...klaim(40, 1, budi),
-          ...klaim(40, 1, irwan),
-          ...klaim(20, 2, irwan),
+          ...klaim(40, asusId, budi),
+          ...klaim(40, asusId, irwan),
+          ...klaim(20, lenovoId, irwan),
         ],
         fees: [asus, lenovo],
         settings: const RevenueSettings(),
@@ -91,32 +140,28 @@ void main() {
 
       expect(hasil.totalNilai, 11000000);
 
-      final b = hasil.teknisi.firstWhere((e) => e.teknisiId == budi);
-      final i = hasil.teknisi.firstWhere((e) => e.teknisiId == irwan);
-
-      expect(b.pendapatan, 2400000);
-      expect(i.pendapatan, 4200000);
+      // ASUS: pool 4,8 juta dibagi rata karena unitnya sama banyak.
+      // Lenovo: pool 1,8 juta seluruhnya milik Irwan.
+      expect(cari(hasil.teknisi, budi).pendapatan, 2400000);
+      expect(cari(hasil.teknisi, irwan).pendapatan, 2400000 + 1800000);
     });
 
     test('tiga teknisi terbagi tanpa aturan tambahan', () {
       final hasil = hitungPendapatan(
         claims: [
-          ...klaim(20, 1, budi),
-          ...klaim(30, 1, irwan),
-          ...klaim(50, 1, 'reza'),
+          ...klaim(20, asusId, budi),
+          ...klaim(30, asusId, irwan),
+          ...klaim(50, asusId, reza),
         ],
         fees: [asus],
         settings: const RevenueSettings(),
       );
 
       expect(hasil.teknisi.length, 3);
+      expect(cari(hasil.teknisi, reza).pendapatan, 3000000);
       expect(
         hasil.teknisi.fold<int>(0, (a, e) => a + e.pendapatan),
         hasil.bagianTeknisi,
-      );
-      expect(
-        hasil.teknisi.firstWhere((e) => e.teknisiId == 'reza').pendapatan,
-        3000000,
       );
     });
   });
@@ -124,7 +169,7 @@ void main() {
   group('Metode rata', () {
     test('dibagi sama besar walau jumlah unitnya berbeda', () {
       final hasil = hitungPendapatan(
-        claims: [...klaim(40, 1, budi), ...klaim(60, 1, irwan)],
+        claims: [...klaim(40, asusId, budi), ...klaim(60, asusId, irwan)],
         fees: [asus],
         settings: const RevenueSettings(metode: MetodeTeknisi.rata),
       );
@@ -133,20 +178,90 @@ void main() {
     });
   });
 
-  group('Metode manual', () {
-    test('persentase yang belum genap menyisakan bagian tak teralokasi', () {
+  group('Metode manual per brand', () {
+    test('tiap brand memakai persentase timnya sendiri', () {
       final hasil = hitungPendapatan(
-        claims: [...klaim(40, 1, budi), ...klaim(60, 1, irwan)],
-        fees: [asus],
+        claims: [...klaim(100, asusId, irwan), ...klaim(20, lenovoId, reza)],
+        fees: [asus, lenovo],
         settings: const RevenueSettings(metode: MetodeTeknisi.manual),
-        porsiManual: const {budi: 20},
+        porsiManual: const {
+          asusId: {budi: 25, irwan: 35, reza: 40},
+          lenovoId: {budi: 40, agus: 30, reza: 30},
+        },
       );
 
-      final b = hasil.teknisi.firstWhere((e) => e.teknisiId == budi);
-      expect(b.pendapatan, 1200000);
+      // ASUS: jatah teknisi 6 juta.
+      final a = hasil.brands.firstWhere((b) => b.brandId == asusId);
+      expect(a.bagianTeknisi, 6000000);
+      expect(cari(a.teknisi, budi).pendapatan, 1500000);
+      expect(cari(a.teknisi, irwan).pendapatan, 2100000);
+      expect(cari(a.teknisi, reza).pendapatan, 2400000);
 
-      // Sisanya tidak diam-diam dibagi ke Irwan.
+      // Lenovo: jatah teknisi 1,8 juta.
+      final l = hasil.brands.firstWhere((b) => b.brandId == lenovoId);
+      expect(l.bagianTeknisi, 1800000);
+      expect(cari(l.teknisi, budi).pendapatan, 720000);
+      expect(cari(l.teknisi, agus).pendapatan, 540000);
+    });
+
+    test('pendapatan gabungan adalah jumlah porsi dari semua brand', () {
+      final hasil = hitungPendapatan(
+        claims: [...klaim(100, asusId, irwan), ...klaim(20, lenovoId, reza)],
+        fees: [asus, lenovo],
+        settings: const RevenueSettings(metode: MetodeTeknisi.manual),
+        porsiManual: const {
+          asusId: {budi: 25, irwan: 35, reza: 40},
+          lenovoId: {budi: 40, agus: 30, reza: 30},
+        },
+      );
+
+      // Budi: 1.500.000 dari ASUS + 720.000 dari Lenovo.
+      expect(cari(hasil.teknisi, budi).pendapatan, 2220000);
+      // Reza: 2.400.000 dari ASUS + 540.000 dari Lenovo.
+      expect(cari(hasil.teknisi, reza).pendapatan, 2940000);
+    });
+
+    test('yang punya persentase tetap dibayar walau tanpa unit', () {
+      // Inti mode manual: Budi tidak memperbaiki satu unit ASUS pun, tetapi
+      // membantu input klaim dan permintaan part.
+      final hasil = hitungPendapatan(
+        claims: klaim(100, asusId, irwan),
+        fees: [asus],
+        settings: const RevenueSettings(metode: MetodeTeknisi.manual),
+        porsiManual: const {
+          asusId: {budi: 25, irwan: 75},
+        },
+      );
+
+      final b = cari(hasil.teknisi, budi);
+      expect(b.unit, 0);
+      expect(b.pendapatan, 1500000);
+      expect(cari(hasil.teknisi, irwan).pendapatan, 4500000);
+    });
+
+    test('persentase yang belum genap menyisakan bagian tak teralokasi', () {
+      final hasil = hitungPendapatan(
+        claims: klaim(100, asusId, irwan),
+        fees: [asus],
+        settings: const RevenueSettings(metode: MetodeTeknisi.manual),
+        porsiManual: const {
+          asusId: {budi: 20},
+        },
+      );
+
+      expect(cari(hasil.teknisi, budi).pendapatan, 1200000);
       expect(hasil.teknisiBelumDialokasikan, 4800000);
+    });
+
+    test('brand tanpa pengaturan tidak membagikan apa pun', () {
+      final hasil = hitungPendapatan(
+        claims: klaim(100, asusId, irwan),
+        fees: [asus],
+        settings: const RevenueSettings(metode: MetodeTeknisi.manual),
+      );
+
+      expect(hasil.teknisi, isEmpty);
+      expect(hasil.teknisiBelumDialokasikan, 6000000);
     });
   });
 
@@ -154,23 +269,26 @@ void main() {
     test('klaim sebelum kenaikan tetap memakai fee lama', () {
       final fees = [
         asus,
-        BrandFee(brandId: 1, fee: 120000, berlakuDari: DateTime(2026, 4, 1)),
+        BrandFee(
+          brandId: asusId,
+          fee: 120000,
+          berlakuDari: DateTime(2026, 4, 1),
+        ),
       ];
 
-      expect(feeUntuk(fees, 1, DateTime(2026, 3, 31)), 100000);
-      expect(feeUntuk(fees, 1, DateTime(2026, 4, 1)), 120000);
-      expect(feeUntuk(fees, 1, DateTime(2026, 5, 20)), 120000);
+      expect(feeUntuk(fees, asusId, DateTime(2026, 3, 31)), 100000);
+      expect(feeUntuk(fees, asusId, DateTime(2026, 4, 1)), 120000);
     });
 
     test('klaim sebelum fee pertama dianggap belum punya fee', () {
-      expect(feeUntuk([asus], 1, DateTime(2025, 12, 31)), 0);
+      expect(feeUntuk([asus], asusId, DateTime(2025, 12, 31)), 0);
     });
   });
 
   group('Data yang belum lengkap', () {
     test('brand tanpa fee dilaporkan tersendiri, bukan dihitung diam-diam', () {
       final hasil = hitungPendapatan(
-        claims: [...klaim(10, 1, budi), ...klaim(5, 99, budi)],
+        claims: [...klaim(10, asusId, budi), ...klaim(5, 99, budi)],
         fees: [asus],
         settings: const RevenueSettings(),
       );
@@ -182,17 +300,14 @@ void main() {
 
     test('klaim tanpa teknisi tidak menaikkan porsi orang lain', () {
       final hasil = hitungPendapatan(
-        claims: [...klaim(50, 1, budi), ...klaim(50, 1, null)],
+        claims: [...klaim(50, asusId, budi), ...klaim(50, asusId, null)],
         fees: [asus],
         settings: const RevenueSettings(),
       );
 
       expect(hasil.unitTanpaTeknisi, 50);
       expect(hasil.bagianTeknisi, 6000000);
-
-      // Budi hanya mengerjakan separuh nilainya, jadi hanya separuh jatah.
-      final b = hasil.teknisi.firstWhere((e) => e.teknisiId == budi);
-      expect(b.pendapatan, 3000000);
+      expect(cari(hasil.teknisi, budi).pendapatan, 3000000);
       expect(hasil.teknisiBelumDialokasikan, 3000000);
     });
 
@@ -206,6 +321,7 @@ void main() {
       expect(hasil.totalNilai, 0);
       expect(hasil.bagianTeknisi, 0);
       expect(hasil.teknisi, isEmpty);
+      expect(hasil.brands, isEmpty);
     });
   });
 

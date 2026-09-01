@@ -19,8 +19,28 @@ final _iso = DateFormat('yyyy-MM-dd');
 // offline. Penyimpanan tetap langsung ke server -- aturan bagi hasil
 // berlaku untuk semua perangkat, jadi tidak boleh diantrekan dan bentrok.
 
+Future<void> _simpan(
+  BuildContext context,
+  WidgetRef ref,
+  Future<void> Function() aksi,
+) async {
+  try {
+    await aksi();
+    await ref.read(syncServiceProvider).syncNow();
+  } on PostgrestException catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(e.message)));
+  } catch (_) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Gagal menyimpan. Perlu koneksi.')),
+    );
+  }
+}
+
 // =====================================================================
-// Fee per brand
+// Fee dan aturan per brand
 // =====================================================================
 
 class BrandFeesCard extends ConsumerWidget {
@@ -30,9 +50,10 @@ class BrandFeesCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final brands = ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[];
     final fees = ref.watch(currentFeesProvider);
+    final rules = ref.watch(brandRulesProvider);
 
     return BentoCard(
-      title: 'Fee per Brand',
+      title: 'Fee & Aturan per Brand',
       padding: EdgeInsets.zero,
       child: brands.isEmpty
           ? const _CardMessage('Belum ada brand.')
@@ -42,10 +63,12 @@ class BrandFeesCard extends ConsumerWidget {
               separatorBuilder: (_, _) => const Divider(),
               itemBuilder: (context, i) {
                 final b = brands[i];
-                return _FeeRow(
+                return _BrandMoneyRow(
                   brand: b,
                   fee: fees[b.id],
-                  onEdit: () => _editFee(context, ref, b, fees[b.id]),
+                  rule: rules[b.id],
+                  onEditFee: () => _editFee(context, ref, b, fees[b.id]),
+                  onEditRule: () => _editRule(context, ref, b, rules[b.id]),
                 );
               },
             ),
@@ -58,43 +81,77 @@ class BrandFeesCard extends ConsumerWidget {
     Brand brand,
     BrandFeeEntry? current,
   ) async {
-    final result = await showDialog<({double fee, DateTime dari})>(
+    final hasil = await showDialog<({double fee, DateTime dari})>(
       context: context,
       builder: (_) => _FeeDialog(
         brand: brand.nama,
         initialFee: current == null ? '' : '${current.fee.toInt()}',
       ),
     );
-    if (result == null || !context.mounted) return;
+    if (hasil == null || !context.mounted) return;
 
-    try {
-      // Baris baru per tanggal berlaku, bukan menimpa yang lama. Rekap
-      // periode yang sudah lewat harus tetap memakai fee yang berlaku
-      // saat itu.
-      await ref.read(supabaseProvider).from('brand_fees').upsert(
+    // Baris baru per tanggal berlaku, bukan menimpa yang lama. Rekap periode
+    // yang sudah lewat harus tetap memakai fee yang berlaku saat itu.
+    await _simpan(
+      context,
+      ref,
+      () => ref.read(supabaseProvider).from('brand_fees').upsert(
         {
           'brand_id': brand.id,
-          'fee': result.fee,
-          'berlaku_dari': _iso.format(result.dari),
+          'fee': hasil.fee,
+          'berlaku_dari': _iso.format(hasil.dari),
         },
         onConflict: 'brand_id,berlaku_dari',
-      );
-      await ref.read(syncServiceProvider).syncNow();
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan fee. Perlu koneksi. $e')),
-      );
-    }
+      ),
+    );
+  }
+
+  Future<void> _editRule(
+    BuildContext context,
+    WidgetRef ref,
+    Brand brand,
+    BrandRuleEntry? current,
+  ) async {
+    final hasil = await showDialog<List<double>?>(
+      context: context,
+      builder: (_) => _RuleDialog(brand: brand.nama, current: current),
+    );
+    if (hasil == null || !context.mounted) return;
+
+    final client = ref.read(supabaseProvider);
+    await _simpan(context, ref, () async {
+      if (hasil.isEmpty) {
+        // Daftar kosong berarti kembali memakai aturan umum.
+        await client
+            .from('brand_revenue_rules')
+            .delete()
+            .eq('brand_id', brand.id);
+      } else {
+        await client.from('brand_revenue_rules').upsert({
+          'brand_id': brand.id,
+          'persen_toko': hasil[0],
+          'persen_admin': hasil[1],
+          'persen_teknisi': hasil[2],
+        });
+      }
+    });
   }
 }
 
-class _FeeRow extends StatelessWidget {
-  const _FeeRow({required this.brand, required this.fee, required this.onEdit});
+class _BrandMoneyRow extends StatelessWidget {
+  const _BrandMoneyRow({
+    required this.brand,
+    required this.fee,
+    required this.rule,
+    required this.onEditFee,
+    required this.onEditRule,
+  });
 
   final Brand brand;
   final BrandFeeEntry? fee;
-  final VoidCallback onEdit;
+  final BrandRuleEntry? rule;
+  final VoidCallback onEditFee;
+  final VoidCallback onEditRule;
 
   @override
   Widget build(BuildContext context) {
@@ -102,13 +159,13 @@ class _FeeRow extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          Row(
+            children: [
+              Expanded(
+                child: Text(
                   brand.nama,
                   style: const TextStyle(
                     fontSize: 13,
@@ -116,25 +173,44 @@ class _FeeRow extends StatelessWidget {
                     letterSpacing: 0.4,
                   ),
                 ),
-                if (!belum)
-                  Text(
-                    'berlaku sejak ${_tgl.format(fee!.berlakuDari)}',
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-              ],
-            ),
+              ),
+              Text(
+                belum ? 'BELUM DIATUR' : _rp.format(fee!.fee),
+                style: TextStyle(
+                  fontSize: belum ? 10 : 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: belum ? 0.8 : 0,
+                  color: belum ? AppColors.red : AppColors.black,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s),
+              InlineAction(label: belum ? 'Atur' : 'Ubah', onTap: onEditFee),
+            ],
           ),
-          Text(
-            belum ? 'BELUM DIATUR' : _rp.format(fee!.fee),
-            style: TextStyle(
-              fontSize: belum ? 10 : 14,
-              fontWeight: FontWeight.w700,
-              letterSpacing: belum ? 0.8 : 0,
-              color: belum ? AppColors.red : AppColors.black,
-            ),
+          const SizedBox(height: 3),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  rule == null
+                      ? 'Pembagian: aturan umum'
+                      : 'Pembagian: ${rule!.persenToko.toInt()}/'
+                          '${rule!.persenAdmin.toInt()}/'
+                          '${rule!.persenTeknisi.toInt()}'
+                          '  ·  khusus brand ini',
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ),
+              InlineAction(label: 'Aturan', onTap: onEditRule),
+            ],
           ),
-          const SizedBox(width: AppSpacing.s),
-          InlineAction(label: belum ? 'Atur' : 'Ubah', onTap: onEdit),
+          if (!belum) ...[
+            const SizedBox(height: 2),
+            Text(
+              'fee berlaku sejak ${_tgl.format(fee!.berlakuDari)}',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ],
         ],
       ),
     );
@@ -253,6 +329,91 @@ class _FeeDialogState extends State<_FeeDialog> {
   }
 }
 
+/// Aturan toko/admin/teknisi khusus satu brand.
+class _RuleDialog extends StatefulWidget {
+  const _RuleDialog({required this.brand, required this.current});
+
+  final String brand;
+  final BrandRuleEntry? current;
+
+  @override
+  State<_RuleDialog> createState() => _RuleDialogState();
+}
+
+class _RuleDialogState extends State<_RuleDialog> {
+  late final _toko =
+      TextEditingController(text: '${(widget.current?.persenToko ?? 30).toInt()}');
+  late final _admin = TextEditingController(
+    text: '${(widget.current?.persenAdmin ?? 10).toInt()}',
+  );
+  late final _teknisi = TextEditingController(
+    text: '${(widget.current?.persenTeknisi ?? 60).toInt()}',
+  );
+
+  double _n(TextEditingController c) => double.tryParse(c.text) ?? 0;
+  double get _sisa => 100 - _n(_toko) - _n(_admin) - _n(_teknisi);
+
+  @override
+  void dispose() {
+    _toko.dispose();
+    _admin.dispose();
+    _teknisi.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Pembagian ${widget.brand}'),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Kosongkan lewat tombol "Pakai Aturan Umum" bila brand ini '
+              'tidak perlu pembagian khusus.',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+            const SizedBox(height: AppSpacing.s),
+            _PercentRow(label: 'Toko', controller: _toko, onChanged: _touch),
+            _PercentRow(label: 'Admin', controller: _admin, onChanged: _touch),
+            _PercentRow(
+              label: 'Teknisi',
+              controller: _teknisi,
+              onChanged: _touch,
+            ),
+            _Remaining(sisa: _sisa),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('BATAL'),
+        ),
+        if (widget.current != null)
+          TextButton(
+            onPressed: () => Navigator.pop(context, <double>[]),
+            child: const Text('PAKAI ATURAN UMUM'),
+          ),
+        FilledButton(
+          onPressed: _sisa != 0
+              ? null
+              : () => Navigator.pop(
+                    context,
+                    [_n(_toko), _n(_admin), _n(_teknisi)],
+                  ),
+          child: const Text('SIMPAN'),
+        ),
+      ],
+    );
+  }
+
+  void _touch() => setState(() {});
+}
+
 // =====================================================================
 // Aturan bagi hasil
 // =====================================================================
@@ -268,6 +429,8 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
   final _toko = TextEditingController();
   final _admin = TextEditingController();
   final _teknisi = TextEditingController();
+
+  /// (brandId, profileId) -> kolom persen.
   final Map<String, TextEditingController> _shares = {};
 
   String _metode = 'per_unit';
@@ -285,61 +448,63 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
     super.dispose();
   }
 
-  double _num(TextEditingController c) => double.tryParse(c.text) ?? 0;
+  double _n(TextEditingController c) => double.tryParse(c.text) ?? 0;
+  double get _sisaPeran => 100 - _n(_toko) - _n(_admin) - _n(_teknisi);
 
-  double get _sisaPeran =>
-      100 - _num(_toko) - _num(_admin) - _num(_teknisi);
+  String _key(int brandId, String profileId) => '$brandId|$profileId';
 
-  double get _sisaTeknisi =>
-      100 - _shares.values.fold<double>(0, (a, c) => a + _num(c));
+  double _sisaBrand(int brandId, List<Profile> techs) =>
+      100 -
+      techs.fold<double>(
+        0,
+        (a, t) => a + _n(_shares[_key(brandId, t.id)] ?? TextEditingController()),
+      );
 
-  Future<void> _save() async {
+  Future<void> _save(List<Brand> brands, List<Profile> techs) async {
     if (_sisaPeran != 0) return;
     setState(() => _busy = true);
 
-    try {
-      final client = ref.read(supabaseProvider);
+    final client = ref.read(supabaseProvider);
+    await _simpan(context, ref, () async {
       await client.from('revenue_settings').update({
-        'persen_toko': _num(_toko),
-        'persen_admin': _num(_admin),
-        'persen_teknisi': _num(_teknisi),
+        'persen_toko': _n(_toko),
+        'persen_admin': _n(_admin),
+        'persen_teknisi': _n(_teknisi),
         'metode_teknisi': _metode,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', 1);
 
       if (_metode == 'manual') {
-        for (final e in _shares.entries) {
-          await client.from('technician_shares').upsert({
-            'profile_id': e.key,
-            'persen': _num(e.value),
-          });
+        final rows = <Map<String, dynamic>>[];
+        for (final b in brands) {
+          for (final t in techs) {
+            final c = _shares[_key(b.id, t.id)];
+            if (c == null) continue;
+            rows.add({
+              'brand_id': b.id,
+              'profile_id': t.id,
+              'persen': _n(c),
+            });
+          }
+        }
+        if (rows.isNotEmpty) {
+          await client.from('brand_technician_shares').upsert(rows);
         }
       }
+    });
 
-      await ref.read(syncServiceProvider).syncNow();
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aturan bagi hasil tersimpan')),
-      );
-    } on PostgrestException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan. Perlu koneksi.')),
-      );
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    if (!mounted) return;
+    setState(() => _busy = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Aturan bagi hasil tersimpan')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final config = ref.watch(revenueConfigProvider).valueOrNull;
-    final shares = ref.watch(technicianSharesMapProvider);
+    final shares = ref.watch(brandSharesProvider);
+    final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
     final techs = ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
 
     if (!_loaded) {
@@ -351,11 +516,15 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
       // terlanjur terkunci pada nilai bawaan lalu menimpa yang asli.
       if (config != null) _loaded = true;
     }
-    for (final t in techs) {
-      _shares.putIfAbsent(
-        t.id,
-        () => TextEditingController(text: '${(shares[t.id] ?? 0).toInt()}'),
-      );
+    for (final b in brands) {
+      for (final t in techs) {
+        _shares.putIfAbsent(
+          _key(b.id, t.id),
+          () => TextEditingController(
+            text: '${(shares[b.id]?[t.id] ?? 0).toInt()}',
+          ),
+        );
+      }
     }
 
     return BentoCard(
@@ -365,6 +534,11 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
+            Text(
+              'ATURAN UMUM',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+            const SizedBox(height: 6),
             _PercentRow(label: 'Toko', controller: _toko, onChanged: _touch),
             _PercentRow(label: 'Admin', controller: _admin, onChanged: _touch),
             _PercentRow(
@@ -372,8 +546,13 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
               controller: _teknisi,
               onChanged: _touch,
             ),
-            const Divider(),
             _Remaining(sisa: _sisaPeran),
+            const SizedBox(height: 4),
+            Text(
+              'Brand tertentu bisa memakai pembagian sendiri lewat kartu '
+              'Fee & Aturan per Brand.',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
 
             const SizedBox(height: AppSpacing.s),
             Text(
@@ -385,7 +564,7 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
               value: 'per_unit',
               group: _metode,
               title: 'Per unit dikerjakan',
-              subtitle: 'Sesuai nilai yang dihasilkan masing-masing. Tidak '
+              subtitle: 'Sesuai nilai yang dihasilkan di tiap brand. Tidak '
                   'perlu diubah saat jumlah teknisi berubah.',
               recommended: true,
               onTap: (v) => setState(() => _metode = v),
@@ -394,36 +573,59 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
               value: 'rata',
               group: _metode,
               title: 'Rata',
-              subtitle: 'Jatah teknisi dibagi sama besar, berapa pun unit '
-                  'yang dikerjakan.',
+              subtitle: 'Jatah teknisi tiap brand dibagi sama besar antar '
+                  'yang mengerjakannya.',
               onTap: (v) => setState(() => _metode = v),
             ),
             _MethodOption(
               value: 'manual',
               group: _metode,
-              title: 'Manual',
-              subtitle: 'Persentase tetap per orang, diatur sendiri.',
+              title: 'Manual per brand',
+              subtitle: 'Persentase ditentukan sendiri untuk tiap brand. '
+                  'Yang punya porsi tetap dibayar walau tidak mengerjakan '
+                  'unit — untuk kerja pendukung seperti input klaim dan '
+                  'permintaan part.',
               onTap: (v) => setState(() => _metode = v),
             ),
 
             if (_metode == 'manual') ...[
               const SizedBox(height: AppSpacing.xs),
               const Divider(),
-              const SizedBox(height: AppSpacing.xs),
-              for (final t in techs)
-                _PercentRow(
-                  label: t.nama,
-                  controller: _shares[t.id]!,
-                  onChanged: _touch,
+              for (final b in brands) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        b.nama.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.9,
+                        ),
+                      ),
+                    ),
+                    _SisaTag(sisa: _sisaBrand(b.id, techs)),
+                  ],
                 ),
-              _Remaining(sisa: _sisaTeknisi),
+                const SizedBox(height: 4),
+                for (final t in techs)
+                  _PercentRow(
+                    label: t.nama,
+                    controller: _shares[_key(b.id, t.id)]!,
+                    onChanged: _touch,
+                    dense: true,
+                  ),
+              ],
             ],
 
             const SizedBox(height: AppSpacing.s),
             FilledButton(
-              onPressed: (_busy || _sisaPeran != 0) ? null : _save,
+              onPressed: (_busy || _sisaPeran != 0)
+                  ? null
+                  : () => _save(brands, techs),
               child: Text(
-                _sisaPeran == 0 ? 'SIMPAN ATURAN' : 'TOTAL HARUS 100%',
+                _sisaPeran == 0 ? 'SIMPAN ATURAN' : 'ATURAN UMUM HARUS 100%',
               ),
             ),
           ],
@@ -440,40 +642,47 @@ class _PercentRow extends StatelessWidget {
     required this.label,
     required this.controller,
     required this.onChanged,
+    this.dense = false,
   });
 
   final String label;
   final TextEditingController controller;
   final VoidCallback onChanged;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      padding: EdgeInsets.only(bottom: dense ? 4 : AppSpacing.xs),
       child: Row(
         children: [
+          if (dense) const SizedBox(width: AppSpacing.s),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: dense ? 12 : 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           SizedBox(
-            width: 76,
+            width: 72,
             child: TextField(
               controller: controller,
               textAlign: TextAlign.right,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 suffixText: '%',
+                isDense: true,
                 contentPadding: EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 10,
+                  horizontal: 8,
+                  vertical: dense ? 7 : 10,
                 ),
               ),
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: dense ? 12 : 13,
+                fontWeight: FontWeight.w700,
+              ),
               onChanged: (_) => onChanged(),
             ),
           ),
@@ -521,6 +730,29 @@ class _Remaining extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Versi ringkas penunjuk sisa, untuk disandingkan dengan nama brand.
+class _SisaTag extends StatelessWidget {
+  const _SisaTag({required this.sisa});
+
+  final double sisa;
+
+  @override
+  Widget build(BuildContext context) {
+    final pas = sisa == 0;
+    final warna = pas ? AppColors.blue : AppColors.red;
+
+    return Text(
+      pas ? 'PAS 100%' : 'SISA ${sisa.toStringAsFixed(0)}%',
+      style: TextStyle(
+        fontSize: 9.5,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.6,
+        color: warna,
       ),
     );
   }

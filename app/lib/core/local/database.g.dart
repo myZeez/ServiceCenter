@@ -2998,12 +2998,23 @@ class RevenueConfigsCompanion extends UpdateCompanion<RevenueConfig> {
   }
 }
 
-class $TechnicianShareEntriesTable extends TechnicianShareEntries
-    with TableInfo<$TechnicianShareEntriesTable, TechnicianShareEntry> {
+class $BrandShareEntriesTable extends BrandShareEntries
+    with TableInfo<$BrandShareEntriesTable, BrandShareEntry> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $TechnicianShareEntriesTable(this.attachedDatabase, [this._alias]);
+  $BrandShareEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _brandIdMeta = const VerificationMeta(
+    'brandId',
+  );
+  @override
+  late final GeneratedColumn<int> brandId = GeneratedColumn<int>(
+    'brand_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _profileIdMeta = const VerificationMeta(
     'profileId',
   );
@@ -3025,19 +3036,27 @@ class $TechnicianShareEntriesTable extends TechnicianShareEntries
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [profileId, persen];
+  List<GeneratedColumn> get $columns => [brandId, profileId, persen];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'technician_share_entries';
+  static const String $name = 'brand_share_entries';
   @override
   VerificationContext validateIntegrity(
-    Insertable<TechnicianShareEntry> instance, {
+    Insertable<BrandShareEntry> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('brand_id')) {
+      context.handle(
+        _brandIdMeta,
+        brandId.isAcceptableOrUnknown(data['brand_id']!, _brandIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_brandIdMeta);
+    }
     if (data.containsKey('profile_id')) {
       context.handle(
         _profileIdMeta,
@@ -3058,11 +3077,15 @@ class $TechnicianShareEntriesTable extends TechnicianShareEntries
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {profileId};
+  Set<GeneratedColumn> get $primaryKey => {brandId, profileId};
   @override
-  TechnicianShareEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+  BrandShareEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return TechnicianShareEntry(
+    return BrandShareEntry(
+      brandId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}brand_id'],
+      )!,
       profileId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}profile_id'],
@@ -3075,37 +3098,44 @@ class $TechnicianShareEntriesTable extends TechnicianShareEntries
   }
 
   @override
-  $TechnicianShareEntriesTable createAlias(String alias) {
-    return $TechnicianShareEntriesTable(attachedDatabase, alias);
+  $BrandShareEntriesTable createAlias(String alias) {
+    return $BrandShareEntriesTable(attachedDatabase, alias);
   }
 }
 
-class TechnicianShareEntry extends DataClass
-    implements Insertable<TechnicianShareEntry> {
+class BrandShareEntry extends DataClass implements Insertable<BrandShareEntry> {
+  final int brandId;
   final String profileId;
   final double persen;
-  const TechnicianShareEntry({required this.profileId, required this.persen});
+  const BrandShareEntry({
+    required this.brandId,
+    required this.profileId,
+    required this.persen,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['brand_id'] = Variable<int>(brandId);
     map['profile_id'] = Variable<String>(profileId);
     map['persen'] = Variable<double>(persen);
     return map;
   }
 
-  TechnicianShareEntriesCompanion toCompanion(bool nullToAbsent) {
-    return TechnicianShareEntriesCompanion(
+  BrandShareEntriesCompanion toCompanion(bool nullToAbsent) {
+    return BrandShareEntriesCompanion(
+      brandId: Value(brandId),
       profileId: Value(profileId),
       persen: Value(persen),
     );
   }
 
-  factory TechnicianShareEntry.fromJson(
+  factory BrandShareEntry.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return TechnicianShareEntry(
+    return BrandShareEntry(
+      brandId: serializer.fromJson<int>(json['brandId']),
       profileId: serializer.fromJson<String>(json['profileId']),
       persen: serializer.fromJson<double>(json['persen']),
     );
@@ -3114,18 +3144,21 @@ class TechnicianShareEntry extends DataClass
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'brandId': serializer.toJson<int>(brandId),
       'profileId': serializer.toJson<String>(profileId),
       'persen': serializer.toJson<double>(persen),
     };
   }
 
-  TechnicianShareEntry copyWith({String? profileId, double? persen}) =>
-      TechnicianShareEntry(
+  BrandShareEntry copyWith({int? brandId, String? profileId, double? persen}) =>
+      BrandShareEntry(
+        brandId: brandId ?? this.brandId,
         profileId: profileId ?? this.profileId,
         persen: persen ?? this.persen,
       );
-  TechnicianShareEntry copyWithCompanion(TechnicianShareEntriesCompanion data) {
-    return TechnicianShareEntry(
+  BrandShareEntry copyWithCompanion(BrandShareEntriesCompanion data) {
+    return BrandShareEntry(
+      brandId: data.brandId.present ? data.brandId.value : this.brandId,
       profileId: data.profileId.present ? data.profileId.value : this.profileId,
       persen: data.persen.present ? data.persen.value : this.persen,
     );
@@ -3133,7 +3166,8 @@ class TechnicianShareEntry extends DataClass
 
   @override
   String toString() {
-    return (StringBuffer('TechnicianShareEntry(')
+    return (StringBuffer('BrandShareEntry(')
+          ..write('brandId: $brandId, ')
           ..write('profileId: $profileId, ')
           ..write('persen: $persen')
           ..write(')'))
@@ -3141,49 +3175,57 @@ class TechnicianShareEntry extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(profileId, persen);
+  int get hashCode => Object.hash(brandId, profileId, persen);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is TechnicianShareEntry &&
+      (other is BrandShareEntry &&
+          other.brandId == this.brandId &&
           other.profileId == this.profileId &&
           other.persen == this.persen);
 }
 
-class TechnicianShareEntriesCompanion
-    extends UpdateCompanion<TechnicianShareEntry> {
+class BrandShareEntriesCompanion extends UpdateCompanion<BrandShareEntry> {
+  final Value<int> brandId;
   final Value<String> profileId;
   final Value<double> persen;
   final Value<int> rowid;
-  const TechnicianShareEntriesCompanion({
+  const BrandShareEntriesCompanion({
+    this.brandId = const Value.absent(),
     this.profileId = const Value.absent(),
     this.persen = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  TechnicianShareEntriesCompanion.insert({
+  BrandShareEntriesCompanion.insert({
+    required int brandId,
     required String profileId,
     required double persen,
     this.rowid = const Value.absent(),
-  }) : profileId = Value(profileId),
+  }) : brandId = Value(brandId),
+       profileId = Value(profileId),
        persen = Value(persen);
-  static Insertable<TechnicianShareEntry> custom({
+  static Insertable<BrandShareEntry> custom({
+    Expression<int>? brandId,
     Expression<String>? profileId,
     Expression<double>? persen,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
+      if (brandId != null) 'brand_id': brandId,
       if (profileId != null) 'profile_id': profileId,
       if (persen != null) 'persen': persen,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
-  TechnicianShareEntriesCompanion copyWith({
+  BrandShareEntriesCompanion copyWith({
+    Value<int>? brandId,
     Value<String>? profileId,
     Value<double>? persen,
     Value<int>? rowid,
   }) {
-    return TechnicianShareEntriesCompanion(
+    return BrandShareEntriesCompanion(
+      brandId: brandId ?? this.brandId,
       profileId: profileId ?? this.profileId,
       persen: persen ?? this.persen,
       rowid: rowid ?? this.rowid,
@@ -3193,6 +3235,9 @@ class TechnicianShareEntriesCompanion
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (brandId.present) {
+      map['brand_id'] = Variable<int>(brandId.value);
+    }
     if (profileId.present) {
       map['profile_id'] = Variable<String>(profileId.value);
     }
@@ -3207,10 +3252,330 @@ class TechnicianShareEntriesCompanion
 
   @override
   String toString() {
-    return (StringBuffer('TechnicianShareEntriesCompanion(')
+    return (StringBuffer('BrandShareEntriesCompanion(')
+          ..write('brandId: $brandId, ')
           ..write('profileId: $profileId, ')
           ..write('persen: $persen, ')
           ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BrandRuleEntriesTable extends BrandRuleEntries
+    with TableInfo<$BrandRuleEntriesTable, BrandRuleEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BrandRuleEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _brandIdMeta = const VerificationMeta(
+    'brandId',
+  );
+  @override
+  late final GeneratedColumn<int> brandId = GeneratedColumn<int>(
+    'brand_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _persenTokoMeta = const VerificationMeta(
+    'persenToko',
+  );
+  @override
+  late final GeneratedColumn<double> persenToko = GeneratedColumn<double>(
+    'persen_toko',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _persenAdminMeta = const VerificationMeta(
+    'persenAdmin',
+  );
+  @override
+  late final GeneratedColumn<double> persenAdmin = GeneratedColumn<double>(
+    'persen_admin',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _persenTeknisiMeta = const VerificationMeta(
+    'persenTeknisi',
+  );
+  @override
+  late final GeneratedColumn<double> persenTeknisi = GeneratedColumn<double>(
+    'persen_teknisi',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    brandId,
+    persenToko,
+    persenAdmin,
+    persenTeknisi,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'brand_rule_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BrandRuleEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('brand_id')) {
+      context.handle(
+        _brandIdMeta,
+        brandId.isAcceptableOrUnknown(data['brand_id']!, _brandIdMeta),
+      );
+    }
+    if (data.containsKey('persen_toko')) {
+      context.handle(
+        _persenTokoMeta,
+        persenToko.isAcceptableOrUnknown(data['persen_toko']!, _persenTokoMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_persenTokoMeta);
+    }
+    if (data.containsKey('persen_admin')) {
+      context.handle(
+        _persenAdminMeta,
+        persenAdmin.isAcceptableOrUnknown(
+          data['persen_admin']!,
+          _persenAdminMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_persenAdminMeta);
+    }
+    if (data.containsKey('persen_teknisi')) {
+      context.handle(
+        _persenTeknisiMeta,
+        persenTeknisi.isAcceptableOrUnknown(
+          data['persen_teknisi']!,
+          _persenTeknisiMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_persenTeknisiMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {brandId};
+  @override
+  BrandRuleEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BrandRuleEntry(
+      brandId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}brand_id'],
+      )!,
+      persenToko: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}persen_toko'],
+      )!,
+      persenAdmin: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}persen_admin'],
+      )!,
+      persenTeknisi: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}persen_teknisi'],
+      )!,
+    );
+  }
+
+  @override
+  $BrandRuleEntriesTable createAlias(String alias) {
+    return $BrandRuleEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class BrandRuleEntry extends DataClass implements Insertable<BrandRuleEntry> {
+  final int brandId;
+  final double persenToko;
+  final double persenAdmin;
+  final double persenTeknisi;
+  const BrandRuleEntry({
+    required this.brandId,
+    required this.persenToko,
+    required this.persenAdmin,
+    required this.persenTeknisi,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['brand_id'] = Variable<int>(brandId);
+    map['persen_toko'] = Variable<double>(persenToko);
+    map['persen_admin'] = Variable<double>(persenAdmin);
+    map['persen_teknisi'] = Variable<double>(persenTeknisi);
+    return map;
+  }
+
+  BrandRuleEntriesCompanion toCompanion(bool nullToAbsent) {
+    return BrandRuleEntriesCompanion(
+      brandId: Value(brandId),
+      persenToko: Value(persenToko),
+      persenAdmin: Value(persenAdmin),
+      persenTeknisi: Value(persenTeknisi),
+    );
+  }
+
+  factory BrandRuleEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BrandRuleEntry(
+      brandId: serializer.fromJson<int>(json['brandId']),
+      persenToko: serializer.fromJson<double>(json['persenToko']),
+      persenAdmin: serializer.fromJson<double>(json['persenAdmin']),
+      persenTeknisi: serializer.fromJson<double>(json['persenTeknisi']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'brandId': serializer.toJson<int>(brandId),
+      'persenToko': serializer.toJson<double>(persenToko),
+      'persenAdmin': serializer.toJson<double>(persenAdmin),
+      'persenTeknisi': serializer.toJson<double>(persenTeknisi),
+    };
+  }
+
+  BrandRuleEntry copyWith({
+    int? brandId,
+    double? persenToko,
+    double? persenAdmin,
+    double? persenTeknisi,
+  }) => BrandRuleEntry(
+    brandId: brandId ?? this.brandId,
+    persenToko: persenToko ?? this.persenToko,
+    persenAdmin: persenAdmin ?? this.persenAdmin,
+    persenTeknisi: persenTeknisi ?? this.persenTeknisi,
+  );
+  BrandRuleEntry copyWithCompanion(BrandRuleEntriesCompanion data) {
+    return BrandRuleEntry(
+      brandId: data.brandId.present ? data.brandId.value : this.brandId,
+      persenToko: data.persenToko.present
+          ? data.persenToko.value
+          : this.persenToko,
+      persenAdmin: data.persenAdmin.present
+          ? data.persenAdmin.value
+          : this.persenAdmin,
+      persenTeknisi: data.persenTeknisi.present
+          ? data.persenTeknisi.value
+          : this.persenTeknisi,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BrandRuleEntry(')
+          ..write('brandId: $brandId, ')
+          ..write('persenToko: $persenToko, ')
+          ..write('persenAdmin: $persenAdmin, ')
+          ..write('persenTeknisi: $persenTeknisi')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(brandId, persenToko, persenAdmin, persenTeknisi);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BrandRuleEntry &&
+          other.brandId == this.brandId &&
+          other.persenToko == this.persenToko &&
+          other.persenAdmin == this.persenAdmin &&
+          other.persenTeknisi == this.persenTeknisi);
+}
+
+class BrandRuleEntriesCompanion extends UpdateCompanion<BrandRuleEntry> {
+  final Value<int> brandId;
+  final Value<double> persenToko;
+  final Value<double> persenAdmin;
+  final Value<double> persenTeknisi;
+  const BrandRuleEntriesCompanion({
+    this.brandId = const Value.absent(),
+    this.persenToko = const Value.absent(),
+    this.persenAdmin = const Value.absent(),
+    this.persenTeknisi = const Value.absent(),
+  });
+  BrandRuleEntriesCompanion.insert({
+    this.brandId = const Value.absent(),
+    required double persenToko,
+    required double persenAdmin,
+    required double persenTeknisi,
+  }) : persenToko = Value(persenToko),
+       persenAdmin = Value(persenAdmin),
+       persenTeknisi = Value(persenTeknisi);
+  static Insertable<BrandRuleEntry> custom({
+    Expression<int>? brandId,
+    Expression<double>? persenToko,
+    Expression<double>? persenAdmin,
+    Expression<double>? persenTeknisi,
+  }) {
+    return RawValuesInsertable({
+      if (brandId != null) 'brand_id': brandId,
+      if (persenToko != null) 'persen_toko': persenToko,
+      if (persenAdmin != null) 'persen_admin': persenAdmin,
+      if (persenTeknisi != null) 'persen_teknisi': persenTeknisi,
+    });
+  }
+
+  BrandRuleEntriesCompanion copyWith({
+    Value<int>? brandId,
+    Value<double>? persenToko,
+    Value<double>? persenAdmin,
+    Value<double>? persenTeknisi,
+  }) {
+    return BrandRuleEntriesCompanion(
+      brandId: brandId ?? this.brandId,
+      persenToko: persenToko ?? this.persenToko,
+      persenAdmin: persenAdmin ?? this.persenAdmin,
+      persenTeknisi: persenTeknisi ?? this.persenTeknisi,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (brandId.present) {
+      map['brand_id'] = Variable<int>(brandId.value);
+    }
+    if (persenToko.present) {
+      map['persen_toko'] = Variable<double>(persenToko.value);
+    }
+    if (persenAdmin.present) {
+      map['persen_admin'] = Variable<double>(persenAdmin.value);
+    }
+    if (persenTeknisi.present) {
+      map['persen_teknisi'] = Variable<double>(persenTeknisi.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BrandRuleEntriesCompanion(')
+          ..write('brandId: $brandId, ')
+          ..write('persenToko: $persenToko, ')
+          ..write('persenAdmin: $persenAdmin, ')
+          ..write('persenTeknisi: $persenTeknisi')
           ..write(')'))
         .toString();
   }
@@ -3229,8 +3594,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $RevenueConfigsTable revenueConfigs = $RevenueConfigsTable(this);
-  late final $TechnicianShareEntriesTable technicianShareEntries =
-      $TechnicianShareEntriesTable(this);
+  late final $BrandShareEntriesTable brandShareEntries =
+      $BrandShareEntriesTable(this);
+  late final $BrandRuleEntriesTable brandRuleEntries = $BrandRuleEntriesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3244,7 +3612,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     syncMeta,
     brandFeeEntries,
     revenueConfigs,
-    technicianShareEntries,
+    brandShareEntries,
+    brandRuleEntries,
   ];
 }
 
@@ -4848,28 +5217,35 @@ typedef $$RevenueConfigsTableProcessedTableManager =
       RevenueConfig,
       PrefetchHooks Function()
     >;
-typedef $$TechnicianShareEntriesTableCreateCompanionBuilder =
-    TechnicianShareEntriesCompanion Function({
+typedef $$BrandShareEntriesTableCreateCompanionBuilder =
+    BrandShareEntriesCompanion Function({
+      required int brandId,
       required String profileId,
       required double persen,
       Value<int> rowid,
     });
-typedef $$TechnicianShareEntriesTableUpdateCompanionBuilder =
-    TechnicianShareEntriesCompanion Function({
+typedef $$BrandShareEntriesTableUpdateCompanionBuilder =
+    BrandShareEntriesCompanion Function({
+      Value<int> brandId,
       Value<String> profileId,
       Value<double> persen,
       Value<int> rowid,
     });
 
-class $$TechnicianShareEntriesTableFilterComposer
-    extends Composer<_$AppDatabase, $TechnicianShareEntriesTable> {
-  $$TechnicianShareEntriesTableFilterComposer({
+class $$BrandShareEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $BrandShareEntriesTable> {
+  $$BrandShareEntriesTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<int> get brandId => $composableBuilder(
+    column: $table.brandId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get profileId => $composableBuilder(
     column: $table.profileId,
     builder: (column) => ColumnFilters(column),
@@ -4881,15 +5257,20 @@ class $$TechnicianShareEntriesTableFilterComposer
   );
 }
 
-class $$TechnicianShareEntriesTableOrderingComposer
-    extends Composer<_$AppDatabase, $TechnicianShareEntriesTable> {
-  $$TechnicianShareEntriesTableOrderingComposer({
+class $$BrandShareEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $BrandShareEntriesTable> {
+  $$BrandShareEntriesTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<int> get brandId => $composableBuilder(
+    column: $table.brandId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get profileId => $composableBuilder(
     column: $table.profileId,
     builder: (column) => ColumnOrderings(column),
@@ -4901,15 +5282,18 @@ class $$TechnicianShareEntriesTableOrderingComposer
   );
 }
 
-class $$TechnicianShareEntriesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $TechnicianShareEntriesTable> {
-  $$TechnicianShareEntriesTableAnnotationComposer({
+class $$BrandShareEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BrandShareEntriesTable> {
+  $$BrandShareEntriesTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<int> get brandId =>
+      $composableBuilder(column: $table.brandId, builder: (column) => column);
+
   GeneratedColumn<String> get profileId =>
       $composableBuilder(column: $table.profileId, builder: (column) => column);
 
@@ -4917,66 +5301,64 @@ class $$TechnicianShareEntriesTableAnnotationComposer
       $composableBuilder(column: $table.persen, builder: (column) => column);
 }
 
-class $$TechnicianShareEntriesTableTableManager
+class $$BrandShareEntriesTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $TechnicianShareEntriesTable,
-          TechnicianShareEntry,
-          $$TechnicianShareEntriesTableFilterComposer,
-          $$TechnicianShareEntriesTableOrderingComposer,
-          $$TechnicianShareEntriesTableAnnotationComposer,
-          $$TechnicianShareEntriesTableCreateCompanionBuilder,
-          $$TechnicianShareEntriesTableUpdateCompanionBuilder,
+          $BrandShareEntriesTable,
+          BrandShareEntry,
+          $$BrandShareEntriesTableFilterComposer,
+          $$BrandShareEntriesTableOrderingComposer,
+          $$BrandShareEntriesTableAnnotationComposer,
+          $$BrandShareEntriesTableCreateCompanionBuilder,
+          $$BrandShareEntriesTableUpdateCompanionBuilder,
           (
-            TechnicianShareEntry,
+            BrandShareEntry,
             BaseReferences<
               _$AppDatabase,
-              $TechnicianShareEntriesTable,
-              TechnicianShareEntry
+              $BrandShareEntriesTable,
+              BrandShareEntry
             >,
           ),
-          TechnicianShareEntry,
+          BrandShareEntry,
           PrefetchHooks Function()
         > {
-  $$TechnicianShareEntriesTableTableManager(
+  $$BrandShareEntriesTableTableManager(
     _$AppDatabase db,
-    $TechnicianShareEntriesTable table,
+    $BrandShareEntriesTable table,
   ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$TechnicianShareEntriesTableFilterComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$BrandShareEntriesTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$TechnicianShareEntriesTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$BrandShareEntriesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$TechnicianShareEntriesTableAnnotationComposer(
+              $$BrandShareEntriesTableAnnotationComposer(
                 $db: db,
                 $table: table,
               ),
           updateCompanionCallback:
               ({
+                Value<int> brandId = const Value.absent(),
                 Value<String> profileId = const Value.absent(),
                 Value<double> persen = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => TechnicianShareEntriesCompanion(
+              }) => BrandShareEntriesCompanion(
+                brandId: brandId,
                 profileId: profileId,
                 persen: persen,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
+                required int brandId,
                 required String profileId,
                 required double persen,
                 Value<int> rowid = const Value.absent(),
-              }) => TechnicianShareEntriesCompanion.insert(
+              }) => BrandShareEntriesCompanion.insert(
+                brandId: brandId,
                 profileId: profileId,
                 persen: persen,
                 rowid: rowid,
@@ -4989,25 +5371,208 @@ class $$TechnicianShareEntriesTableTableManager
       );
 }
 
-typedef $$TechnicianShareEntriesTableProcessedTableManager =
+typedef $$BrandShareEntriesTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $TechnicianShareEntriesTable,
-      TechnicianShareEntry,
-      $$TechnicianShareEntriesTableFilterComposer,
-      $$TechnicianShareEntriesTableOrderingComposer,
-      $$TechnicianShareEntriesTableAnnotationComposer,
-      $$TechnicianShareEntriesTableCreateCompanionBuilder,
-      $$TechnicianShareEntriesTableUpdateCompanionBuilder,
+      $BrandShareEntriesTable,
+      BrandShareEntry,
+      $$BrandShareEntriesTableFilterComposer,
+      $$BrandShareEntriesTableOrderingComposer,
+      $$BrandShareEntriesTableAnnotationComposer,
+      $$BrandShareEntriesTableCreateCompanionBuilder,
+      $$BrandShareEntriesTableUpdateCompanionBuilder,
       (
-        TechnicianShareEntry,
-        BaseReferences<
-          _$AppDatabase,
-          $TechnicianShareEntriesTable,
-          TechnicianShareEntry
-        >,
+        BrandShareEntry,
+        BaseReferences<_$AppDatabase, $BrandShareEntriesTable, BrandShareEntry>,
       ),
-      TechnicianShareEntry,
+      BrandShareEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$BrandRuleEntriesTableCreateCompanionBuilder =
+    BrandRuleEntriesCompanion Function({
+      Value<int> brandId,
+      required double persenToko,
+      required double persenAdmin,
+      required double persenTeknisi,
+    });
+typedef $$BrandRuleEntriesTableUpdateCompanionBuilder =
+    BrandRuleEntriesCompanion Function({
+      Value<int> brandId,
+      Value<double> persenToko,
+      Value<double> persenAdmin,
+      Value<double> persenTeknisi,
+    });
+
+class $$BrandRuleEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $BrandRuleEntriesTable> {
+  $$BrandRuleEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get brandId => $composableBuilder(
+    column: $table.brandId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get persenToko => $composableBuilder(
+    column: $table.persenToko,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get persenAdmin => $composableBuilder(
+    column: $table.persenAdmin,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get persenTeknisi => $composableBuilder(
+    column: $table.persenTeknisi,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BrandRuleEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $BrandRuleEntriesTable> {
+  $$BrandRuleEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get brandId => $composableBuilder(
+    column: $table.brandId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get persenToko => $composableBuilder(
+    column: $table.persenToko,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get persenAdmin => $composableBuilder(
+    column: $table.persenAdmin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get persenTeknisi => $composableBuilder(
+    column: $table.persenTeknisi,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BrandRuleEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BrandRuleEntriesTable> {
+  $$BrandRuleEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get brandId =>
+      $composableBuilder(column: $table.brandId, builder: (column) => column);
+
+  GeneratedColumn<double> get persenToko => $composableBuilder(
+    column: $table.persenToko,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get persenAdmin => $composableBuilder(
+    column: $table.persenAdmin,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get persenTeknisi => $composableBuilder(
+    column: $table.persenTeknisi,
+    builder: (column) => column,
+  );
+}
+
+class $$BrandRuleEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BrandRuleEntriesTable,
+          BrandRuleEntry,
+          $$BrandRuleEntriesTableFilterComposer,
+          $$BrandRuleEntriesTableOrderingComposer,
+          $$BrandRuleEntriesTableAnnotationComposer,
+          $$BrandRuleEntriesTableCreateCompanionBuilder,
+          $$BrandRuleEntriesTableUpdateCompanionBuilder,
+          (
+            BrandRuleEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $BrandRuleEntriesTable,
+              BrandRuleEntry
+            >,
+          ),
+          BrandRuleEntry,
+          PrefetchHooks Function()
+        > {
+  $$BrandRuleEntriesTableTableManager(
+    _$AppDatabase db,
+    $BrandRuleEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BrandRuleEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BrandRuleEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BrandRuleEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> brandId = const Value.absent(),
+                Value<double> persenToko = const Value.absent(),
+                Value<double> persenAdmin = const Value.absent(),
+                Value<double> persenTeknisi = const Value.absent(),
+              }) => BrandRuleEntriesCompanion(
+                brandId: brandId,
+                persenToko: persenToko,
+                persenAdmin: persenAdmin,
+                persenTeknisi: persenTeknisi,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> brandId = const Value.absent(),
+                required double persenToko,
+                required double persenAdmin,
+                required double persenTeknisi,
+              }) => BrandRuleEntriesCompanion.insert(
+                brandId: brandId,
+                persenToko: persenToko,
+                persenAdmin: persenAdmin,
+                persenTeknisi: persenTeknisi,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BrandRuleEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BrandRuleEntriesTable,
+      BrandRuleEntry,
+      $$BrandRuleEntriesTableFilterComposer,
+      $$BrandRuleEntriesTableOrderingComposer,
+      $$BrandRuleEntriesTableAnnotationComposer,
+      $$BrandRuleEntriesTableCreateCompanionBuilder,
+      $$BrandRuleEntriesTableUpdateCompanionBuilder,
+      (
+        BrandRuleEntry,
+        BaseReferences<_$AppDatabase, $BrandRuleEntriesTable, BrandRuleEntry>,
+      ),
+      BrandRuleEntry,
       PrefetchHooks Function()
     >;
 
@@ -5030,9 +5595,8 @@ class $AppDatabaseManager {
       $$BrandFeeEntriesTableTableManager(_db, _db.brandFeeEntries);
   $$RevenueConfigsTableTableManager get revenueConfigs =>
       $$RevenueConfigsTableTableManager(_db, _db.revenueConfigs);
-  $$TechnicianShareEntriesTableTableManager get technicianShareEntries =>
-      $$TechnicianShareEntriesTableTableManager(
-        _db,
-        _db.technicianShareEntries,
-      );
+  $$BrandShareEntriesTableTableManager get brandShareEntries =>
+      $$BrandShareEntriesTableTableManager(_db, _db.brandShareEntries);
+  $$BrandRuleEntriesTableTableManager get brandRuleEntries =>
+      $$BrandRuleEntriesTableTableManager(_db, _db.brandRuleEntries);
 }

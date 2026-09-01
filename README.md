@@ -56,6 +56,7 @@ penyelesaian kalau ada perselisihan.
    - `supabase/migrations/0001_init.sql`
    - `supabase/migrations/0002_active_user_guard.sql`
    - `supabase/migrations/0003_bagi_hasil.sql`
+   - `supabase/migrations/0004_bagi_hasil_per_brand.sql`
 3. **Authentication → Users → Add user**, centang *Auto Confirm User*.
 4. Jadikan user itu admin (ganti email dan namanya):
 
@@ -140,14 +141,28 @@ laporannya.
 Hanya klaim berstatus **Selesai** yang dihitung, karena fee dibayarkan brand
 setelah perbaikan tuntas.
 
-Nilai total dibagi tiga: toko, admin, dan jatah teknisi. Jatah teknisi
-dibagi lagi dengan salah satu dari tiga metode:
+**Seluruh perhitungan dilakukan per brand, lalu dijumlahkan.** Tiap brand
+membayar fee berbeda dan ditangani susunan tim berbeda, jadi bagian toko,
+admin, dan teknisi dihitung dari nilai brand masing-masing — bukan dari satu
+angka gabungan. Brand tertentu bisa memakai pembagian sendiri; sisanya
+mengikuti aturan umum.
+
+Jatah teknisi tiap brand dibagi dengan salah satu dari tiga metode:
 
 | Metode | Cara kerja |
 |---|---|
-| **Per unit dikerjakan** | Menurut nilai rupiah yang dihasilkan tiap teknisi. Tidak perlu diubah saat jumlah teknisi berubah. |
-| Rata | Dibagi sama besar antar teknisi yang bekerja di periode itu |
-| Manual | Persentase tetap per orang |
+| **Per unit dikerjakan** | Menurut nilai rupiah yang dihasilkan tiap teknisi di brand itu. Tidak perlu diubah saat jumlah teknisi berubah. |
+| Rata | Dibagi sama besar antar yang mengerjakan brand itu |
+| Manual per brand | Persentase ditentukan sendiri untuk tiap brand |
+
+Pada metode manual, yang punya porsi tetap dibayar **walau tidak mengerjakan
+satu unit pun** — begitulah pekerjaan pendukung seperti input klaim dan
+permintaan part memperoleh bagian.
+
+Rumusnya ada di `lib/core/revenue/revenue_calculator.dart` sebagai fungsi
+murni, dan dijaga 20 tes. Sengaja tidak ada salinan versi SQL: dua
+implementasi rumus yang sama pasti berbeda suatu saat, dan selisihnya baru
+ketahuan setelah dibayarkan.
 
 Angka fee, aturan pembagian, dan seluruh perhitungan hanya bisa dibaca admin
 — ditegakkan di database, bukan hanya disembunyikan di aplikasi.

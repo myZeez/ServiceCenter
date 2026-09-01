@@ -196,12 +196,25 @@ class SyncService {
       );
     }
 
-    final shareRows = await _client.from('technician_shares').select();
-    await _db.replaceTechnicianShares([
+    final shareRows = await _client.from('brand_technician_shares').select();
+    await _db.replaceBrandShares([
       for (final r in shareRows)
-        TechnicianShareEntriesCompanion.insert(
+        BrandShareEntriesCompanion.insert(
+          brandId: r['brand_id'] as int,
           profileId: r['profile_id'] as String,
           persen: (r['persen'] as num).toDouble(),
+        ),
+    ]);
+
+    final ruleRows = await _client.from('brand_revenue_rules').select();
+    await _db.replaceBrandRules([
+      for (final r in ruleRows)
+        BrandRuleEntriesCompanion.insert(
+          // Kunci utama bertipe integer diperlakukan drift sebagai opsional.
+          brandId: Value(r['brand_id'] as int),
+          persenToko: (r['persen_toko'] as num).toDouble(),
+          persenAdmin: (r['persen_admin'] as num).toDouble(),
+          persenTeknisi: (r['persen_teknisi'] as num).toDouble(),
         ),
     ]);
 

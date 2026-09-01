@@ -47,8 +47,12 @@ final revenueConfigProvider = StreamProvider.autoDispose<RevenueConfig?>(
   (ref) => ref.watch(databaseProvider).watchRevenueConfig(),
 );
 
-final _sharesProvider = StreamProvider.autoDispose<List<TechnicianShareEntry>>(
-  (ref) => ref.watch(databaseProvider).watchTechnicianShares(),
+final _sharesProvider = StreamProvider.autoDispose<List<BrandShareEntry>>(
+  (ref) => ref.watch(databaseProvider).watchBrandShares(),
+);
+
+final _rulesProvider = StreamProvider.autoDispose<List<BrandRuleEntry>>(
+  (ref) => ref.watch(databaseProvider).watchBrandRules(),
 );
 
 /// Hasil perhitungan bagi hasil untuk periode terpilih.
@@ -60,20 +64,30 @@ final revenueResultProvider = Provider.autoDispose<RevenueResult?>((ref) {
   final claims = ref.watch(_closedClaimsProvider).valueOrNull;
   final fees = ref.watch(_feesProvider).valueOrNull;
   final config = ref.watch(revenueConfigProvider).valueOrNull;
-  final shares = ref.watch(_sharesProvider).valueOrNull ?? const [];
+  final rules = ref.watch(_rulesProvider).valueOrNull ?? const [];
 
   if (claims == null || fees == null) return null;
 
   // Aturan bawaan dipakai bila belum pernah tersinkron, supaya layarnya
   // tetap bisa dibaca alih-alih kosong tanpa penjelasan.
-  final settings = config == null
-      ? const RevenueSettings()
-      : RevenueSettings(
-          persenToko: config.persenToko,
-          persenAdmin: config.persenAdmin,
-          persenTeknisi: config.persenTeknisi,
-          metode: MetodeTeknisi.dari(config.metodeTeknisi),
-        );
+  final settings = RevenueSettings(
+    umum: config == null
+        ? const AturanBagi()
+        : AturanBagi(
+            persenToko: config.persenToko,
+            persenAdmin: config.persenAdmin,
+            persenTeknisi: config.persenTeknisi,
+          ),
+    metode: MetodeTeknisi.dari(config?.metodeTeknisi ?? 'per_unit'),
+    aturanBrand: {
+      for (final r in rules)
+        r.brandId: AturanBagi(
+          persenToko: r.persenToko,
+          persenAdmin: r.persenAdmin,
+          persenTeknisi: r.persenTeknisi,
+        ),
+    },
+  );
 
   return hitungPendapatan(
     claims: [
@@ -89,14 +103,25 @@ final revenueResultProvider = Provider.autoDispose<RevenueResult?>((ref) {
         BrandFee(brandId: f.brandId, fee: f.fee, berlakuDari: f.berlakuDari),
     ],
     settings: settings,
-    porsiManual: {for (final s in shares) s.profileId: s.persen},
+    porsiManual: ref.watch(brandSharesProvider),
   );
 });
 
-final technicianSharesMapProvider = Provider.autoDispose<Map<String, double>>(
+/// brandId -> (teknisiId -> persen).
+final brandSharesProvider =
+    Provider.autoDispose<Map<int, Map<String, double>>>((ref) {
+  final rows = ref.watch(_sharesProvider).valueOrNull ?? const [];
+  final out = <int, Map<String, double>>{};
+  for (final r in rows) {
+    (out[r.brandId] ??= {})[r.profileId] = r.persen;
+  }
+  return out;
+});
+
+final brandRulesProvider = Provider.autoDispose<Map<int, BrandRuleEntry>>(
   (ref) => {
-    for (final s in ref.watch(_sharesProvider).valueOrNull ?? const [])
-      s.profileId: s.persen,
+    for (final r in ref.watch(_rulesProvider).valueOrNull ?? const [])
+      r.brandId: r,
   },
 );
 

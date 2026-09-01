@@ -111,12 +111,27 @@ class RevenueConfigs extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-class TechnicianShareEntries extends Table {
+/// Porsi manual per brand per teknisi. Kunci gabungan, karena orang yang
+/// sama bisa berporsi berbeda di brand yang berbeda.
+class BrandShareEntries extends Table {
+  IntColumn get brandId => integer()();
   TextColumn get profileId => text()();
   RealColumn get persen => real()();
 
   @override
-  Set<Column> get primaryKey => {profileId};
+  Set<Column> get primaryKey => {brandId, profileId};
+}
+
+/// Aturan pembagian khusus brand. Brand tanpa baris di sini memakai aturan
+/// umum di RevenueConfigs.
+class BrandRuleEntries extends Table {
+  IntColumn get brandId => integer()();
+  RealColumn get persenToko => real()();
+  RealColumn get persenAdmin => real()();
+  RealColumn get persenTeknisi => real()();
+
+  @override
+  Set<Column> get primaryKey => {brandId};
 }
 
 /// Penyimpanan kunci-nilai untuk keperluan sinkron, mis. kapan terakhir
@@ -139,7 +154,8 @@ class SyncMeta extends Table {
     SyncMeta,
     BrandFeeEntries,
     RevenueConfigs,
-    TechnicianShareEntries,
+    BrandShareEntries,
+    BrandRuleEntries,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -148,7 +164,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -163,7 +179,14 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) {
             await m.createTable(brandFeeEntries);
             await m.createTable(revenueConfigs);
-            await m.createTable(technicianShareEntries);
+          }
+          if (from < 4) {
+            // Cerminan data server; isinya akan terisi ulang saat sinkron
+            // berikutnya, jadi tabel lama cukup dibuang.
+            await m.database
+                .customStatement('drop table if exists technician_share_entries');
+            await m.createTable(brandShareEntries);
+            await m.createTable(brandRuleEntries);
           }
         },
       );
@@ -360,8 +383,11 @@ class AppDatabase extends _$AppDatabase {
       (select(revenueConfigs)..where((t) => t.id.equals(1)))
           .watchSingleOrNull();
 
-  Stream<List<TechnicianShareEntry>> watchTechnicianShares() =>
-      select(technicianShareEntries).watch();
+  Stream<List<BrandShareEntry>> watchBrandShares() =>
+      select(brandShareEntries).watch();
+
+  Stream<List<BrandRuleEntry>> watchBrandRules() =>
+      select(brandRuleEntries).watch();
 
   /// Diganti seluruhnya tiap sinkron. Tabelnya kecil, dan cara ini membuat
   /// baris yang dihapus di server ikut hilang di perangkat -- fee yang
@@ -373,12 +399,17 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  Future<void> replaceTechnicianShares(
-    List<TechnicianShareEntriesCompanion> rows,
-  ) async {
+  Future<void> replaceBrandShares(List<BrandShareEntriesCompanion> rows) async {
     await batch((b) {
-      b.deleteAll(technicianShareEntries);
-      b.insertAll(technicianShareEntries, rows);
+      b.deleteAll(brandShareEntries);
+      b.insertAll(brandShareEntries, rows);
+    });
+  }
+
+  Future<void> replaceBrandRules(List<BrandRuleEntriesCompanion> rows) async {
+    await batch((b) {
+      b.deleteAll(brandRuleEntries);
+      b.insertAll(brandRuleEntries, rows);
     });
   }
 

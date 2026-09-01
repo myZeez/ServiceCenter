@@ -3,40 +3,61 @@
 /// Sengaja fungsi murni tanpa ketergantungan ke database maupun Flutter:
 /// rumus yang menentukan bayaran orang harus bisa diuji, dan hasilnya harus
 /// sama persis di perangkat mana pun.
+///
+/// Seluruh perhitungan dilakukan PER BRAND lalu dijumlahkan. Tiap brand
+/// membayar fee berbeda dan bisa punya susunan tim berbeda, jadi bagian
+/// toko, admin, dan teknisi dihitung dari nilai brand masing-masing --
+/// bukan dari satu angka gabungan.
 library;
 
-class RevenueSettings {
-  const RevenueSettings({
-    this.persenToko = 30,
-    this.persenAdmin = 10,
-    this.persenTeknisi = 60,
-    this.metode = MetodeTeknisi.perUnit,
-  });
-
-  final double persenToko;
-  final double persenAdmin;
-  final double persenTeknisi;
-  final MetodeTeknisi metode;
-}
-
 enum MetodeTeknisi {
-  /// Porsi mengikuti nilai rupiah yang dihasilkan tiap teknisi.
+  /// Porsi mengikuti nilai rupiah yang dihasilkan tiap teknisi di brand itu.
   perUnit('per_unit'),
 
-  /// Jatah teknisi dibagi sama besar antar yang bekerja di periode itu.
+  /// Jatah teknisi dibagi sama besar antar yang bekerja di brand itu.
   rata('rata'),
 
-  /// Persentase tetap per orang.
+  /// Persentase tetap per teknisi, ditentukan per brand.
   manual('manual');
 
   const MetodeTeknisi(this.kode);
   final String kode;
 
-  static MetodeTeknisi dari(String kode) =>
-      MetodeTeknisi.values.firstWhere(
+  static MetodeTeknisi dari(String kode) => MetodeTeknisi.values.firstWhere(
         (e) => e.kode == kode,
         orElse: () => MetodeTeknisi.perUnit,
       );
+}
+
+/// Pembagian antara toko, admin, dan teknisi.
+class AturanBagi {
+  const AturanBagi({
+    this.persenToko = 30,
+    this.persenAdmin = 10,
+    this.persenTeknisi = 60,
+  });
+
+  final double persenToko;
+  final double persenAdmin;
+  final double persenTeknisi;
+}
+
+class RevenueSettings {
+  const RevenueSettings({
+    this.umum = const AturanBagi(),
+    this.metode = MetodeTeknisi.perUnit,
+    this.aturanBrand = const {},
+  });
+
+  /// Dipakai untuk brand yang tidak punya aturan sendiri.
+  final AturanBagi umum;
+
+  final MetodeTeknisi metode;
+
+  /// Aturan khusus per brand. Brand yang tidak ada di sini memakai [umum].
+  final Map<int, AturanBagi> aturanBrand;
+
+  AturanBagi untukBrand(int brandId) => aturanBrand[brandId] ?? umum;
 }
 
 /// Satu fee yang berlaku sejak tanggal tertentu.
@@ -76,6 +97,10 @@ class TechnicianEarning {
   });
 
   final String teknisiId;
+
+  /// Unit yang tercatat atas namanya. Pada mode manual bisa nol sementara
+  /// pendapatannya tidak -- misalnya untuk pekerjaan pendukung seperti
+  /// input klaim dan permintaan part.
   final int unit;
   final double nilai;
 
@@ -85,18 +110,30 @@ class TechnicianEarning {
   final int pendapatan;
 }
 
-class BrandRevenue {
-  const BrandRevenue({
+/// Perhitungan lengkap untuk satu brand.
+class BrandBreakdown {
+  const BrandBreakdown({
     required this.brandId,
     required this.unit,
     required this.nilai,
+    required this.bagianToko,
+    required this.bagianAdmin,
+    required this.bagianTeknisi,
+    required this.teknisi,
   });
 
   final int brandId;
   final int unit;
   final double nilai;
+  final int bagianToko;
+  final int bagianAdmin;
+  final int bagianTeknisi;
+  final List<TechnicianEarning> teknisi;
 
   double get feeRataRata => unit == 0 ? 0 : nilai / unit;
+
+  int get belumDialokasikan =>
+      bagianTeknisi - teknisi.fold(0, (a, e) => a + e.pendapatan);
 }
 
 class RevenueResult {
@@ -119,20 +156,18 @@ class RevenueResult {
   /// tidak diam-diam ikut terhitung sebagai nol.
   final int unitTanpaFee;
 
-  /// Klaim selesai yang kolom teknisinya kosong. Nilainya tetap masuk total
-  /// tetapi tidak jatuh ke siapa pun.
+  /// Klaim selesai yang kolom teknisinya kosong.
   final int unitTanpaTeknisi;
 
   final int bagianToko;
   final int bagianAdmin;
   final int bagianTeknisi;
 
+  /// Gabungan seluruh brand, per teknisi.
   final List<TechnicianEarning> teknisi;
-  final List<BrandRevenue> brands;
 
-  /// Bagian teknisi yang belum jatuh ke siapa pun. Terjadi pada metode
-  /// manual yang persentasenya belum genap 100%, atau saat ada klaim tanpa
-  /// teknisi.
+  final List<BrandBreakdown> brands;
+
   int get teknisiBelumDialokasikan =>
       bagianTeknisi - teknisi.fold(0, (a, e) => a + e.pendapatan);
 }
@@ -166,7 +201,7 @@ List<int> bagiRata(int total, List<double> bobot) {
   final tepat = [for (final b in bobot) total * b / jumlahBobot];
   final hasil = [for (final t in tepat) t.floor()];
 
-  var sisa = total - hasil.fold<int>(0, (a, b) => a + b);
+  final sisa = total - hasil.fold<int>(0, (a, b) => a + b);
   if (sisa <= 0) return hasil;
 
   final urutan = List.generate(bobot.length, (i) => i)
@@ -182,143 +217,208 @@ RevenueResult hitungPendapatan({
   required List<RevenueClaim> claims,
   required List<BrandFee> fees,
   required RevenueSettings settings,
-  Map<String, double> porsiManual = const {},
+
+  /// brandId -> (teknisiId -> persen). Hanya dipakai pada mode manual.
+  Map<int, Map<String, double>> porsiManual = const {},
 }) {
-  // ---- nilai tiap klaim -------------------------------------------------
+  // ---- kelompokkan per brand -------------------------------------------
+  final unitPerBrand = <int, int>{};
+  final nilaiPerBrand = <int, double>{};
+  final unitTeknisiPerBrand = <int, Map<String, int>>{};
+  final nilaiTeknisiPerBrand = <int, Map<String, double>>{};
+
   var totalNilai = 0.0;
   var tanpaFee = 0;
   var tanpaTeknisi = 0;
 
-  final perBrandUnit = <int, int>{};
-  final perBrandNilai = <int, double>{};
-  final perTeknisiUnit = <String, int>{};
-  final perTeknisiNilai = <String, double>{};
-
   for (final c in claims) {
     final nilai = feeUntuk(fees, c.brandId, c.tanggal);
     if (nilai == 0) tanpaFee++;
-
     totalNilai += nilai;
-    perBrandUnit[c.brandId] = (perBrandUnit[c.brandId] ?? 0) + 1;
-    perBrandNilai[c.brandId] = (perBrandNilai[c.brandId] ?? 0) + nilai;
+
+    unitPerBrand[c.brandId] = (unitPerBrand[c.brandId] ?? 0) + 1;
+    nilaiPerBrand[c.brandId] = (nilaiPerBrand[c.brandId] ?? 0) + nilai;
 
     final t = c.teknisiId;
     if (t == null) {
       tanpaTeknisi++;
-    } else {
-      perTeknisiUnit[t] = (perTeknisiUnit[t] ?? 0) + 1;
-      perTeknisiNilai[t] = (perTeknisiNilai[t] ?? 0) + nilai;
+      continue;
     }
+    (unitTeknisiPerBrand[c.brandId] ??= {}).update(
+      t,
+      (v) => v + 1,
+      ifAbsent: () => 1,
+    );
+    (nilaiTeknisiPerBrand[c.brandId] ??= {}).update(
+      t,
+      (v) => v + nilai,
+      ifAbsent: () => nilai,
+    );
   }
 
-  // ---- pembagian menurut peran -----------------------------------------
-  final total = totalNilai.round();
-  final bagian = bagiRata(total, [
-    settings.persenToko,
-    settings.persenAdmin,
-    settings.persenTeknisi,
-  ]);
+  // Brand yang punya aturan manual tetap dihitung walau tanpa klaim, agar
+  // pengaturannya terlihat berpengaruh atau tidak.
+  final brandIds = {...unitPerBrand.keys}.toList()
+    ..sort((a, b) => (nilaiPerBrand[b] ?? 0).compareTo(nilaiPerBrand[a] ?? 0));
 
-  final jatahTeknisi = bagian[2];
+  // ---- hitung tiap brand -----------------------------------------------
+  final breakdowns = <BrandBreakdown>[];
 
-  // ---- pembagian antar teknisi -----------------------------------------
-  final ids = perTeknisiNilai.keys.toList()
-    ..sort((a, b) => (perTeknisiNilai[b] ?? 0).compareTo(perTeknisiNilai[a] ?? 0));
+  for (final brandId in brandIds) {
+    final nilaiBrand = nilaiPerBrand[brandId] ?? 0;
+    final aturan = settings.untukBrand(brandId);
 
-  final earnings = <TechnicianEarning>[];
+    final bagian = bagiRata(nilaiBrand.round(), [
+      aturan.persenToko,
+      aturan.persenAdmin,
+      aturan.persenTeknisi,
+    ]);
+    final jatah = bagian[2];
 
-  if (ids.isNotEmpty) {
+    final unitTek = unitTeknisiPerBrand[brandId] ?? const <String, int>{};
+    final nilaiTek = nilaiTeknisiPerBrand[brandId] ?? const <String, double>{};
+
+    final earnings = <TechnicianEarning>[];
+
     switch (settings.metode) {
       case MetodeTeknisi.perUnit:
-        // Pembaginya adalah SELURUH nilai periode, bukan hanya nilai yang
-        // sudah punya teknisi. Kalau memakai jumlah nilai teknisi saja,
-        // klaim yang lupa diisi teknisinya akan menaikkan bayaran orang
-        // lain -- satu kelalaian pencatatan berubah jadi salah bayar.
-        //
-        // Nilai yang belum bertuan ikut sebagai keranjang terakhir supaya
-        // pembulatannya tetap utuh, lalu dilaporkan sebagai belum
-        // dialokasikan.
-        final nilaiTanpaTeknisi = (totalNilai -
-                perTeknisiNilai.values.fold<double>(0, (a, b) => a + b))
-            .clamp(0.0, double.infinity);
+        // Pembaginya seluruh nilai brand, bukan hanya yang sudah punya
+        // teknisi. Kalau memakai jumlah nilai teknisi saja, klaim yang lupa
+        // diisi teknisinya akan menaikkan bayaran orang lain -- satu
+        // kelalaian pencatatan berubah jadi salah bayar.
+        final ids = nilaiTek.keys.toList()
+          ..sort((a, b) => nilaiTek[b]!.compareTo(nilaiTek[a]!));
 
-        final bobot = <double>[
-          for (final id in ids) perTeknisiNilai[id] ?? 0,
-          nilaiTanpaTeknisi,
-        ];
-        final nilaiPerOrang = bagiRata(jatahTeknisi, bobot);
+        if (ids.isNotEmpty) {
+          final belumBertuan = (nilaiBrand -
+                  nilaiTek.values.fold<double>(0, (a, b) => a + b))
+              .clamp(0.0, double.infinity);
 
-        for (var i = 0; i < ids.length; i++) {
-          earnings.add(
-            TechnicianEarning(
-              teknisiId: ids[i],
-              unit: perTeknisiUnit[ids[i]] ?? 0,
-              nilai: perTeknisiNilai[ids[i]] ?? 0,
-              porsi: totalNilai == 0
-                  ? 0
-                  : (perTeknisiNilai[ids[i]] ?? 0) * 100 / totalNilai,
-              pendapatan: nilaiPerOrang[i],
-            ),
-          );
+          final nilaiOrang = bagiRata(jatah, [
+            for (final id in ids) nilaiTek[id]!,
+            belumBertuan,
+          ]);
+
+          for (var i = 0; i < ids.length; i++) {
+            earnings.add(
+              TechnicianEarning(
+                teknisiId: ids[i],
+                unit: unitTek[ids[i]] ?? 0,
+                nilai: nilaiTek[ids[i]]!,
+                porsi: nilaiBrand == 0 ? 0 : nilaiTek[ids[i]]! * 100 / nilaiBrand,
+                pendapatan: nilaiOrang[i],
+              ),
+            );
+          }
         }
 
       case MetodeTeknisi.rata:
-        // Di sini jumlah unit memang tidak diperhitungkan sama sekali, jadi
-        // klaim tanpa teknisi tidak mengubah apa pun.
-        final nilaiPerOrang =
-            bagiRata(jatahTeknisi, [for (final _ in ids) 1.0]);
-
-        for (var i = 0; i < ids.length; i++) {
-          earnings.add(
-            TechnicianEarning(
-              teknisiId: ids[i],
-              unit: perTeknisiUnit[ids[i]] ?? 0,
-              nilai: perTeknisiNilai[ids[i]] ?? 0,
-              porsi: 100 / ids.length,
-              pendapatan: nilaiPerOrang[i],
-            ),
-          );
+        final ids = nilaiTek.keys.toList()..sort();
+        if (ids.isNotEmpty) {
+          final nilaiOrang = bagiRata(jatah, [for (final _ in ids) 1.0]);
+          for (var i = 0; i < ids.length; i++) {
+            earnings.add(
+              TechnicianEarning(
+                teknisiId: ids[i],
+                unit: unitTek[ids[i]] ?? 0,
+                nilai: nilaiTek[ids[i]]!,
+                porsi: 100 / ids.length,
+                pendapatan: nilaiOrang[i],
+              ),
+            );
+          }
         }
 
       case MetodeTeknisi.manual:
-        // Sengaja tidak dinormalkan ke 100%: kalau persentasenya baru terisi
-        // sebagian, sisanya harus terlihat sebagai belum dialokasikan --
-        // bukan diam-diam dibagi rata ke yang sudah terisi.
+        // Yang dibayar adalah siapa pun yang punya persentase di brand ini,
+        // termasuk yang tidak mengerjakan satu unit pun -- itulah cara
+        // pekerjaan pendukung seperti input klaim dan permintaan part
+        // mendapat bagian.
+        //
+        // Persentase sengaja tidak dinormalkan ke 100%: kalau baru terisi
+        // sebagian, sisanya harus terlihat sebagai belum dialokasikan.
+        final porsi = porsiManual[brandId] ?? const <String, double>{};
+        final ids = porsi.keys.toList()
+          ..sort((a, b) => porsi[b]!.compareTo(porsi[a]!));
+
         for (final id in ids) {
-          final persen = porsiManual[id] ?? 0;
+          if (porsi[id] == 0) continue;
           earnings.add(
             TechnicianEarning(
               teknisiId: id,
-              unit: perTeknisiUnit[id] ?? 0,
-              nilai: perTeknisiNilai[id] ?? 0,
-              porsi: persen,
-              pendapatan: (jatahTeknisi * persen / 100).round(),
+              unit: unitTek[id] ?? 0,
+              nilai: nilaiTek[id] ?? 0,
+              porsi: porsi[id]!,
+              pendapatan: (jatah * porsi[id]! / 100).round(),
             ),
           );
         }
     }
+
+    breakdowns.add(
+      BrandBreakdown(
+        brandId: brandId,
+        unit: unitPerBrand[brandId] ?? 0,
+        nilai: nilaiBrand,
+        bagianToko: bagian[0],
+        bagianAdmin: bagian[1],
+        bagianTeknisi: jatah,
+        teknisi: earnings,
+      ),
+    );
   }
 
-  earnings.sort((a, b) => b.pendapatan.compareTo(a.pendapatan));
+  // ---- gabungkan lintas brand ------------------------------------------
+  var toko = 0;
+  var admin = 0;
+  var teknisiPool = 0;
 
-  final brands = [
-    for (final e in perBrandUnit.entries)
-      BrandRevenue(
-        brandId: e.key,
-        unit: e.value,
-        nilai: perBrandNilai[e.key] ?? 0,
+  final unitGabungan = <String, int>{};
+  final nilaiGabungan = <String, double>{};
+  final rupiahGabungan = <String, int>{};
+
+  for (final b in breakdowns) {
+    toko += b.bagianToko;
+    admin += b.bagianAdmin;
+    teknisiPool += b.bagianTeknisi;
+
+    for (final e in b.teknisi) {
+      unitGabungan.update(e.teknisiId, (v) => v + e.unit, ifAbsent: () => e.unit);
+      nilaiGabungan.update(
+        e.teknisiId,
+        (v) => v + e.nilai,
+        ifAbsent: () => e.nilai,
+      );
+      rupiahGabungan.update(
+        e.teknisiId,
+        (v) => v + e.pendapatan,
+        ifAbsent: () => e.pendapatan,
+      );
+    }
+  }
+
+  final gabungan = [
+    for (final id in rupiahGabungan.keys)
+      TechnicianEarning(
+        teknisiId: id,
+        unit: unitGabungan[id] ?? 0,
+        nilai: nilaiGabungan[id] ?? 0,
+        // Porsi gabungan adalah bagian dari seluruh jatah teknisi, karena
+        // porsi tiap brand tidak bisa dijumlahkan begitu saja.
+        porsi: teknisiPool == 0 ? 0 : rupiahGabungan[id]! * 100 / teknisiPool,
+        pendapatan: rupiahGabungan[id]!,
       ),
-  ]..sort((a, b) => b.nilai.compareTo(a.nilai));
+  ]..sort((a, b) => b.pendapatan.compareTo(a.pendapatan));
 
   return RevenueResult(
     totalUnit: claims.length,
     totalNilai: totalNilai,
     unitTanpaFee: tanpaFee,
     unitTanpaTeknisi: tanpaTeknisi,
-    bagianToko: bagian[0],
-    bagianAdmin: bagian[1],
-    bagianTeknisi: jatahTeknisi,
-    teknisi: earnings,
-    brands: brands,
+    bagianToko: toko,
+    bagianAdmin: admin,
+    bagianTeknisi: teknisiPool,
+    teknisi: gabungan,
+    brands: breakdowns,
   );
 }

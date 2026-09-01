@@ -254,12 +254,13 @@ class _BrandChipState extends State<_BrandChip> {
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
         onTap: widget.onTap,
+        // Tanpa alignment dan tanpa tinggi tetap, kotak ini menyusut
+        // mengikuti teksnya. Begitu alignment dipasang, Container justru
+        // melebar memenuhi baris dan chip-nya menumpuk ke bawah.
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 11),
-          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: active ? AppColors.black : AppColors.white,
             border: Border.all(

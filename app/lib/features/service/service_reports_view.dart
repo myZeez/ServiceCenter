@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/export/excel_export.dart';
 import '../../core/local/database.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
@@ -150,6 +151,14 @@ class _Pelunasan extends ConsumerWidget {
     return _Kartu(
       judul: 'Pelunasan ${bulan.label}',
       ringkas: '${lunas.length} nota  ·  ${_rp.format(total)}',
+      aksi: _TombolExport(
+        aktif: lunas.isNotEmpty,
+        onExport: () => ExcelExport.pelunasan(
+          nota: lunas,
+          teknisi: teknisi,
+          periode: bulan.label,
+        ),
+      ),
       kosong: lunas.isEmpty,
       pesanKosong: 'Belum ada pelunasan di bulan ini.',
       child: ListView(
@@ -239,6 +248,14 @@ class _Keseluruhan extends ConsumerWidget {
       judul: 'Keseluruhan ${bulan.label}',
       ringkas: '${nota.length} nota  ·  masuk ${_rp.format(tunai)}  ·  '
           'piutang ${_rp.format(piutang)}',
+      aksi: _TombolExport(
+        aktif: nota.isNotEmpty,
+        onExport: () => ExcelExport.keseluruhan(
+          nota: nota,
+          teknisi: teknisi,
+          periode: bulan.label,
+        ),
+      ),
       kosong: nota.isEmpty,
       pesanKosong: 'Belum ada nota di bulan ini.',
       child: ListView.builder(
@@ -304,9 +321,19 @@ class _Kirim extends ConsumerWidget {
     return _Kartu(
       judul: 'Pengiriman',
       ringkas: '${kirim.length} catatan  ·  $terkirim belum kembali',
-      aksi: InlineAction(
-        label: 'Tambah',
-        onTap: () => showShipmentDialog(context),
+      aksi: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _TombolExport(
+            aktif: kirim.isNotEmpty,
+            onExport: () => ExcelExport.kirim(data: kirim),
+          ),
+          const SizedBox(width: AppSpacing.s),
+          InlineAction(
+            label: 'Tambah',
+            onTap: () => showShipmentDialog(context),
+          ),
+        ],
       ),
       kosong: kirim.isEmpty,
       pesanKosong: 'Belum ada barang yang dikirim atau diterima dari cabang.',
@@ -361,6 +388,69 @@ class _Kirim extends ConsumerWidget {
 // =====================================================================
 // Bagian bersama
 // =====================================================================
+
+/// Tombol ekspor beserta kabar hasilnya.
+///
+/// Jalur berkas ditampilkan setelah tersimpan, bukan sekadar "berhasil":
+/// dialog simpan Windows sering mengarah ke folder terakhir yang dipakai,
+/// dan tanpa jalurnya orang harus mencari sendiri berkasnya ke mana.
+class _TombolExport extends StatefulWidget {
+  const _TombolExport({required this.aktif, required this.onExport});
+
+  final bool aktif;
+  final Future<String?> Function() onExport;
+
+  @override
+  State<_TombolExport> createState() => _TombolExportState();
+}
+
+class _TombolExportState extends State<_TombolExport> {
+  bool _sibuk = false;
+
+  Future<void> _jalankan() async {
+    setState(() => _sibuk = true);
+    try {
+      final jalur = await widget.onExport();
+      if (!mounted || jalur == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tersimpan di $jalur'),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menyimpan berkas. $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _sibuk = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_sibuk) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        child: SizedBox(
+          height: 14,
+          width: 14,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+    return OutlinedButton.icon(
+      onPressed: widget.aktif ? _jalankan : null,
+      icon: const Icon(Icons.table_view_outlined, size: 15),
+      label: const Text('EXCEL'),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        side: const BorderSide(color: AppColors.black, width: 1.5),
+      ),
+    );
+  }
+}
 
 class _Kartu extends StatelessWidget {
   const _Kartu({

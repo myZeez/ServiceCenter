@@ -2,6 +2,19 @@
 
 Nomor versi mengikuti berkas installer di `installer/output/`.
 
+## 1.4.0 — 2 September 2026
+
+**Ekspor Excel** untuk ketiga laporan servis, masing-masing berkas sendiri.
+
+Memakai `.xlsx` sungguhan, bukan CSV: biaya ditulis sebagai bilangan sehingga
+langsung bisa dijumlahkan di Excel. Pada laporan keseluruhan, biaya, cara
+bayar, dan tanggal lunas dipisah menjadi tiga kolom — digabung dalam satu sel,
+angkanya tidak bisa dijumlahkan dan penyaringan piutang harus dilakukan dengan
+mata.
+
+Jalur berkas ditampilkan setelah tersimpan, karena dialog simpan Windows
+sering mengarah ke folder terakhir yang dipakai.
+
 ## 1.3.0 — 2 September 2026
 
 **Laporan servis.** Tiga laporan baru, semuanya di atas data nota dan tidak

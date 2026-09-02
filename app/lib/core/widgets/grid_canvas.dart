@@ -95,8 +95,14 @@ class GridCanvas extends StatefulWidget {
     this.gap = 12,
     this.padding = EdgeInsets.zero,
     this.layout = const GridLayout(),
+    this.editable = false,
     required this.onLayoutChanged,
   });
+
+  /// Pegangan hanya muncul saat menata. Di luar itu kartunya diam: tanpa
+  /// mode tersendiri, satu seretan yang tidak disengaja saat menggulir
+  /// halaman sudah cukup untuk mengacak susunan.
+  final bool editable;
 
   final List<GridArea> areas;
   final int columns;
@@ -215,6 +221,7 @@ class _GridCanvasState extends State<GridCanvas> {
     final isi = _IsiKotak(
       area: p.area,
       span: p.span,
+      editable: widget.editable,
       sedangDipindah: dipindah,
       sedangDiubah: diubah,
       onMulaiUbah: (arah) => setState(() {
@@ -403,6 +410,7 @@ class _IsiKotak extends StatefulWidget {
   const _IsiKotak({
     required this.area,
     required this.span,
+    required this.editable,
     required this.sedangDipindah,
     required this.sedangDiubah,
     required this.onMulaiUbah,
@@ -415,6 +423,7 @@ class _IsiKotak extends StatefulWidget {
 
   final GridArea area;
   final GridSpan span;
+  final bool editable;
   final bool sedangDipindah;
   final bool sedangDiubah;
 
@@ -460,6 +469,11 @@ class _IsiKotakState extends State<_IsiKotak> {
           children: [
             Positioned.fill(child: widget.area.child),
 
+            // Di luar mode menata, kartunya hanya isi -- tidak ada pegangan
+            // yang bisa tersenggol.
+            if (!widget.editable)
+              const SizedBox.shrink()
+            else ...[
             if (widget.sedangDiubah || widget.sedangDipindah)
               Positioned(
                 right: 8,
@@ -558,6 +572,7 @@ class _IsiKotakState extends State<_IsiKotak> {
                 onSelesai: widget.onSelesaiUbah,
               ),
             ),
+            ],
           ],
         ),
       ),

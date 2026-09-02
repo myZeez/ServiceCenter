@@ -17,11 +17,20 @@ import 'revenue_cards.dart';
 /// Sebelumnya pengguna, brand, dan jenis part adalah tiga halaman terpisah
 /// yang harus dibuka bergantian, padahal isinya pendek-pendek. Berdampingan
 /// begini semuanya terbaca sekaligus.
-class SettingsView extends ConsumerWidget {
+class SettingsView extends ConsumerStatefulWidget {
   const SettingsView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsView> createState() => _SettingsViewState();
+}
+
+class _SettingsViewState extends ConsumerState<SettingsView> {
+  /// Menata susunan adalah tindakan sesekali, bukan keadaan biasa. Di luar
+  /// mode ini kartunya diam sepenuhnya.
+  bool _menata = false;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.s,
@@ -32,18 +41,35 @@ class SettingsView extends ConsumerWidget {
         children: [
           PageHeader(
             title: 'Pengaturan',
-            subtitle: 'Pengguna dan data master yang dipakai seluruh aplikasi'
-                '  ·  tarik tepi kartu untuk mengubah ukuran, tepi kirinya '
-                'untuk memindah',
+            subtitle: _menata
+                ? 'Tarik tepi kanan atau bawah kartu untuk mengubah ukuran, '
+                      'tepi kirinya untuk memindah'
+                : 'Pengguna dan data master yang dipakai seluruh aplikasi',
             actions: [
-              if (!(ref.watch(gridLayoutProvider('pengaturan')).valueOrNull ??
-                      const GridLayout())
-                  .isEmpty)
+              if (_menata &&
+                  !(ref.watch(gridLayoutProvider('pengaturan')).valueOrNull ??
+                          const GridLayout())
+                      .isEmpty)
                 TextButton(
                   onPressed: () =>
                       simpanGridLayout(ref, 'pengaturan', const GridLayout()),
                   child: const Text('SUSUNAN AWAL'),
                 ),
+              const SizedBox(width: AppSpacing.xs),
+              // Saat menata, tombolnya jadi tegas supaya jelas ini keadaan
+              // sementara yang harus diakhiri.
+              _menata
+                  ? FilledButton.icon(
+                      onPressed: () => setState(() => _menata = false),
+                      icon: const Icon(Icons.check, size: 16),
+                      label: const Text('SELESAI MENATA'),
+                    )
+                  : OutlinedButton.icon(
+                      onPressed: () => setState(() => _menata = true),
+                      icon: const Icon(Icons.dashboard_customize_outlined,
+                          size: 16),
+                      label: const Text('UBAH LAYOUT'),
+                    ),
               const SizedBox(width: AppSpacing.xs),
               OutlinedButton.icon(
                 onPressed: () => ref.read(syncServiceProvider).syncNow(),
@@ -80,6 +106,7 @@ class SettingsView extends ConsumerWidget {
                     layout:
                         ref.watch(gridLayoutProvider('pengaturan')).valueOrNull ??
                             const GridLayout(),
+                    editable: _menata,
                     onLayoutChanged: (v) =>
                         simpanGridLayout(ref, 'pengaturan', v),
                     areas: const [

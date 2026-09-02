@@ -8,6 +8,7 @@ import '../claims/claims_view.dart';
 import '../mywork/my_work_view.dart';
 import '../reports/reports_view.dart';
 import '../revenue/revenue_view.dart';
+import '../service/service_reports_view.dart';
 import '../service/service_view.dart';
 import '../settings/settings_view.dart';
 
@@ -29,14 +30,34 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(isAdminProvider);
 
+    // Dikelompokkan supaya dua dunia yang berbeda tidak tercampur: layanan
+    // ke pelanggan di satu sisi, pengajuan ke brand di sisi lain. Keduanya
+    // menyangkut unit yang sama tetapi lawan bicaranya berbeda.
     final sections = <_Section>[
-      if (isAdmin) const _Section('Servis', Icons.receipt_long_outlined),
-      const _Section('Klaim', Icons.description_outlined),
+      if (isAdmin) ...[
+        const _Section(
+          'Servis',
+          Icons.receipt_long_outlined,
+          grup: 'Pelanggan',
+        ),
+        const _Section('Laporan Servis', Icons.summarize_outlined),
+      ],
+      _Section(
+        'Klaim',
+        Icons.description_outlined,
+        grup: isAdmin ? 'Garansi' : null,
+      ),
+      if (isAdmin) ...[
+        const _Section('Rekap', Icons.insights_outlined),
+        const _Section('Pendapatan', Icons.payments_outlined),
+      ],
       // Terbuka untuk semua peran: tiap orang berhak melihat hasil kerjanya
       // sendiri, dan halaman ini tidak memuat angka rupiah.
-      const _Section('Pekerjaanku', Icons.engineering_outlined),
-      if (isAdmin) const _Section('Rekap', Icons.insights_outlined),
-      if (isAdmin) const _Section('Pendapatan', Icons.payments_outlined),
+      _Section(
+        'Pekerjaanku',
+        Icons.engineering_outlined,
+        grup: isAdmin ? 'Lainnya' : null,
+      ),
       if (isAdmin) const _Section('Pengaturan', Icons.tune),
     ];
 
@@ -61,6 +82,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
             Expanded(
               child: switch (sections[index].label) {
                 'Servis' => const ServiceView(),
+                'Laporan Servis' => const ServiceReportsView(),
                 'Pekerjaanku' => const MyWorkView(),
                 'Rekap' => const ReportsView(),
                 'Pendapatan' => const RevenueView(),
@@ -76,9 +98,14 @@ class _AdminShellState extends ConsumerState<AdminShell> {
 }
 
 class _Section {
-  const _Section(this.label, this.icon);
+  const _Section(this.label, this.icon, {this.grup});
+
   final String label;
   final IconData icon;
+
+  /// Judul kelompok yang dicetak di atas item ini. Hanya diisi pada item
+  /// pertama tiap kelompok.
+  final String? grup;
 }
 
 class _Sidebar extends ConsumerWidget {
@@ -132,12 +159,31 @@ class _Sidebar extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.md),
 
-          for (var i = 0; i < sections.length; i++)
+          for (var i = 0; i < sections.length; i++) ...[
+            if (sections[i].grup != null)
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.sm,
+                  i == 0 ? 0 : AppSpacing.s,
+                  AppSpacing.sm,
+                  6,
+                ),
+                child: Text(
+                  sections[i].grup!.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: AppColors.grey,
+                  ),
+                ),
+              ),
             _NavItem(
               section: sections[i],
               selected: i == selected,
               onTap: () => onSelect(i),
             ),
+          ],
 
           const Spacer(),
           const _SyncRow(),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -11,6 +12,11 @@ import 'features/shell/admin_shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Nama hari dan bulan berbahasa Indonesia dipakai di laporan servis.
+  // Tanpa pemuatan ini, DateFormat dengan locale 'id' melempar galat saat
+  // halamannya dibuka.
+  await initializeDateFormatting('id', null);
 
   if (!AppConfig.isConfigured) {
     runApp(const _ConfigMissingApp());

@@ -6,6 +6,7 @@ import '../../core/local/database.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
+import '../../core/widgets/grid_canvas.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import 'revenue_cards.dart';
 
@@ -52,34 +53,27 @@ class SettingsView extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.s),
+          // Tinggi tiap kartu ditentukan isinya lewat rowSpan, bukan dipaksa
+          // muat di tinggi jendela. Halaman boleh lebih panjang dan digulir
+          // -- jauh lebih baik daripada memampatkan semuanya sampai sempit.
           Expanded(
             child: LayoutBuilder(
               builder: (context, c) {
                 if (c.maxWidth > 900) {
-                  return Column(
-                    children: const [
-                      Expanded(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(flex: 3, child: _UsersCard()),
-                            SizedBox(width: AppSpacing.s),
-                            Expanded(flex: 2, child: _BrandsCard()),
-                            SizedBox(width: AppSpacing.s),
-                            Expanded(flex: 2, child: _PartTypesCard()),
-                          ],
-                        ),
-                      ),
-                      SizedBox(height: AppSpacing.s),
-                      Expanded(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(flex: 3, child: BrandFeesCard()),
-                            SizedBox(width: AppSpacing.s),
-                            Expanded(flex: 4, child: RevenueSplitCard()),
-                          ],
-                        ),
+                  return GridCanvas(
+                    columns: 12,
+                    rowHeight: 52,
+                    gap: AppSpacing.s,
+                    padding: const EdgeInsets.only(bottom: AppSpacing.s),
+                    areas: const [
+                      GridArea(colSpan: 4, rowSpan: 7, child: _UsersCard()),
+                      GridArea(colSpan: 4, rowSpan: 7, child: _BrandsCard()),
+                      GridArea(colSpan: 4, rowSpan: 7, child: _PartTypesCard()),
+                      GridArea(colSpan: 5, rowSpan: 9, child: BrandFeesCard()),
+                      GridArea(
+                        colSpan: 7,
+                        rowSpan: 9,
+                        child: RevenueSplitCard(),
                       ),
                     ],
                   );
@@ -92,9 +86,9 @@ class SettingsView extends ConsumerWidget {
                     SizedBox(height: AppSpacing.s),
                     SizedBox(height: 300, child: _PartTypesCard()),
                     SizedBox(height: AppSpacing.s),
-                    SizedBox(height: 340, child: BrandFeesCard()),
+                    SizedBox(height: 400, child: BrandFeesCard()),
                     SizedBox(height: AppSpacing.s),
-                    SizedBox(height: 560, child: RevenueSplitCard()),
+                    SizedBox(height: 620, child: RevenueSplitCard()),
                     SizedBox(height: AppSpacing.sm),
                   ],
                 );

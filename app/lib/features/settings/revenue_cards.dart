@@ -588,33 +588,86 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
               onTap: (v) => setState(() => _metode = v),
             ),
 
+            // Tabel silang brand x teknisi. Susunan bertumpuk sebelumnya
+            // memakan ruang berlebihan dan menyulitkan membandingkan porsi
+            // orang yang sama antar brand.
             if (_metode == 'manual') ...[
               const SizedBox(height: AppSpacing.xs),
-              const Divider(),
-              for (final b in brands) ...[
-                const SizedBox(height: AppSpacing.xs),
+              if (techs.isEmpty)
+                Text(
+                  'Belum ada teknisi untuk diatur porsinya.',
+                  style: Theme.of(context).textTheme.labelSmall,
+                )
+              else ...[
                 Row(
                   children: [
-                    Expanded(
+                    SizedBox(
+                      width: 76,
                       child: Text(
-                        b.nama.toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.9,
-                        ),
+                        'BRAND',
+                        style: Theme.of(context).textTheme.labelSmall,
                       ),
                     ),
-                    _SisaTag(sisa: _sisaBrand(b.id, techs)),
+                    for (final t in techs)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: Text(
+                            t.nama.toUpperCase(),
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                        ),
+                      ),
+                    SizedBox(
+                      width: 62,
+                      child: Text(
+                        'SISA',
+                        textAlign: TextAlign.right,
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                for (final t in techs)
-                  _PercentRow(
-                    label: t.nama,
-                    controller: _shares[_key(b.id, t.id)]!,
-                    onChanged: _touch,
-                    dense: true,
+                const Divider(),
+                for (final b in brands)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 76,
+                          child: Text(
+                            b.nama,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                        for (final t in techs)
+                          Expanded(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 2),
+                              child: _PercentCell(
+                                controller: _shares[_key(b.id, t.id)]!,
+                                onChanged: _touch,
+                              ),
+                            ),
+                          ),
+                        SizedBox(
+                          width: 62,
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: _SisaTag(sisa: _sisaBrand(b.id, techs)),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ],
@@ -642,25 +695,22 @@ class _PercentRow extends StatelessWidget {
     required this.label,
     required this.controller,
     required this.onChanged,
-    this.dense = false,
   });
 
   final String label;
   final TextEditingController controller;
   final VoidCallback onChanged;
-  final bool dense;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: dense ? 4 : AppSpacing.xs),
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: Row(
         children: [
-          if (dense) const SizedBox(width: AppSpacing.s),
           Expanded(
             child: Text(
               label,
-              style: TextStyle(fontSize: dense ? 12 : 13),
+              style: const TextStyle(fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -671,23 +721,44 @@ class _PercentRow extends StatelessWidget {
               textAlign: TextAlign.right,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 suffixText: '%',
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: 8,
-                  vertical: dense ? 7 : 10,
+                  vertical: 10,
                 ),
               ),
-              style: TextStyle(
-                fontSize: dense ? 12 : 13,
-                fontWeight: FontWeight.w700,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
               onChanged: (_) => onChanged(),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Kolom persen ringkas untuk tabel silang.
+class _PercentCell extends StatelessWidget {
+  const _PercentCell({required this.controller, required this.onChanged});
+
+  final TextEditingController controller;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      textAlign: TextAlign.center,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: const InputDecoration(
+        isDense: true,
+        contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+      ),
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+      onChanged: (_) => onChanged(),
     );
   }
 }

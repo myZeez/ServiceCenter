@@ -134,6 +134,67 @@ class BrandRuleEntries extends Table {
   Set<Column> get primaryKey => {brandId};
 }
 
+// Nota servis dan pengiriman. Cerminan baca saja: penulisannya langsung ke
+// server, karena nomor nota harus ditetapkan di sana agar tidak pernah
+// kembar. Yang disimpan di sini membuat daftar dan laporannya tetap
+// terbaca saat koneksi putus.
+
+class ServiceOrderEntries extends Table {
+  TextColumn get id => text()();
+  TextColumn get noNota => text()();
+  DateTimeColumn get tanggalMasuk => dateTime()();
+  DateTimeColumn get estimasiSelesai => dateTime().nullable()();
+
+  TextColumn get customerNama => text()();
+  TextColumn get customerTelp => text().nullable()();
+  TextColumn get operatorId => text().nullable()();
+
+  TextColumn get barangNama => text()();
+  TextColumn get barangType => text().nullable()();
+  TextColumn get barangSn => text().nullable()();
+  TextColumn get kelengkapan => text().nullable()();
+
+  TextColumn get keluhan => text().nullable()();
+  TextColumn get teknisiId => text().nullable()();
+  TextColumn get perbaikan => text().nullable()();
+
+  BoolColumn get garansi => boolean().withDefault(const Constant(false))();
+  TextColumn get claimId => text().nullable()();
+
+  TextColumn get status => text()();
+  RealColumn get biaya => real().withDefault(const Constant(0))();
+  TextColumn get caraBayar => text().nullable()();
+  DateTimeColumn get tanggalLunas => dateTime().nullable()();
+  TextColumn get keterangan => text().nullable()();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class ShipmentEntries extends Table {
+  TextColumn get id => text()();
+  DateTimeColumn get tanggalKirim => dateTime()();
+  TextColumn get dariCabang => text()();
+  TextColumn get keCabang => text()();
+  TextColumn get userNama => text().nullable()();
+
+  TextColumn get barangNama => text()();
+  TextColumn get serialNumber => text().nullable()();
+  TextColumn get keluhan => text().nullable()();
+  TextColumn get kelengkapan => text().nullable()();
+
+  TextColumn get status => text()();
+  DateTimeColumn get tanggalKembali => dateTime().nullable()();
+  TextColumn get keterangan => text().nullable()();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Penyimpanan kunci-nilai untuk keperluan sinkron, mis. kapan terakhir
 /// menarik data dari server.
 class SyncMeta extends Table {
@@ -156,6 +217,8 @@ class SyncMeta extends Table {
     RevenueConfigs,
     BrandShareEntries,
     BrandRuleEntries,
+    ServiceOrderEntries,
+    ShipmentEntries,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -164,7 +227,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -187,6 +250,10 @@ class AppDatabase extends _$AppDatabase {
                 .customStatement('drop table if exists technician_share_entries');
             await m.createTable(brandShareEntries);
             await m.createTable(brandRuleEntries);
+          }
+          if (from < 5) {
+            await m.createTable(serviceOrderEntries);
+            await m.createTable(shipmentEntries);
           }
         },
       );
@@ -388,6 +455,29 @@ class AppDatabase extends _$AppDatabase {
           ))
         .watch();
   }
+
+  // ------------------------------------------------------------------
+  // Administrasi servis
+  // ------------------------------------------------------------------
+
+  Stream<List<ServiceOrderEntry>> watchServiceOrders() =>
+      (select(serviceOrderEntries)
+            ..orderBy([(t) => OrderingTerm.desc(t.tanggalMasuk)]))
+          .watch();
+
+  Stream<ServiceOrderEntry?> watchServiceOrder(String id) =>
+      (select(serviceOrderEntries)..where((t) => t.id.equals(id)))
+          .watchSingleOrNull();
+
+  Stream<List<ShipmentEntry>> watchShipments() => (select(shipmentEntries)
+        ..orderBy([(t) => OrderingTerm.desc(t.tanggalKirim)]))
+      .watch();
+
+  Future<void> upsertServiceOrder(ServiceOrderEntriesCompanion row) =>
+      into(serviceOrderEntries).insertOnConflictUpdate(row);
+
+  Future<void> upsertShipment(ShipmentEntriesCompanion row) =>
+      into(shipmentEntries).insertOnConflictUpdate(row);
 
   Stream<List<BrandFeeEntry>> watchBrandFees() => select(brandFeeEntries).watch();
 

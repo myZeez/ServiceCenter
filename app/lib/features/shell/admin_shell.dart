@@ -8,6 +8,7 @@ import '../claims/claims_view.dart';
 import '../mywork/my_work_view.dart';
 import '../reports/reports_view.dart';
 import '../revenue/revenue_view.dart';
+import '../service/service_view.dart';
 import '../settings/settings_view.dart';
 
 /// Kerangka untuk layar lebar: navigasi tetap di kiri, isi berganti di kanan.
@@ -29,6 +30,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     final isAdmin = ref.watch(isAdminProvider);
 
     final sections = <_Section>[
+      if (isAdmin) const _Section('Servis', Icons.receipt_long_outlined),
       const _Section('Klaim', Icons.description_outlined),
       // Terbuka untuk semua peran: tiap orang berhak melihat hasil kerjanya
       // sendiri, dan halaman ini tidak memuat angka rupiah.
@@ -58,6 +60,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
             const SizedBox(width: AppSpacing.s),
             Expanded(
               child: switch (sections[index].label) {
+                'Servis' => const ServiceView(),
                 'Pekerjaanku' => const MyWorkView(),
                 'Rekap' => const ReportsView(),
                 'Pendapatan' => const RevenueView(),

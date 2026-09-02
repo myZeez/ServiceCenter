@@ -69,6 +69,7 @@ class SyncService {
       await _pushParts();
       await _pullMasterData();
       await _pullClaims();
+      await _pullAdministrasi();
 
       _statusCtrl.add(SyncStatus(SyncState.idle, lastSync: DateTime.now()));
     } catch (e) {
@@ -289,6 +290,99 @@ class SyncService {
       await _db.setMeta(_kLastPull, newest.toUtc().toIso8601String());
     }
   }
+
+  /// Nota servis dan pengiriman. Cerminan baca saja -- penulisannya
+  /// langsung ke server, jadi tidak ada antrean yang perlu didorong.
+  ///
+  /// Teknisi menarik nol baris karena aturan akses di server membatasinya
+  /// ke admin; angka biaya dan piutang tidak pernah sampai ke perangkat
+  /// mereka.
+  Future<void> _pullAdministrasi() async {
+    const kunciNota = 'last_pull_nota';
+    const kunciKirim = 'last_pull_kirim';
+
+    final sejakNota = await _db.getMeta(kunciNota);
+    var qNota = _client.from('service_orders').select();
+    if (sejakNota != null) qNota = qNota.gt('updated_at', sejakNota);
+
+    DateTime? terbaruNota =
+        sejakNota != null ? DateTime.parse(sejakNota) : null;
+
+    for (final r in await qNota) {
+      final diubah = DateTime.parse(r['updated_at'] as String);
+      if (terbaruNota == null || diubah.isAfter(terbaruNota)) {
+        terbaruNota = diubah;
+      }
+
+      await _db.upsertServiceOrder(
+        ServiceOrderEntriesCompanion.insert(
+          id: r['id'] as String,
+          noNota: r['no_nota'] as String,
+          tanggalMasuk: DateTime.parse(r['tanggal_masuk'] as String).toLocal(),
+          estimasiSelesai: Value(_tanggal(r['estimasi_selesai'])),
+          customerNama: r['customer_nama'] as String,
+          customerTelp: Value(r['customer_telp'] as String?),
+          operatorId: Value(r['operator_id'] as String?),
+          barangNama: r['barang_nama'] as String,
+          barangType: Value(r['barang_type'] as String?),
+          barangSn: Value(r['barang_sn'] as String?),
+          kelengkapan: Value(r['kelengkapan'] as String?),
+          keluhan: Value(r['keluhan'] as String?),
+          teknisiId: Value(r['teknisi_id'] as String?),
+          perbaikan: Value(r['perbaikan'] as String?),
+          garansi: Value(r['garansi'] as bool? ?? false),
+          claimId: Value(r['claim_id'] as String?),
+          status: r['status'] as String,
+          biaya: Value((r['biaya'] as num?)?.toDouble() ?? 0),
+          caraBayar: Value(r['cara_bayar'] as String?),
+          tanggalLunas: Value(_tanggal(r['tanggal_lunas'])),
+          keterangan: Value(r['keterangan'] as String?),
+          updatedAt: diubah.toLocal(),
+        ),
+      );
+    }
+    if (terbaruNota != null) {
+      await _db.setMeta(kunciNota, terbaruNota.toUtc().toIso8601String());
+    }
+
+    final sejakKirim = await _db.getMeta(kunciKirim);
+    var qKirim = _client.from('shipments').select();
+    if (sejakKirim != null) qKirim = qKirim.gt('updated_at', sejakKirim);
+
+    DateTime? terbaruKirim =
+        sejakKirim != null ? DateTime.parse(sejakKirim) : null;
+
+    for (final r in await qKirim) {
+      final diubah = DateTime.parse(r['updated_at'] as String);
+      if (terbaruKirim == null || diubah.isAfter(terbaruKirim)) {
+        terbaruKirim = diubah;
+      }
+
+      await _db.upsertShipment(
+        ShipmentEntriesCompanion.insert(
+          id: r['id'] as String,
+          tanggalKirim: _tanggal(r['tanggal_kirim'])!,
+          dariCabang: r['dari_cabang'] as String,
+          keCabang: r['ke_cabang'] as String,
+          userNama: Value(r['user_nama'] as String?),
+          barangNama: r['barang_nama'] as String,
+          serialNumber: Value(r['serial_number'] as String?),
+          keluhan: Value(r['keluhan'] as String?),
+          kelengkapan: Value(r['kelengkapan'] as String?),
+          status: r['status'] as String,
+          tanggalKembali: Value(_tanggal(r['tanggal_kembali'])),
+          keterangan: Value(r['keterangan'] as String?),
+          updatedAt: diubah.toLocal(),
+        ),
+      );
+    }
+    if (terbaruKirim != null) {
+      await _db.setMeta(kunciKirim, terbaruKirim.toUtc().toIso8601String());
+    }
+  }
+
+  static DateTime? _tanggal(Object? v) =>
+      v == null ? null : DateTime.parse(v as String);
 
   Map<String, dynamic> _claimToRow(Claim c) => {
         'id': c.id,

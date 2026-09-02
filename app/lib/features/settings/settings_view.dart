@@ -8,6 +8,7 @@ import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
 import '../../core/widgets/grid_canvas.dart';
 import '../../core/widgets/swiss_widgets.dart';
+import 'omset_card.dart';
 import 'print_cards.dart';
 import 'revenue_cards.dart';
 
@@ -124,6 +125,12 @@ class SettingsView extends ConsumerWidget {
                         rowSpan: 9,
                         child: PrinterCard(),
                       ),
+                      GridArea(
+                        id: 'omset',
+                        colSpan: 6,
+                        rowSpan: 8,
+                        child: OmsetCard(),
+                      ),
                     ],
                   );
                 }
@@ -142,6 +149,8 @@ class SettingsView extends ConsumerWidget {
                     SizedBox(height: 520, child: StoreCard()),
                     SizedBox(height: AppSpacing.s),
                     SizedBox(height: 400, child: PrinterCard()),
+                    SizedBox(height: AppSpacing.s),
+                    SizedBox(height: 460, child: OmsetCard()),
                     SizedBox(height: AppSpacing.sm),
                   ],
                 );

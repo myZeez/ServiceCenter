@@ -234,6 +234,18 @@ class SyncService {
       );
     }
 
+    final servisRows =
+        await _client.from('service_settings').select().eq('id', 1);
+    for (final r in servisRows) {
+      await _db.upsertServiceSettings(
+        ServiceSettingsRowsCompanion.insert(
+          id: Value(r['id'] as int),
+          targetOmset: (r['target_omset'] as num).toDouble(),
+          feeAdminPerNota: (r['fee_admin_per_nota'] as num).toDouble(),
+        ),
+      );
+    }
+
     final tokoRows = await _client.from('store_settings').select().eq('id', 1);
     for (final r in tokoRows) {
       await _db.upsertStoreSettings(
@@ -365,6 +377,7 @@ class SyncService {
           biaya: Value((r['biaya'] as num?)?.toDouble() ?? 0),
           caraBayar: Value(r['cara_bayar'] as String?),
           tanggalLunas: Value(_tanggal(r['tanggal_lunas'])),
+          tanggalSelesai: Value(_tanggal(r['tanggal_selesai'])),
           keterangan: Value(r['keterangan'] as String?),
           updatedAt: diubah.toLocal(),
         ),

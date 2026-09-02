@@ -169,9 +169,25 @@ class ServiceOrderEntries extends Table {
   RealColumn get biaya => real().withDefault(const Constant(0))();
   TextColumn get caraBayar => text().nullable()();
   DateTimeColumn get tanggalLunas => dateTime().nullable()();
+
+  /// Kapan pekerjaannya dinyatakan rampung. Dasar perhitungan omset --
+  /// bukan tanggal masuk, bukan pula tanggal pelunasan.
+  DateTimeColumn get tanggalSelesai => dateTime().nullable()();
+
   TextColumn get keterangan => text().nullable()();
 
   DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Aturan omset jasa. Terpisah dari RevenueConfigs yang mengatur bagi hasil
+/// garansi -- dua kantong berbeda dengan aturan berbeda.
+class ServiceSettingsRows extends Table {
+  IntColumn get id => integer()();
+  RealColumn get targetOmset => real()();
+  RealColumn get feeAdminPerNota => real()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -252,6 +268,7 @@ class SyncMeta extends Table {
     ShipmentEntries,
     StoreSettings,
     CustomerEntries,
+    ServiceSettingsRows,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -260,7 +277,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -297,6 +314,13 @@ class AppDatabase extends _$AppDatabase {
               serviceOrderEntries,
               serviceOrderEntries.customerId,
             );
+          }
+          if (from < 8) {
+            await m.addColumn(
+              serviceOrderEntries,
+              serviceOrderEntries.tanggalSelesai,
+            );
+            await m.createTable(serviceSettingsRows);
           }
         },
       );
@@ -521,6 +545,13 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> upsertShipment(ShipmentEntriesCompanion row) =>
       into(shipmentEntries).insertOnConflictUpdate(row);
+
+  Stream<ServiceSettingsRow?> watchServiceSettings() =>
+      (select(serviceSettingsRows)..where((t) => t.id.equals(1)))
+          .watchSingleOrNull();
+
+  Future<void> upsertServiceSettings(ServiceSettingsRowsCompanion row) =>
+      into(serviceSettingsRows).insertOnConflictUpdate(row);
 
   Stream<List<CustomerEntry>> watchCustomers() =>
       (select(customerEntries)

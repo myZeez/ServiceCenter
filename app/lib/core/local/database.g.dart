@@ -3816,6 +3816,18 @@ class $ServiceOrderEntriesTable extends ServiceOrderEntries
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _tanggalSelesaiMeta = const VerificationMeta(
+    'tanggalSelesai',
+  );
+  @override
+  late final GeneratedColumn<DateTime> tanggalSelesai =
+      GeneratedColumn<DateTime>(
+        'tanggal_selesai',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _keteranganMeta = const VerificationMeta(
     'keterangan',
   );
@@ -3861,6 +3873,7 @@ class $ServiceOrderEntriesTable extends ServiceOrderEntries
     biaya,
     caraBayar,
     tanggalLunas,
+    tanggalSelesai,
     keterangan,
     updatedAt,
   ];
@@ -4029,6 +4042,15 @@ class $ServiceOrderEntriesTable extends ServiceOrderEntries
         ),
       );
     }
+    if (data.containsKey('tanggal_selesai')) {
+      context.handle(
+        _tanggalSelesaiMeta,
+        tanggalSelesai.isAcceptableOrUnknown(
+          data['tanggal_selesai']!,
+          _tanggalSelesaiMeta,
+        ),
+      );
+    }
     if (data.containsKey('keterangan')) {
       context.handle(
         _keteranganMeta,
@@ -4136,6 +4158,10 @@ class $ServiceOrderEntriesTable extends ServiceOrderEntries
         DriftSqlType.dateTime,
         data['${effectivePrefix}tanggal_lunas'],
       ),
+      tanggalSelesai: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}tanggal_selesai'],
+      ),
       keterangan: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}keterangan'],
@@ -4176,6 +4202,10 @@ class ServiceOrderEntry extends DataClass
   final double biaya;
   final String? caraBayar;
   final DateTime? tanggalLunas;
+
+  /// Kapan pekerjaannya dinyatakan rampung. Dasar perhitungan omset --
+  /// bukan tanggal masuk, bukan pula tanggal pelunasan.
+  final DateTime? tanggalSelesai;
   final String? keterangan;
   final DateTime updatedAt;
   const ServiceOrderEntry({
@@ -4200,6 +4230,7 @@ class ServiceOrderEntry extends DataClass
     required this.biaya,
     this.caraBayar,
     this.tanggalLunas,
+    this.tanggalSelesai,
     this.keterangan,
     required this.updatedAt,
   });
@@ -4252,6 +4283,9 @@ class ServiceOrderEntry extends DataClass
     }
     if (!nullToAbsent || tanggalLunas != null) {
       map['tanggal_lunas'] = Variable<DateTime>(tanggalLunas);
+    }
+    if (!nullToAbsent || tanggalSelesai != null) {
+      map['tanggal_selesai'] = Variable<DateTime>(tanggalSelesai);
     }
     if (!nullToAbsent || keterangan != null) {
       map['keterangan'] = Variable<String>(keterangan);
@@ -4309,6 +4343,9 @@ class ServiceOrderEntry extends DataClass
       tanggalLunas: tanggalLunas == null && nullToAbsent
           ? const Value.absent()
           : Value(tanggalLunas),
+      tanggalSelesai: tanggalSelesai == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tanggalSelesai),
       keterangan: keterangan == null && nullToAbsent
           ? const Value.absent()
           : Value(keterangan),
@@ -4343,6 +4380,7 @@ class ServiceOrderEntry extends DataClass
       biaya: serializer.fromJson<double>(json['biaya']),
       caraBayar: serializer.fromJson<String?>(json['caraBayar']),
       tanggalLunas: serializer.fromJson<DateTime?>(json['tanggalLunas']),
+      tanggalSelesai: serializer.fromJson<DateTime?>(json['tanggalSelesai']),
       keterangan: serializer.fromJson<String?>(json['keterangan']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -4372,6 +4410,7 @@ class ServiceOrderEntry extends DataClass
       'biaya': serializer.toJson<double>(biaya),
       'caraBayar': serializer.toJson<String?>(caraBayar),
       'tanggalLunas': serializer.toJson<DateTime?>(tanggalLunas),
+      'tanggalSelesai': serializer.toJson<DateTime?>(tanggalSelesai),
       'keterangan': serializer.toJson<String?>(keterangan),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -4399,6 +4438,7 @@ class ServiceOrderEntry extends DataClass
     double? biaya,
     Value<String?> caraBayar = const Value.absent(),
     Value<DateTime?> tanggalLunas = const Value.absent(),
+    Value<DateTime?> tanggalSelesai = const Value.absent(),
     Value<String?> keterangan = const Value.absent(),
     DateTime? updatedAt,
   }) => ServiceOrderEntry(
@@ -4425,6 +4465,9 @@ class ServiceOrderEntry extends DataClass
     biaya: biaya ?? this.biaya,
     caraBayar: caraBayar.present ? caraBayar.value : this.caraBayar,
     tanggalLunas: tanggalLunas.present ? tanggalLunas.value : this.tanggalLunas,
+    tanggalSelesai: tanggalSelesai.present
+        ? tanggalSelesai.value
+        : this.tanggalSelesai,
     keterangan: keterangan.present ? keterangan.value : this.keterangan,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -4471,6 +4514,9 @@ class ServiceOrderEntry extends DataClass
       tanggalLunas: data.tanggalLunas.present
           ? data.tanggalLunas.value
           : this.tanggalLunas,
+      tanggalSelesai: data.tanggalSelesai.present
+          ? data.tanggalSelesai.value
+          : this.tanggalSelesai,
       keterangan: data.keterangan.present
           ? data.keterangan.value
           : this.keterangan,
@@ -4502,6 +4548,7 @@ class ServiceOrderEntry extends DataClass
           ..write('biaya: $biaya, ')
           ..write('caraBayar: $caraBayar, ')
           ..write('tanggalLunas: $tanggalLunas, ')
+          ..write('tanggalSelesai: $tanggalSelesai, ')
           ..write('keterangan: $keterangan, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4531,6 +4578,7 @@ class ServiceOrderEntry extends DataClass
     biaya,
     caraBayar,
     tanggalLunas,
+    tanggalSelesai,
     keterangan,
     updatedAt,
   ]);
@@ -4559,6 +4607,7 @@ class ServiceOrderEntry extends DataClass
           other.biaya == this.biaya &&
           other.caraBayar == this.caraBayar &&
           other.tanggalLunas == this.tanggalLunas &&
+          other.tanggalSelesai == this.tanggalSelesai &&
           other.keterangan == this.keterangan &&
           other.updatedAt == this.updatedAt);
 }
@@ -4585,6 +4634,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
   final Value<double> biaya;
   final Value<String?> caraBayar;
   final Value<DateTime?> tanggalLunas;
+  final Value<DateTime?> tanggalSelesai;
   final Value<String?> keterangan;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -4610,6 +4660,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
     this.biaya = const Value.absent(),
     this.caraBayar = const Value.absent(),
     this.tanggalLunas = const Value.absent(),
+    this.tanggalSelesai = const Value.absent(),
     this.keterangan = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4636,6 +4687,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
     this.biaya = const Value.absent(),
     this.caraBayar = const Value.absent(),
     this.tanggalLunas = const Value.absent(),
+    this.tanggalSelesai = const Value.absent(),
     this.keterangan = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -4668,6 +4720,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
     Expression<double>? biaya,
     Expression<String>? caraBayar,
     Expression<DateTime>? tanggalLunas,
+    Expression<DateTime>? tanggalSelesai,
     Expression<String>? keterangan,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -4694,6 +4747,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
       if (biaya != null) 'biaya': biaya,
       if (caraBayar != null) 'cara_bayar': caraBayar,
       if (tanggalLunas != null) 'tanggal_lunas': tanggalLunas,
+      if (tanggalSelesai != null) 'tanggal_selesai': tanggalSelesai,
       if (keterangan != null) 'keterangan': keterangan,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -4722,6 +4776,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
     Value<double>? biaya,
     Value<String?>? caraBayar,
     Value<DateTime?>? tanggalLunas,
+    Value<DateTime?>? tanggalSelesai,
     Value<String?>? keterangan,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -4748,6 +4803,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
       biaya: biaya ?? this.biaya,
       caraBayar: caraBayar ?? this.caraBayar,
       tanggalLunas: tanggalLunas ?? this.tanggalLunas,
+      tanggalSelesai: tanggalSelesai ?? this.tanggalSelesai,
       keterangan: keterangan ?? this.keterangan,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -4820,6 +4876,9 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
     if (tanggalLunas.present) {
       map['tanggal_lunas'] = Variable<DateTime>(tanggalLunas.value);
     }
+    if (tanggalSelesai.present) {
+      map['tanggal_selesai'] = Variable<DateTime>(tanggalSelesai.value);
+    }
     if (keterangan.present) {
       map['keterangan'] = Variable<String>(keterangan.value);
     }
@@ -4856,6 +4915,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
           ..write('biaya: $biaya, ')
           ..write('caraBayar: $caraBayar, ')
           ..write('tanggalLunas: $tanggalLunas, ')
+          ..write('tanggalSelesai: $tanggalSelesai, ')
           ..write('keterangan: $keterangan, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -6440,6 +6500,267 @@ class CustomerEntriesCompanion extends UpdateCompanion<CustomerEntry> {
   }
 }
 
+class $ServiceSettingsRowsTable extends ServiceSettingsRows
+    with TableInfo<$ServiceSettingsRowsTable, ServiceSettingsRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ServiceSettingsRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _targetOmsetMeta = const VerificationMeta(
+    'targetOmset',
+  );
+  @override
+  late final GeneratedColumn<double> targetOmset = GeneratedColumn<double>(
+    'target_omset',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _feeAdminPerNotaMeta = const VerificationMeta(
+    'feeAdminPerNota',
+  );
+  @override
+  late final GeneratedColumn<double> feeAdminPerNota = GeneratedColumn<double>(
+    'fee_admin_per_nota',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, targetOmset, feeAdminPerNota];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'service_settings_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ServiceSettingsRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('target_omset')) {
+      context.handle(
+        _targetOmsetMeta,
+        targetOmset.isAcceptableOrUnknown(
+          data['target_omset']!,
+          _targetOmsetMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_targetOmsetMeta);
+    }
+    if (data.containsKey('fee_admin_per_nota')) {
+      context.handle(
+        _feeAdminPerNotaMeta,
+        feeAdminPerNota.isAcceptableOrUnknown(
+          data['fee_admin_per_nota']!,
+          _feeAdminPerNotaMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_feeAdminPerNotaMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ServiceSettingsRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ServiceSettingsRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      targetOmset: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}target_omset'],
+      )!,
+      feeAdminPerNota: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}fee_admin_per_nota'],
+      )!,
+    );
+  }
+
+  @override
+  $ServiceSettingsRowsTable createAlias(String alias) {
+    return $ServiceSettingsRowsTable(attachedDatabase, alias);
+  }
+}
+
+class ServiceSettingsRow extends DataClass
+    implements Insertable<ServiceSettingsRow> {
+  final int id;
+  final double targetOmset;
+  final double feeAdminPerNota;
+  const ServiceSettingsRow({
+    required this.id,
+    required this.targetOmset,
+    required this.feeAdminPerNota,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['target_omset'] = Variable<double>(targetOmset);
+    map['fee_admin_per_nota'] = Variable<double>(feeAdminPerNota);
+    return map;
+  }
+
+  ServiceSettingsRowsCompanion toCompanion(bool nullToAbsent) {
+    return ServiceSettingsRowsCompanion(
+      id: Value(id),
+      targetOmset: Value(targetOmset),
+      feeAdminPerNota: Value(feeAdminPerNota),
+    );
+  }
+
+  factory ServiceSettingsRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ServiceSettingsRow(
+      id: serializer.fromJson<int>(json['id']),
+      targetOmset: serializer.fromJson<double>(json['targetOmset']),
+      feeAdminPerNota: serializer.fromJson<double>(json['feeAdminPerNota']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'targetOmset': serializer.toJson<double>(targetOmset),
+      'feeAdminPerNota': serializer.toJson<double>(feeAdminPerNota),
+    };
+  }
+
+  ServiceSettingsRow copyWith({
+    int? id,
+    double? targetOmset,
+    double? feeAdminPerNota,
+  }) => ServiceSettingsRow(
+    id: id ?? this.id,
+    targetOmset: targetOmset ?? this.targetOmset,
+    feeAdminPerNota: feeAdminPerNota ?? this.feeAdminPerNota,
+  );
+  ServiceSettingsRow copyWithCompanion(ServiceSettingsRowsCompanion data) {
+    return ServiceSettingsRow(
+      id: data.id.present ? data.id.value : this.id,
+      targetOmset: data.targetOmset.present
+          ? data.targetOmset.value
+          : this.targetOmset,
+      feeAdminPerNota: data.feeAdminPerNota.present
+          ? data.feeAdminPerNota.value
+          : this.feeAdminPerNota,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ServiceSettingsRow(')
+          ..write('id: $id, ')
+          ..write('targetOmset: $targetOmset, ')
+          ..write('feeAdminPerNota: $feeAdminPerNota')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, targetOmset, feeAdminPerNota);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ServiceSettingsRow &&
+          other.id == this.id &&
+          other.targetOmset == this.targetOmset &&
+          other.feeAdminPerNota == this.feeAdminPerNota);
+}
+
+class ServiceSettingsRowsCompanion extends UpdateCompanion<ServiceSettingsRow> {
+  final Value<int> id;
+  final Value<double> targetOmset;
+  final Value<double> feeAdminPerNota;
+  const ServiceSettingsRowsCompanion({
+    this.id = const Value.absent(),
+    this.targetOmset = const Value.absent(),
+    this.feeAdminPerNota = const Value.absent(),
+  });
+  ServiceSettingsRowsCompanion.insert({
+    this.id = const Value.absent(),
+    required double targetOmset,
+    required double feeAdminPerNota,
+  }) : targetOmset = Value(targetOmset),
+       feeAdminPerNota = Value(feeAdminPerNota);
+  static Insertable<ServiceSettingsRow> custom({
+    Expression<int>? id,
+    Expression<double>? targetOmset,
+    Expression<double>? feeAdminPerNota,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (targetOmset != null) 'target_omset': targetOmset,
+      if (feeAdminPerNota != null) 'fee_admin_per_nota': feeAdminPerNota,
+    });
+  }
+
+  ServiceSettingsRowsCompanion copyWith({
+    Value<int>? id,
+    Value<double>? targetOmset,
+    Value<double>? feeAdminPerNota,
+  }) {
+    return ServiceSettingsRowsCompanion(
+      id: id ?? this.id,
+      targetOmset: targetOmset ?? this.targetOmset,
+      feeAdminPerNota: feeAdminPerNota ?? this.feeAdminPerNota,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (targetOmset.present) {
+      map['target_omset'] = Variable<double>(targetOmset.value);
+    }
+    if (feeAdminPerNota.present) {
+      map['fee_admin_per_nota'] = Variable<double>(feeAdminPerNota.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ServiceSettingsRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('targetOmset: $targetOmset, ')
+          ..write('feeAdminPerNota: $feeAdminPerNota')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6467,6 +6788,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CustomerEntriesTable customerEntries = $CustomerEntriesTable(
     this,
   );
+  late final $ServiceSettingsRowsTable serviceSettingsRows =
+      $ServiceSettingsRowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6486,6 +6809,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     shipmentEntries,
     storeSettings,
     customerEntries,
+    serviceSettingsRows,
   ];
 }
 
@@ -8470,6 +8794,7 @@ typedef $$ServiceOrderEntriesTableCreateCompanionBuilder =
       Value<double> biaya,
       Value<String?> caraBayar,
       Value<DateTime?> tanggalLunas,
+      Value<DateTime?> tanggalSelesai,
       Value<String?> keterangan,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -8497,6 +8822,7 @@ typedef $$ServiceOrderEntriesTableUpdateCompanionBuilder =
       Value<double> biaya,
       Value<String?> caraBayar,
       Value<DateTime?> tanggalLunas,
+      Value<DateTime?> tanggalSelesai,
       Value<String?> keterangan,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -8613,6 +8939,11 @@ class $$ServiceOrderEntriesTableFilterComposer
 
   ColumnFilters<DateTime> get tanggalLunas => $composableBuilder(
     column: $table.tanggalLunas,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get tanggalSelesai => $composableBuilder(
+    column: $table.tanggalSelesai,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8741,6 +9072,11 @@ class $$ServiceOrderEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get tanggalSelesai => $composableBuilder(
+    column: $table.tanggalSelesai,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get keterangan => $composableBuilder(
     column: $table.keterangan,
     builder: (column) => ColumnOrderings(column),
@@ -8844,6 +9180,11 @@ class $$ServiceOrderEntriesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<DateTime> get tanggalSelesai => $composableBuilder(
+    column: $table.tanggalSelesai,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get keterangan => $composableBuilder(
     column: $table.keterangan,
     builder: (column) => column,
@@ -8917,6 +9258,7 @@ class $$ServiceOrderEntriesTableTableManager
                 Value<double> biaya = const Value.absent(),
                 Value<String?> caraBayar = const Value.absent(),
                 Value<DateTime?> tanggalLunas = const Value.absent(),
+                Value<DateTime?> tanggalSelesai = const Value.absent(),
                 Value<String?> keterangan = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -8942,6 +9284,7 @@ class $$ServiceOrderEntriesTableTableManager
                 biaya: biaya,
                 caraBayar: caraBayar,
                 tanggalLunas: tanggalLunas,
+                tanggalSelesai: tanggalSelesai,
                 keterangan: keterangan,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -8969,6 +9312,7 @@ class $$ServiceOrderEntriesTableTableManager
                 Value<double> biaya = const Value.absent(),
                 Value<String?> caraBayar = const Value.absent(),
                 Value<DateTime?> tanggalLunas = const Value.absent(),
+                Value<DateTime?> tanggalSelesai = const Value.absent(),
                 Value<String?> keterangan = const Value.absent(),
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -8994,6 +9338,7 @@ class $$ServiceOrderEntriesTableTableManager
                 biaya: biaya,
                 caraBayar: caraBayar,
                 tanggalLunas: tanggalLunas,
+                tanggalSelesai: tanggalSelesai,
                 keterangan: keterangan,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -9829,6 +10174,182 @@ typedef $$CustomerEntriesTableProcessedTableManager =
       CustomerEntry,
       PrefetchHooks Function()
     >;
+typedef $$ServiceSettingsRowsTableCreateCompanionBuilder =
+    ServiceSettingsRowsCompanion Function({
+      Value<int> id,
+      required double targetOmset,
+      required double feeAdminPerNota,
+    });
+typedef $$ServiceSettingsRowsTableUpdateCompanionBuilder =
+    ServiceSettingsRowsCompanion Function({
+      Value<int> id,
+      Value<double> targetOmset,
+      Value<double> feeAdminPerNota,
+    });
+
+class $$ServiceSettingsRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $ServiceSettingsRowsTable> {
+  $$ServiceSettingsRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get targetOmset => $composableBuilder(
+    column: $table.targetOmset,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get feeAdminPerNota => $composableBuilder(
+    column: $table.feeAdminPerNota,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ServiceSettingsRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ServiceSettingsRowsTable> {
+  $$ServiceSettingsRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get targetOmset => $composableBuilder(
+    column: $table.targetOmset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get feeAdminPerNota => $composableBuilder(
+    column: $table.feeAdminPerNota,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ServiceSettingsRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ServiceSettingsRowsTable> {
+  $$ServiceSettingsRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get targetOmset => $composableBuilder(
+    column: $table.targetOmset,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get feeAdminPerNota => $composableBuilder(
+    column: $table.feeAdminPerNota,
+    builder: (column) => column,
+  );
+}
+
+class $$ServiceSettingsRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ServiceSettingsRowsTable,
+          ServiceSettingsRow,
+          $$ServiceSettingsRowsTableFilterComposer,
+          $$ServiceSettingsRowsTableOrderingComposer,
+          $$ServiceSettingsRowsTableAnnotationComposer,
+          $$ServiceSettingsRowsTableCreateCompanionBuilder,
+          $$ServiceSettingsRowsTableUpdateCompanionBuilder,
+          (
+            ServiceSettingsRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ServiceSettingsRowsTable,
+              ServiceSettingsRow
+            >,
+          ),
+          ServiceSettingsRow,
+          PrefetchHooks Function()
+        > {
+  $$ServiceSettingsRowsTableTableManager(
+    _$AppDatabase db,
+    $ServiceSettingsRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ServiceSettingsRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ServiceSettingsRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ServiceSettingsRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<double> targetOmset = const Value.absent(),
+                Value<double> feeAdminPerNota = const Value.absent(),
+              }) => ServiceSettingsRowsCompanion(
+                id: id,
+                targetOmset: targetOmset,
+                feeAdminPerNota: feeAdminPerNota,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required double targetOmset,
+                required double feeAdminPerNota,
+              }) => ServiceSettingsRowsCompanion.insert(
+                id: id,
+                targetOmset: targetOmset,
+                feeAdminPerNota: feeAdminPerNota,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ServiceSettingsRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ServiceSettingsRowsTable,
+      ServiceSettingsRow,
+      $$ServiceSettingsRowsTableFilterComposer,
+      $$ServiceSettingsRowsTableOrderingComposer,
+      $$ServiceSettingsRowsTableAnnotationComposer,
+      $$ServiceSettingsRowsTableCreateCompanionBuilder,
+      $$ServiceSettingsRowsTableUpdateCompanionBuilder,
+      (
+        ServiceSettingsRow,
+        BaseReferences<
+          _$AppDatabase,
+          $ServiceSettingsRowsTable,
+          ServiceSettingsRow
+        >,
+      ),
+      ServiceSettingsRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9861,4 +10382,6 @@ class $AppDatabaseManager {
       $$StoreSettingsTableTableManager(_db, _db.storeSettings);
   $$CustomerEntriesTableTableManager get customerEntries =>
       $$CustomerEntriesTableTableManager(_db, _db.customerEntries);
+  $$ServiceSettingsRowsTableTableManager get serviceSettingsRows =>
+      $$ServiceSettingsRowsTableTableManager(_db, _db.serviceSettingsRows);
 }

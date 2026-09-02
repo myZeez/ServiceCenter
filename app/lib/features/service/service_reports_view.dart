@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/export/excel_export.dart';
 import '../../core/local/database.dart';
+import '../../core/omset/omset_providers.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
@@ -13,7 +14,11 @@ import 'service_view.dart' show serviceOrdersProvider;
 import 'service_status.dart';
 import 'shipment_dialog.dart';
 
-final _rp = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+final _rp = NumberFormat.currency(
+  locale: 'id_ID',
+  symbol: 'Rp',
+  decimalDigits: 0,
+);
 final _tgl = DateFormat('dd/MM/yyyy');
 final _tglPanjang = DateFormat('EEEE, d MMMM yyyy', 'id');
 
@@ -62,7 +67,7 @@ class ServiceReportsView extends ConsumerWidget {
     final bulan = ref.watch(bulanProvider);
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.s,
@@ -87,6 +92,7 @@ class ServiceReportsView extends ConsumerWidget {
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 tabs: [
+                  Tab(text: 'OMSET'),
                   Tab(text: 'PELUNASAN'),
                   Tab(text: 'KESELURUHAN'),
                   Tab(text: 'KIRIM'),
@@ -97,6 +103,7 @@ class ServiceReportsView extends ConsumerWidget {
             Expanded(
               child: TabBarView(
                 children: [
+                  _Omset(bulan: bulan),
                   _Pelunasan(bulan: bulan),
                   _Keseluruhan(bulan: bulan),
                   const _Kirim(),
@@ -105,6 +112,249 @@ class ServiceReportsView extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// =====================================================================
+// Omset jasa — kartu ringkasan toko, admin, dan tiap teknisi
+// =====================================================================
+
+class _Omset extends ConsumerWidget {
+  const _Omset({required this.bulan});
+
+  final Bulan bulan;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final semua =
+        ref.watch(serviceOrdersProvider).valueOrNull ??
+        const <ServiceOrderEntry>[];
+    final aturan = ref.watch(omsetSettingsProvider).valueOrNull;
+    final nama = {
+      for (final p
+          in ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[])
+        p.id: p.nama,
+    };
+
+    final hasil = hitungOmsetPeriode(
+      nota: semua,
+      dari: bulan.awal,
+      sampai: bulan.akhir,
+      aturan: aturan,
+    );
+    final target = aturan?.targetOmset ?? 4000000;
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 2,
+              child: _KartuAngka(
+                judul: 'Omset Toko',
+                nilai: _rp.format(hasil.omsetToko),
+                catatan: '${hasil.jumlahNota} nota selesai ${bulan.label}',
+                aksen: AppColors.red,
+                rincian: [
+                  ('Sudah masuk', _rp.format(hasil.sudahMasuk)),
+                  ('Masih piutang', _rp.format(hasil.piutang)),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.s),
+            Expanded(
+              child: _KartuAngka(
+                judul: 'Omset Admin',
+                nilai: _rp.format(hasil.omsetAdmin),
+                catatan: aturan == null || aturan.feeAdminPerNota == 0
+                    ? 'Fee admin belum diatur di Pengaturan'
+                    : '${_rp.format(aturan.feeAdminPerNota)} × '
+                          '${hasil.jumlahNota} nota',
+                aksen: AppColors.blue,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.s),
+
+        _Kartu(
+          judul: 'Omset per Teknisi',
+          ringkas: 'Target ${_rp.format(target)} per orang tiap bulan',
+          kosong: hasil.teknisi.isEmpty,
+          pesanKosong:
+              'Belum ada pekerjaan selesai atas nama teknisi di bulan ini.',
+          tinggi: 320,
+          child: ListView.separated(
+            padding: EdgeInsets.zero,
+            itemCount: hasil.teknisi.length,
+            separatorBuilder: (_, _) => const Divider(),
+            itemBuilder: (context, i) {
+              final t = hasil.teknisi[i];
+              final persen = t.persenTarget(target);
+              final tercapai = persen >= 100;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.s,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            nama[t.teknisiId] ?? '—',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${t.jumlahNota} nota',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.grey,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.s),
+                        Text(
+                          _rp.format(t.omset),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    // Batang kemajuan dipotong di 100%: yang melampaui
+                    // target ditandai lewat teksnya, bukan batang yang
+                    // meluber keluar kolom.
+                    Stack(
+                      children: [
+                        Container(height: 4, color: AppColors.lightGrey),
+                        FractionallySizedBox(
+                          widthFactor: (persen / 100).clamp(0.0, 1.0),
+                          child: Container(
+                            height: 4,
+                            color: tercapai ? AppColors.blue : AppColors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      tercapai
+                          ? 'Target tercapai · ${persen.toStringAsFixed(0)}%'
+                          : '${persen.toStringAsFixed(0)}% · kurang '
+                                '${_rp.format(t.kurangDariTarget(target))}',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: tercapai ? AppColors.blue : AppColors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+
+        if (hasil.notaTanpaTeknisi > 0) ...[
+          const SizedBox(height: AppSpacing.s),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.s),
+            decoration: const BoxDecoration(
+              color: Color(0x0DD82C2C),
+              border: Border(left: BorderSide(color: AppColors.red, width: 3)),
+            ),
+            child: Text(
+              '${hasil.notaTanpaTeknisi} nota selesai belum ada teknisinya. '
+              'Nilainya masuk omset toko, tapi tidak jatuh ke siapa pun.',
+              style: const TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: AppColors.red,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _KartuAngka extends StatelessWidget {
+  const _KartuAngka({
+    required this.judul,
+    required this.nilai,
+    required this.catatan,
+    required this.aksen,
+    this.rincian = const [],
+  });
+
+  final String judul;
+  final String nilai;
+  final String catatan;
+  final Color aksen;
+  final List<(String, String)> rincian;
+
+  @override
+  Widget build(BuildContext context) {
+    return BentoCard(
+      title: judul,
+      accent: aksen,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              nilai,
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -1.4,
+                height: 1,
+              ),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(catatan, style: Theme.of(context).textTheme.labelSmall),
+          if (rincian.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.s),
+            const Divider(),
+            const SizedBox(height: 6),
+            for (final (label, isi) in rincian)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(label, style: const TextStyle(fontSize: 12)),
+                    ),
+                    Text(
+                      isi,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }
@@ -122,7 +372,8 @@ class _Pelunasan extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final semua =
-        ref.watch(serviceOrdersProvider).valueOrNull ?? const <ServiceOrderEntry>[];
+        ref.watch(serviceOrdersProvider).valueOrNull ??
+        const <ServiceOrderEntry>[];
     final teknisi = {
       for (final p
           in ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[])
@@ -131,10 +382,13 @@ class _Pelunasan extends ConsumerWidget {
 
     // Dikelompokkan menurut tanggal LUNAS, bukan tanggal masuk: yang
     // dilaporkan di sini adalah uang yang diterima hari itu.
-    final lunas = semua
-        .where((n) => n.tanggalLunas != null && bulan.memuat(n.tanggalLunas!))
-        .toList()
-      ..sort((a, b) => b.tanggalLunas!.compareTo(a.tanggalLunas!));
+    final lunas =
+        semua
+            .where(
+              (n) => n.tanggalLunas != null && bulan.memuat(n.tanggalLunas!),
+            )
+            .toList()
+          ..sort((a, b) => b.tanggalLunas!.compareTo(a.tanggalLunas!));
 
     final perTanggal = <DateTime, List<ServiceOrderEntry>>{};
     for (final n in lunas) {
@@ -228,7 +482,8 @@ class _Keseluruhan extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final semua =
-        ref.watch(serviceOrdersProvider).valueOrNull ?? const <ServiceOrderEntry>[];
+        ref.watch(serviceOrdersProvider).valueOrNull ??
+        const <ServiceOrderEntry>[];
     final teknisi = {
       for (final p
           in ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[])
@@ -246,7 +501,8 @@ class _Keseluruhan extends ConsumerWidget {
 
     return _Kartu(
       judul: 'Keseluruhan ${bulan.label}',
-      ringkas: '${nota.length} nota  ·  masuk ${_rp.format(tunai)}  ·  '
+      ringkas:
+          '${nota.length} nota  ·  masuk ${_rp.format(tunai)}  ·  '
           'piutang ${_rp.format(piutang)}',
       aksi: _TombolExport(
         aktif: nota.isNotEmpty,
@@ -272,7 +528,10 @@ class _Keseluruhan extends ConsumerWidget {
               (108.0, n.customerTelp ?? '—', false),
               (
                 0.0,
-                [n.barangNama, if (n.barangType != null) n.barangType!].join(' '),
+                [
+                  n.barangNama,
+                  if (n.barangType != null) n.barangType!,
+                ].join(' '),
                 false,
               ),
               (0.0, n.keluhan ?? '—', false),
@@ -315,7 +574,8 @@ class _Kirim extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final kirim = ref.watch(shipmentsProvider).valueOrNull ?? const <ShipmentEntry>[];
+    final kirim =
+        ref.watch(shipmentsProvider).valueOrNull ?? const <ShipmentEntry>[];
     final terkirim = kirim.where((k) => k.status == 'ship').length;
 
     return _Kartu(
@@ -346,7 +606,11 @@ class _Kirim extends ConsumerWidget {
             onTap: () => showShipmentDialog(context, kirim: k),
             children: [
               _Sel(width: 88, teks: _tgl.format(k.tanggalKirim)),
-              _Sel(width: 150, teks: '${k.dariCabang} → ${k.keCabang}', tebal: true),
+              _Sel(
+                width: 150,
+                teks: '${k.dariCabang} → ${k.keCabang}',
+                tebal: true,
+              ),
               _Sel(width: 96, teks: k.userNama ?? '—'),
               _Sel(
                 flex: 2,
@@ -368,7 +632,9 @@ class _Kirim extends ConsumerWidget {
                   children: [
                     _Tanda(
                       k.status == 'ship' ? 'DIKIRIM' : 'DITERIMA',
-                      warna: k.status == 'ship' ? AppColors.red : AppColors.black,
+                      warna: k.status == 'ship'
+                          ? AppColors.red
+                          : AppColors.black,
                     ),
                     if (k.keterangan != null) ...[
                       const SizedBox(width: 4),
@@ -420,9 +686,8 @@ class _TombolExportState extends State<_TombolExport> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan berkas. $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal menyimpan berkas. $e')));
     } finally {
       if (mounted) setState(() => _sibuk = false);
     }
@@ -460,6 +725,7 @@ class _Kartu extends StatelessWidget {
     required this.kosong,
     required this.pesanKosong,
     this.aksi,
+    this.tinggi,
   });
 
   final String judul;
@@ -469,73 +735,80 @@ class _Kartu extends StatelessWidget {
   final String pesanKosong;
   final Widget? aksi;
 
+  /// Diisi saat kartunya dipasang di dalam daftar bergulir, yang tidak
+  /// memberi batas tinggi. Tanpa ini isinya tidak punya ruang untuk diukur.
+  final double? tinggi;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppRadius.base),
-        border: Border.all(color: const Color(0xFFE4E7E7)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.sm,
-              AppSpacing.s,
-              AppSpacing.s,
-              AppSpacing.s,
-            ),
-            decoration: const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: AppColors.black, width: 1.5),
+    return SizedBox(
+      height: tinggi,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppRadius.base),
+          border: Border.all(color: const Color(0xFFE4E7E7)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.sm,
+                AppSpacing.s,
+                AppSpacing.s,
+                AppSpacing.s,
+              ),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: AppColors.black, width: 1.5),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          judul.toUpperCase(),
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          ringkas,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ?aksi,
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        judul.toUpperCase(),
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        ringkas,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+            Expanded(
+              child: kosong
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: Text(
+                          pesanKosong,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.grey,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                ?aksi,
-              ],
+                    )
+                  : child,
             ),
-          ),
-          Expanded(
-            child: kosong
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      child: Text(
-                        pesanKosong,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppColors.grey,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  )
-                : child,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -699,8 +972,8 @@ class _BulanDropdown extends ConsumerWidget {
             letterSpacing: 0.6,
             color: AppColors.black,
           ),
-          onChanged: (v) => ref.read(bulanProvider.notifier).state =
-              daftar.firstWhere((b) => b.label == v),
+          onChanged: (v) => ref.read(bulanProvider.notifier).state = daftar
+              .firstWhere((b) => b.label == v),
           items: [
             for (final b in daftar)
               DropdownMenuItem(value: b.label, child: Text(b.label)),

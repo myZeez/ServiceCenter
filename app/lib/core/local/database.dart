@@ -195,6 +195,18 @@ class ShipmentEntries extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Identitas toko untuk kepala dan kaki nota.
+class StoreSettings extends Table {
+  IntColumn get id => integer()();
+  TextColumn get nama => text()();
+  TextColumn get alamat => text().nullable()();
+  TextColumn get telepon => text().nullable()();
+  TextColumn get ketentuan => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Penyimpanan kunci-nilai untuk keperluan sinkron, mis. kapan terakhir
 /// menarik data dari server.
 class SyncMeta extends Table {
@@ -219,6 +231,7 @@ class SyncMeta extends Table {
     BrandRuleEntries,
     ServiceOrderEntries,
     ShipmentEntries,
+    StoreSettings,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -227,7 +240,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -254,6 +267,9 @@ class AppDatabase extends _$AppDatabase {
           if (from < 5) {
             await m.createTable(serviceOrderEntries);
             await m.createTable(shipmentEntries);
+          }
+          if (from < 6) {
+            await m.createTable(storeSettings);
           }
         },
       );
@@ -478,6 +494,13 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> upsertShipment(ShipmentEntriesCompanion row) =>
       into(shipmentEntries).insertOnConflictUpdate(row);
+
+  Stream<StoreSetting?> watchStoreSettings() =>
+      (select(storeSettings)..where((t) => t.id.equals(1)))
+          .watchSingleOrNull();
+
+  Future<void> upsertStoreSettings(StoreSettingsCompanion row) =>
+      into(storeSettings).insertOnConflictUpdate(row);
 
   Stream<List<BrandFeeEntry>> watchBrandFees() => select(brandFeeEntries).watch();
 

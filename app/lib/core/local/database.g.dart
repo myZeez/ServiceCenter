@@ -5598,6 +5598,347 @@ class ShipmentEntriesCompanion extends UpdateCompanion<ShipmentEntry> {
   }
 }
 
+class $StoreSettingsTable extends StoreSettings
+    with TableInfo<$StoreSettingsTable, StoreSetting> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StoreSettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _namaMeta = const VerificationMeta('nama');
+  @override
+  late final GeneratedColumn<String> nama = GeneratedColumn<String>(
+    'nama',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _alamatMeta = const VerificationMeta('alamat');
+  @override
+  late final GeneratedColumn<String> alamat = GeneratedColumn<String>(
+    'alamat',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _teleponMeta = const VerificationMeta(
+    'telepon',
+  );
+  @override
+  late final GeneratedColumn<String> telepon = GeneratedColumn<String>(
+    'telepon',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ketentuanMeta = const VerificationMeta(
+    'ketentuan',
+  );
+  @override
+  late final GeneratedColumn<String> ketentuan = GeneratedColumn<String>(
+    'ketentuan',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, nama, alamat, telepon, ketentuan];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'store_settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StoreSetting> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('nama')) {
+      context.handle(
+        _namaMeta,
+        nama.isAcceptableOrUnknown(data['nama']!, _namaMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_namaMeta);
+    }
+    if (data.containsKey('alamat')) {
+      context.handle(
+        _alamatMeta,
+        alamat.isAcceptableOrUnknown(data['alamat']!, _alamatMeta),
+      );
+    }
+    if (data.containsKey('telepon')) {
+      context.handle(
+        _teleponMeta,
+        telepon.isAcceptableOrUnknown(data['telepon']!, _teleponMeta),
+      );
+    }
+    if (data.containsKey('ketentuan')) {
+      context.handle(
+        _ketentuanMeta,
+        ketentuan.isAcceptableOrUnknown(data['ketentuan']!, _ketentuanMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StoreSetting map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StoreSetting(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      nama: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nama'],
+      )!,
+      alamat: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}alamat'],
+      ),
+      telepon: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}telepon'],
+      ),
+      ketentuan: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ketentuan'],
+      ),
+    );
+  }
+
+  @override
+  $StoreSettingsTable createAlias(String alias) {
+    return $StoreSettingsTable(attachedDatabase, alias);
+  }
+}
+
+class StoreSetting extends DataClass implements Insertable<StoreSetting> {
+  final int id;
+  final String nama;
+  final String? alamat;
+  final String? telepon;
+  final String? ketentuan;
+  const StoreSetting({
+    required this.id,
+    required this.nama,
+    this.alamat,
+    this.telepon,
+    this.ketentuan,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['nama'] = Variable<String>(nama);
+    if (!nullToAbsent || alamat != null) {
+      map['alamat'] = Variable<String>(alamat);
+    }
+    if (!nullToAbsent || telepon != null) {
+      map['telepon'] = Variable<String>(telepon);
+    }
+    if (!nullToAbsent || ketentuan != null) {
+      map['ketentuan'] = Variable<String>(ketentuan);
+    }
+    return map;
+  }
+
+  StoreSettingsCompanion toCompanion(bool nullToAbsent) {
+    return StoreSettingsCompanion(
+      id: Value(id),
+      nama: Value(nama),
+      alamat: alamat == null && nullToAbsent
+          ? const Value.absent()
+          : Value(alamat),
+      telepon: telepon == null && nullToAbsent
+          ? const Value.absent()
+          : Value(telepon),
+      ketentuan: ketentuan == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ketentuan),
+    );
+  }
+
+  factory StoreSetting.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StoreSetting(
+      id: serializer.fromJson<int>(json['id']),
+      nama: serializer.fromJson<String>(json['nama']),
+      alamat: serializer.fromJson<String?>(json['alamat']),
+      telepon: serializer.fromJson<String?>(json['telepon']),
+      ketentuan: serializer.fromJson<String?>(json['ketentuan']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'nama': serializer.toJson<String>(nama),
+      'alamat': serializer.toJson<String?>(alamat),
+      'telepon': serializer.toJson<String?>(telepon),
+      'ketentuan': serializer.toJson<String?>(ketentuan),
+    };
+  }
+
+  StoreSetting copyWith({
+    int? id,
+    String? nama,
+    Value<String?> alamat = const Value.absent(),
+    Value<String?> telepon = const Value.absent(),
+    Value<String?> ketentuan = const Value.absent(),
+  }) => StoreSetting(
+    id: id ?? this.id,
+    nama: nama ?? this.nama,
+    alamat: alamat.present ? alamat.value : this.alamat,
+    telepon: telepon.present ? telepon.value : this.telepon,
+    ketentuan: ketentuan.present ? ketentuan.value : this.ketentuan,
+  );
+  StoreSetting copyWithCompanion(StoreSettingsCompanion data) {
+    return StoreSetting(
+      id: data.id.present ? data.id.value : this.id,
+      nama: data.nama.present ? data.nama.value : this.nama,
+      alamat: data.alamat.present ? data.alamat.value : this.alamat,
+      telepon: data.telepon.present ? data.telepon.value : this.telepon,
+      ketentuan: data.ketentuan.present ? data.ketentuan.value : this.ketentuan,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StoreSetting(')
+          ..write('id: $id, ')
+          ..write('nama: $nama, ')
+          ..write('alamat: $alamat, ')
+          ..write('telepon: $telepon, ')
+          ..write('ketentuan: $ketentuan')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, nama, alamat, telepon, ketentuan);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StoreSetting &&
+          other.id == this.id &&
+          other.nama == this.nama &&
+          other.alamat == this.alamat &&
+          other.telepon == this.telepon &&
+          other.ketentuan == this.ketentuan);
+}
+
+class StoreSettingsCompanion extends UpdateCompanion<StoreSetting> {
+  final Value<int> id;
+  final Value<String> nama;
+  final Value<String?> alamat;
+  final Value<String?> telepon;
+  final Value<String?> ketentuan;
+  const StoreSettingsCompanion({
+    this.id = const Value.absent(),
+    this.nama = const Value.absent(),
+    this.alamat = const Value.absent(),
+    this.telepon = const Value.absent(),
+    this.ketentuan = const Value.absent(),
+  });
+  StoreSettingsCompanion.insert({
+    this.id = const Value.absent(),
+    required String nama,
+    this.alamat = const Value.absent(),
+    this.telepon = const Value.absent(),
+    this.ketentuan = const Value.absent(),
+  }) : nama = Value(nama);
+  static Insertable<StoreSetting> custom({
+    Expression<int>? id,
+    Expression<String>? nama,
+    Expression<String>? alamat,
+    Expression<String>? telepon,
+    Expression<String>? ketentuan,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (nama != null) 'nama': nama,
+      if (alamat != null) 'alamat': alamat,
+      if (telepon != null) 'telepon': telepon,
+      if (ketentuan != null) 'ketentuan': ketentuan,
+    });
+  }
+
+  StoreSettingsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? nama,
+    Value<String?>? alamat,
+    Value<String?>? telepon,
+    Value<String?>? ketentuan,
+  }) {
+    return StoreSettingsCompanion(
+      id: id ?? this.id,
+      nama: nama ?? this.nama,
+      alamat: alamat ?? this.alamat,
+      telepon: telepon ?? this.telepon,
+      ketentuan: ketentuan ?? this.ketentuan,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (nama.present) {
+      map['nama'] = Variable<String>(nama.value);
+    }
+    if (alamat.present) {
+      map['alamat'] = Variable<String>(alamat.value);
+    }
+    if (telepon.present) {
+      map['telepon'] = Variable<String>(telepon.value);
+    }
+    if (ketentuan.present) {
+      map['ketentuan'] = Variable<String>(ketentuan.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StoreSettingsCompanion(')
+          ..write('id: $id, ')
+          ..write('nama: $nama, ')
+          ..write('alamat: $alamat, ')
+          ..write('telepon: $telepon, ')
+          ..write('ketentuan: $ketentuan')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5621,6 +5962,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ShipmentEntriesTable shipmentEntries = $ShipmentEntriesTable(
     this,
   );
+  late final $StoreSettingsTable storeSettings = $StoreSettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5638,6 +5980,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     brandRuleEntries,
     serviceOrderEntries,
     shipmentEntries,
+    storeSettings,
   ];
 }
 
@@ -8526,6 +8869,200 @@ typedef $$ShipmentEntriesTableProcessedTableManager =
       ShipmentEntry,
       PrefetchHooks Function()
     >;
+typedef $$StoreSettingsTableCreateCompanionBuilder =
+    StoreSettingsCompanion Function({
+      Value<int> id,
+      required String nama,
+      Value<String?> alamat,
+      Value<String?> telepon,
+      Value<String?> ketentuan,
+    });
+typedef $$StoreSettingsTableUpdateCompanionBuilder =
+    StoreSettingsCompanion Function({
+      Value<int> id,
+      Value<String> nama,
+      Value<String?> alamat,
+      Value<String?> telepon,
+      Value<String?> ketentuan,
+    });
+
+class $$StoreSettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $StoreSettingsTable> {
+  $$StoreSettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nama => $composableBuilder(
+    column: $table.nama,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get alamat => $composableBuilder(
+    column: $table.alamat,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get telepon => $composableBuilder(
+    column: $table.telepon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ketentuan => $composableBuilder(
+    column: $table.ketentuan,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$StoreSettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $StoreSettingsTable> {
+  $$StoreSettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nama => $composableBuilder(
+    column: $table.nama,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get alamat => $composableBuilder(
+    column: $table.alamat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get telepon => $composableBuilder(
+    column: $table.telepon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ketentuan => $composableBuilder(
+    column: $table.ketentuan,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$StoreSettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StoreSettingsTable> {
+  $$StoreSettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get nama =>
+      $composableBuilder(column: $table.nama, builder: (column) => column);
+
+  GeneratedColumn<String> get alamat =>
+      $composableBuilder(column: $table.alamat, builder: (column) => column);
+
+  GeneratedColumn<String> get telepon =>
+      $composableBuilder(column: $table.telepon, builder: (column) => column);
+
+  GeneratedColumn<String> get ketentuan =>
+      $composableBuilder(column: $table.ketentuan, builder: (column) => column);
+}
+
+class $$StoreSettingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StoreSettingsTable,
+          StoreSetting,
+          $$StoreSettingsTableFilterComposer,
+          $$StoreSettingsTableOrderingComposer,
+          $$StoreSettingsTableAnnotationComposer,
+          $$StoreSettingsTableCreateCompanionBuilder,
+          $$StoreSettingsTableUpdateCompanionBuilder,
+          (
+            StoreSetting,
+            BaseReferences<_$AppDatabase, $StoreSettingsTable, StoreSetting>,
+          ),
+          StoreSetting,
+          PrefetchHooks Function()
+        > {
+  $$StoreSettingsTableTableManager(_$AppDatabase db, $StoreSettingsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StoreSettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StoreSettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StoreSettingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> nama = const Value.absent(),
+                Value<String?> alamat = const Value.absent(),
+                Value<String?> telepon = const Value.absent(),
+                Value<String?> ketentuan = const Value.absent(),
+              }) => StoreSettingsCompanion(
+                id: id,
+                nama: nama,
+                alamat: alamat,
+                telepon: telepon,
+                ketentuan: ketentuan,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String nama,
+                Value<String?> alamat = const Value.absent(),
+                Value<String?> telepon = const Value.absent(),
+                Value<String?> ketentuan = const Value.absent(),
+              }) => StoreSettingsCompanion.insert(
+                id: id,
+                nama: nama,
+                alamat: alamat,
+                telepon: telepon,
+                ketentuan: ketentuan,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$StoreSettingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StoreSettingsTable,
+      StoreSetting,
+      $$StoreSettingsTableFilterComposer,
+      $$StoreSettingsTableOrderingComposer,
+      $$StoreSettingsTableAnnotationComposer,
+      $$StoreSettingsTableCreateCompanionBuilder,
+      $$StoreSettingsTableUpdateCompanionBuilder,
+      (
+        StoreSetting,
+        BaseReferences<_$AppDatabase, $StoreSettingsTable, StoreSetting>,
+      ),
+      StoreSetting,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8554,4 +9091,6 @@ class $AppDatabaseManager {
       $$ServiceOrderEntriesTableTableManager(_db, _db.serviceOrderEntries);
   $$ShipmentEntriesTableTableManager get shipmentEntries =>
       $$ShipmentEntriesTableTableManager(_db, _db.shipmentEntries);
+  $$StoreSettingsTableTableManager get storeSettings =>
+      $$StoreSettingsTableTableManager(_db, _db.storeSettings);
 }

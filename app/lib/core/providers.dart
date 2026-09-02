@@ -157,6 +157,34 @@ final gridLayoutProvider =
 Future<void> simpanGridLayout(WidgetRef ref, String key, GridLayout layout) =>
     ref.read(databaseProvider).setMeta('grid.$key', encodeLayout(layout));
 
+/// Identitas toko untuk kepala dan kaki nota.
+final storeSettingsProvider = StreamProvider<StoreSetting?>(
+  (ref) => ref.watch(databaseProvider).watchStoreSettings(),
+);
+
+/// Printer dan lebar kolomnya disimpan lokal, bukan di server: tiap
+/// komputer punya printer sendiri, dan yang di meja depan berbeda dari
+/// yang di ruang teknisi.
+final printerNamaProvider = StreamProvider<String>(
+  (ref) => ref
+      .watch(databaseProvider)
+      .watchMeta('printer.nama')
+      .map((v) => v ?? ''),
+);
+
+final printerLebarProvider = StreamProvider<int>(
+  (ref) => ref
+      .watch(databaseProvider)
+      .watchMeta('printer.lebar')
+      .map((v) => int.tryParse(v ?? '') ?? 40),
+);
+
+Future<void> simpanPrinter(WidgetRef ref, String nama, int lebar) async {
+  final db = ref.read(databaseProvider);
+  await db.setMeta('printer.nama', nama);
+  await db.setMeta('printer.lebar', '$lebar');
+}
+
 /// Jumlah klaim per status. Dipakai stat tile di halaman utama, yang
 /// sekaligus berfungsi sebagai filter status.
 final statusCountsProvider = StreamProvider<Map<String, int>>(

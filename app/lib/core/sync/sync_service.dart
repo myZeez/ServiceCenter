@@ -219,6 +219,19 @@ class SyncService {
         ),
     ]);
 
+    final tokoRows = await _client.from('store_settings').select().eq('id', 1);
+    for (final r in tokoRows) {
+      await _db.upsertStoreSettings(
+        StoreSettingsCompanion.insert(
+          id: Value(r['id'] as int),
+          nama: r['nama'] as String,
+          alamat: Value(r['alamat'] as String?),
+          telepon: Value(r['telepon'] as String?),
+          ketentuan: Value(r['ketentuan'] as String?),
+        ),
+      );
+    }
+
     final profileRows = await _client.from('profiles').select();
     for (final r in profileRows) {
       await _db.into(_db.profiles).insertOnConflictUpdate(

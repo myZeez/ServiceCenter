@@ -8,6 +8,7 @@ import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
 import '../../core/widgets/grid_canvas.dart';
 import '../../core/widgets/swiss_widgets.dart';
+import 'print_cards.dart';
 import 'revenue_cards.dart';
 
 /// Semua pengaturan dalam satu layar.
@@ -111,6 +112,18 @@ class SettingsView extends ConsumerWidget {
                         rowSpan: 9,
                         child: RevenueSplitCard(),
                       ),
+                      GridArea(
+                        id: 'toko',
+                        colSpan: 6,
+                        rowSpan: 9,
+                        child: StoreCard(),
+                      ),
+                      GridArea(
+                        id: 'printer',
+                        colSpan: 6,
+                        rowSpan: 9,
+                        child: PrinterCard(),
+                      ),
                     ],
                   );
                 }
@@ -125,6 +138,10 @@ class SettingsView extends ConsumerWidget {
                     SizedBox(height: 400, child: BrandFeesCard()),
                     SizedBox(height: AppSpacing.s),
                     SizedBox(height: 620, child: RevenueSplitCard()),
+                    SizedBox(height: AppSpacing.s),
+                    SizedBox(height: 520, child: StoreCard()),
+                    SizedBox(height: AppSpacing.s),
+                    SizedBox(height: 400, child: PrinterCard()),
                     SizedBox(height: AppSpacing.sm),
                   ],
                 );

@@ -9,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/local/database.dart';
+import '../../core/print/nota_template.dart';
+import '../../core/print/raw_printer.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
@@ -224,6 +226,48 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Nota lapis dicetak sekali; karbon di lapis bawah yang menghasilkan
+  /// salinannya. Mencetak dua kali justru memboroskan kertas.
+  Future<void> _cetak(JenisNota jenis) async {
+    final n = widget.nota;
+    if (n == null) return;
+
+    final printer = ref.read(printerNamaProvider).valueOrNull ?? '';
+    final lebar = ref.read(printerLebarProvider).valueOrNull ?? 40;
+    final toko = ref.read(storeSettingsProvider).valueOrNull;
+
+    final orang = {
+      for (final p in ref.read(techniciansProvider).valueOrNull ?? const <Profile>[])
+        p.id: p.nama,
+    };
+    final semuaProfil = await ref.read(databaseProvider).allProfiles();
+    final operator = semuaProfil
+        .where((p) => p.id == n.operatorId)
+        .map((p) => p.nama)
+        .firstOrNull;
+
+    final galat = RawPrinter.kirim(
+      printer,
+      susunNota(
+        nota: n,
+        jenis: jenis,
+        toko: toko,
+        namaTeknisi: orang[n.teknisiId],
+        namaOperator: operator,
+        lebar: lebar,
+      ),
+    );
+
+    if (!mounted) return;
+    if (galat != null) {
+      setState(() => _error = galat);
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${jenis.judul} dikirim ke printer')),
+    );
   }
 
   @override
@@ -668,6 +712,20 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
           ),
+          // Cetak hanya untuk nota yang sudah tersimpan: sebelum itu
+          // nomornya belum ada, dan nota tanpa nomor tidak ada gunanya.
+          if (!widget.isNew && RawPrinter.didukung) ...[
+            OutlinedButton(
+              onPressed: _busy ? null : () => _cetak(JenisNota.masuk),
+              child: const Text('CETAK MASUK'),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            OutlinedButton(
+              onPressed: _busy ? null : () => _cetak(JenisNota.keluar),
+              child: const Text('CETAK KELUAR'),
+            ),
+            const SizedBox(width: AppSpacing.s),
+          ],
           TextButton(
             onPressed: _busy ? null : () => Navigator.of(context).pop(),
             child: const Text('BATAL'),

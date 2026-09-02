@@ -377,6 +377,18 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
+  /// Seluruh klaim dalam rentang waktu, apa pun statusnya. Penyaringan
+  /// menurut teknisi dan status dilakukan pemanggilnya.
+  Stream<List<Claim>> watchClaimsBetween(DateTime dari, DateTime sampai) {
+    return (select(claims)
+          ..where(
+            (t) =>
+                t.tanggal.isBiggerOrEqualValue(dari) &
+                t.tanggal.isSmallerOrEqualValue(sampai),
+          ))
+        .watch();
+  }
+
   Stream<List<BrandFeeEntry>> watchBrandFees() => select(brandFeeEntries).watch();
 
   Stream<RevenueConfig?> watchRevenueConfig() =>

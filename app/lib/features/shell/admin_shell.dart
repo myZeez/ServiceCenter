@@ -5,6 +5,7 @@ import '../../core/providers.dart';
 import '../../core/sync/sync_service.dart';
 import '../../core/theme.dart';
 import '../claims/claims_view.dart';
+import '../mywork/my_work_view.dart';
 import '../reports/reports_view.dart';
 import '../revenue/revenue_view.dart';
 import '../settings/settings_view.dart';
@@ -29,6 +30,9 @@ class _AdminShellState extends ConsumerState<AdminShell> {
 
     final sections = <_Section>[
       const _Section('Klaim', Icons.description_outlined),
+      // Terbuka untuk semua peran: tiap orang berhak melihat hasil kerjanya
+      // sendiri, dan halaman ini tidak memuat angka rupiah.
+      const _Section('Pekerjaanku', Icons.engineering_outlined),
       if (isAdmin) const _Section('Rekap', Icons.insights_outlined),
       if (isAdmin) const _Section('Pendapatan', Icons.payments_outlined),
       if (isAdmin) const _Section('Pengaturan', Icons.tune),
@@ -54,6 +58,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
             const SizedBox(width: AppSpacing.s),
             Expanded(
               child: switch (sections[index].label) {
+                'Pekerjaanku' => const MyWorkView(),
                 'Rekap' => const ReportsView(),
                 'Pendapatan' => const RevenueView(),
                 'Pengaturan' => const SettingsView(),

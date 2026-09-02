@@ -8,6 +8,7 @@ import '../../core/status.dart';
 import '../../core/sync/sync_service.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
+import '../mywork/my_work_page.dart';
 import '../reports/reports_page.dart';
 import '../scan/scan_page.dart';
 import '../settings/settings_page.dart';
@@ -53,6 +54,8 @@ class ClaimsPage extends ConsumerWidget {
             position: PopupMenuPosition.under,
             onSelected: (v) {
               switch (v) {
+                case 'pekerjaanku':
+                  _push(context, const MyWorkPage());
                 case 'rekap':
                   _push(context, const ReportsPage());
                 case 'pengaturan':
@@ -62,14 +65,18 @@ class ClaimsPage extends ConsumerWidget {
               }
             },
             itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'pekerjaanku',
+                child: Text('Pekerjaanku'),
+              ),
               if (isAdmin) ...[
                 const PopupMenuItem(value: 'rekap', child: Text('Rekap')),
                 const PopupMenuItem(
                   value: 'pengaturan',
                   child: Text('Pengaturan'),
                 ),
-                const PopupMenuDivider(),
               ],
+              const PopupMenuDivider(),
               const PopupMenuItem(value: 'keluar', child: Text('Keluar')),
             ],
           ),

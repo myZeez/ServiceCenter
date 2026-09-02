@@ -149,35 +149,41 @@ class _Omset extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: AppSpacing.s),
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              flex: 2,
-              child: _KartuAngka(
-                judul: 'Omset Toko',
-                nilai: _rp.format(hasil.omsetToko),
-                catatan: '${hasil.jumlahNota} nota selesai ${bulan.label}',
-                aksen: AppColors.red,
-                rincian: [
-                  ('Sudah masuk', _rp.format(hasil.sudahMasuk)),
-                  ('Masih piutang', _rp.format(hasil.piutang)),
-                ],
+        // Tinggi ditetapkan, bukan diregangkan. Di dalam daftar bergulir
+        // tidak ada batas tinggi yang bisa dipakai stretch sebagai acuan,
+        // dan kartunya berakhir diminta setinggi tak hingga.
+        SizedBox(
+          height: 190,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 2,
+                child: _KartuAngka(
+                  judul: 'Omset Toko',
+                  nilai: _rp.format(hasil.omsetToko),
+                  catatan: '${hasil.jumlahNota} nota selesai ${bulan.label}',
+                  aksen: AppColors.red,
+                  rincian: [
+                    ('Sudah masuk', _rp.format(hasil.sudahMasuk)),
+                    ('Masih piutang', _rp.format(hasil.piutang)),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.s),
-            Expanded(
-              child: _KartuAngka(
-                judul: 'Omset Admin',
-                nilai: _rp.format(hasil.omsetAdmin),
-                catatan: aturan == null || aturan.feeAdminPerNota == 0
-                    ? 'Fee admin belum diatur di Pengaturan'
-                    : '${_rp.format(aturan.feeAdminPerNota)} × '
-                          '${hasil.jumlahNota} nota',
-                aksen: AppColors.blue,
+              const SizedBox(width: AppSpacing.s),
+              Expanded(
+                child: _KartuAngka(
+                  judul: 'Omset Admin',
+                  nilai: _rp.format(hasil.omsetAdmin),
+                  catatan: aturan == null || aturan.feeAdminPerNota == 0
+                      ? 'Fee admin belum diatur di Pengaturan'
+                      : '${_rp.format(aturan.feeAdminPerNota)} × '
+                            '${hasil.jumlahNota} nota',
+                  aksen: AppColors.blue,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: AppSpacing.s),
 
@@ -312,49 +318,56 @@ class _KartuAngka extends StatelessWidget {
     return BentoCard(
       title: judul,
       accent: aksen,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              nilai,
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1.4,
-                height: 1,
-              ),
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(catatan, style: Theme.of(context).textTheme.labelSmall),
-          if (rincian.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.s),
-            const Divider(),
-            const SizedBox(height: 6),
-            for (final (label, isi) in rincian)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(label, style: const TextStyle(fontSize: 12)),
-                    ),
-                    Text(
-                      isi,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+      // Digulirkan agar rincian yang bertambah panjang tidak meluber keluar
+      // kartu ketika tingginya sudah ditetapkan.
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                nilai,
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1.4,
+                  height: 1,
                 ),
               ),
+            ),
+            const SizedBox(height: 5),
+            Text(catatan, style: Theme.of(context).textTheme.labelSmall),
+            if (rincian.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.s),
+              const Divider(),
+              const SizedBox(height: 6),
+              for (final (label, isi) in rincian)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      Text(
+                        isi,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

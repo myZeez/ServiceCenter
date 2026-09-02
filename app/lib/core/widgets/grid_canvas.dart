@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
@@ -318,20 +319,30 @@ class _KotakGridState extends State<_KotakGrid> {
             bottom: 0,
             child: MouseRegion(
               cursor: SystemMouseCursors.resizeDownRight,
-              child: GestureDetector(
+              child: RawGestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onPanStart: (_) {
-                  _akumulasi = Offset.zero;
-                  widget.onMulai();
+                gestures: {
+                  _PenarikUkuran:
+                      GestureRecognizerFactoryWithHandlers<_PenarikUkuran>(
+                    _PenarikUkuran.new,
+                    (r) {
+                      r
+                        ..onStart = (_) {
+                          _akumulasi = Offset.zero;
+                          widget.onMulai();
+                        }
+                        ..onUpdate = (d) {
+                          _akumulasi += d.delta;
+                          widget.onGeser(_akumulasi.dx, _akumulasi.dy);
+                        }
+                        ..onEnd = ((_) => widget.onSelesai())
+                        ..onCancel = (() => widget.onSelesai());
+                    },
+                  ),
                 },
-                onPanUpdate: (d) {
-                  _akumulasi += d.delta;
-                  widget.onGeser(_akumulasi.dx, _akumulasi.dy);
-                },
-                onPanEnd: (_) => widget.onSelesai(),
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 150),
-                  opacity: tampilkanPegangan ? 1 : 0,
+                  opacity: tampilkanPegangan ? 1 : 0.35,
                   child: const _Pegangan(),
                 ),
               ),
@@ -343,14 +354,29 @@ class _KotakGridState extends State<_KotakGrid> {
   }
 }
 
+/// Pengenal tarik yang langsung mengklaim sentuhan.
+///
+/// Tanpa ini, pengenal gulir milik halaman menang lebih dulu: ambangnya 18
+/// piksel sementara tarik-bebas baru aktif di 36. Akibatnya menarik
+/// pegangan justru menggulir halaman, dan kartunya tidak pernah berubah.
+class _PenarikUkuran extends PanGestureRecognizer {
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    super.addAllowedPointer(event);
+    resolve(GestureDisposition.accepted);
+  }
+}
+
 class _Pegangan extends StatelessWidget {
   const _Pegangan();
 
   @override
   Widget build(BuildContext context) {
+    // Cukup besar untuk digenggam kursor tanpa harus membidik tepat di
+    // sudut, tetapi tidak sampai menutupi isi kartu.
     return SizedBox(
-      width: 20,
-      height: 20,
+      width: 26,
+      height: 26,
       child: CustomPaint(painter: _PegangatPainter()),
     );
   }

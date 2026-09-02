@@ -219,6 +219,21 @@ class SyncService {
         ),
     ]);
 
+    final pelangganRows = await _client.from('customers').select();
+    for (final r in pelangganRows) {
+      await _db.upsertCustomer(
+        CustomerEntriesCompanion.insert(
+          id: r['id'] as String,
+          kode: r['kode'] as String,
+          nama: r['nama'] as String,
+          telp: Value(r['telp'] as String?),
+          alamat: Value(r['alamat'] as String?),
+          catatan: Value(r['catatan'] as String?),
+          updatedAt: DateTime.parse(r['updated_at'] as String).toLocal(),
+        ),
+      );
+    }
+
     final tokoRows = await _client.from('store_settings').select().eq('id', 1);
     for (final r in tokoRows) {
       await _db.upsertStoreSettings(
@@ -335,6 +350,7 @@ class SyncService {
           estimasiSelesai: Value(_tanggal(r['estimasi_selesai'])),
           customerNama: r['customer_nama'] as String,
           customerTelp: Value(r['customer_telp'] as String?),
+          customerId: Value(r['customer_id'] as String?),
           operatorId: Value(r['operator_id'] as String?),
           barangNama: r['barang_nama'] as String,
           barangType: Value(r['barang_type'] as String?),

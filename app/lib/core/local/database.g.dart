@@ -3650,6 +3650,17 @@ class $ServiceOrderEntriesTable extends ServiceOrderEntries
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _customerIdMeta = const VerificationMeta(
+    'customerId',
+  );
+  @override
+  late final GeneratedColumn<String> customerId = GeneratedColumn<String>(
+    'customer_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _operatorIdMeta = const VerificationMeta(
     'operatorId',
   );
@@ -3835,6 +3846,7 @@ class $ServiceOrderEntriesTable extends ServiceOrderEntries
     estimasiSelesai,
     customerNama,
     customerTelp,
+    customerId,
     operatorId,
     barangNama,
     barangType,
@@ -3915,6 +3927,12 @@ class $ServiceOrderEntriesTable extends ServiceOrderEntries
           data['customer_telp']!,
           _customerTelpMeta,
         ),
+      );
+    }
+    if (data.containsKey('customer_id')) {
+      context.handle(
+        _customerIdMeta,
+        customerId.isAcceptableOrUnknown(data['customer_id']!, _customerIdMeta),
       );
     }
     if (data.containsKey('operator_id')) {
@@ -4058,6 +4076,10 @@ class $ServiceOrderEntriesTable extends ServiceOrderEntries
         DriftSqlType.string,
         data['${effectivePrefix}customer_telp'],
       ),
+      customerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_id'],
+      ),
       operatorId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}operator_id'],
@@ -4139,6 +4161,7 @@ class ServiceOrderEntry extends DataClass
   final DateTime? estimasiSelesai;
   final String customerNama;
   final String? customerTelp;
+  final String? customerId;
   final String? operatorId;
   final String barangNama;
   final String? barangType;
@@ -4162,6 +4185,7 @@ class ServiceOrderEntry extends DataClass
     this.estimasiSelesai,
     required this.customerNama,
     this.customerTelp,
+    this.customerId,
     this.operatorId,
     required this.barangNama,
     this.barangType,
@@ -4191,6 +4215,9 @@ class ServiceOrderEntry extends DataClass
     map['customer_nama'] = Variable<String>(customerNama);
     if (!nullToAbsent || customerTelp != null) {
       map['customer_telp'] = Variable<String>(customerTelp);
+    }
+    if (!nullToAbsent || customerId != null) {
+      map['customer_id'] = Variable<String>(customerId);
     }
     if (!nullToAbsent || operatorId != null) {
       map['operator_id'] = Variable<String>(operatorId);
@@ -4245,6 +4272,9 @@ class ServiceOrderEntry extends DataClass
       customerTelp: customerTelp == null && nullToAbsent
           ? const Value.absent()
           : Value(customerTelp),
+      customerId: customerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customerId),
       operatorId: operatorId == null && nullToAbsent
           ? const Value.absent()
           : Value(operatorId),
@@ -4298,6 +4328,7 @@ class ServiceOrderEntry extends DataClass
       estimasiSelesai: serializer.fromJson<DateTime?>(json['estimasiSelesai']),
       customerNama: serializer.fromJson<String>(json['customerNama']),
       customerTelp: serializer.fromJson<String?>(json['customerTelp']),
+      customerId: serializer.fromJson<String?>(json['customerId']),
       operatorId: serializer.fromJson<String?>(json['operatorId']),
       barangNama: serializer.fromJson<String>(json['barangNama']),
       barangType: serializer.fromJson<String?>(json['barangType']),
@@ -4326,6 +4357,7 @@ class ServiceOrderEntry extends DataClass
       'estimasiSelesai': serializer.toJson<DateTime?>(estimasiSelesai),
       'customerNama': serializer.toJson<String>(customerNama),
       'customerTelp': serializer.toJson<String?>(customerTelp),
+      'customerId': serializer.toJson<String?>(customerId),
       'operatorId': serializer.toJson<String?>(operatorId),
       'barangNama': serializer.toJson<String>(barangNama),
       'barangType': serializer.toJson<String?>(barangType),
@@ -4352,6 +4384,7 @@ class ServiceOrderEntry extends DataClass
     Value<DateTime?> estimasiSelesai = const Value.absent(),
     String? customerNama,
     Value<String?> customerTelp = const Value.absent(),
+    Value<String?> customerId = const Value.absent(),
     Value<String?> operatorId = const Value.absent(),
     String? barangNama,
     Value<String?> barangType = const Value.absent(),
@@ -4377,6 +4410,7 @@ class ServiceOrderEntry extends DataClass
         : this.estimasiSelesai,
     customerNama: customerNama ?? this.customerNama,
     customerTelp: customerTelp.present ? customerTelp.value : this.customerTelp,
+    customerId: customerId.present ? customerId.value : this.customerId,
     operatorId: operatorId.present ? operatorId.value : this.operatorId,
     barangNama: barangNama ?? this.barangNama,
     barangType: barangType.present ? barangType.value : this.barangType,
@@ -4410,6 +4444,9 @@ class ServiceOrderEntry extends DataClass
       customerTelp: data.customerTelp.present
           ? data.customerTelp.value
           : this.customerTelp,
+      customerId: data.customerId.present
+          ? data.customerId.value
+          : this.customerId,
       operatorId: data.operatorId.present
           ? data.operatorId.value
           : this.operatorId,
@@ -4450,6 +4487,7 @@ class ServiceOrderEntry extends DataClass
           ..write('estimasiSelesai: $estimasiSelesai, ')
           ..write('customerNama: $customerNama, ')
           ..write('customerTelp: $customerTelp, ')
+          ..write('customerId: $customerId, ')
           ..write('operatorId: $operatorId, ')
           ..write('barangNama: $barangNama, ')
           ..write('barangType: $barangType, ')
@@ -4478,6 +4516,7 @@ class ServiceOrderEntry extends DataClass
     estimasiSelesai,
     customerNama,
     customerTelp,
+    customerId,
     operatorId,
     barangNama,
     barangType,
@@ -4505,6 +4544,7 @@ class ServiceOrderEntry extends DataClass
           other.estimasiSelesai == this.estimasiSelesai &&
           other.customerNama == this.customerNama &&
           other.customerTelp == this.customerTelp &&
+          other.customerId == this.customerId &&
           other.operatorId == this.operatorId &&
           other.barangNama == this.barangNama &&
           other.barangType == this.barangType &&
@@ -4530,6 +4570,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
   final Value<DateTime?> estimasiSelesai;
   final Value<String> customerNama;
   final Value<String?> customerTelp;
+  final Value<String?> customerId;
   final Value<String?> operatorId;
   final Value<String> barangNama;
   final Value<String?> barangType;
@@ -4554,6 +4595,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
     this.estimasiSelesai = const Value.absent(),
     this.customerNama = const Value.absent(),
     this.customerTelp = const Value.absent(),
+    this.customerId = const Value.absent(),
     this.operatorId = const Value.absent(),
     this.barangNama = const Value.absent(),
     this.barangType = const Value.absent(),
@@ -4579,6 +4621,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
     this.estimasiSelesai = const Value.absent(),
     required String customerNama,
     this.customerTelp = const Value.absent(),
+    this.customerId = const Value.absent(),
     this.operatorId = const Value.absent(),
     required String barangNama,
     this.barangType = const Value.absent(),
@@ -4610,6 +4653,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
     Expression<DateTime>? estimasiSelesai,
     Expression<String>? customerNama,
     Expression<String>? customerTelp,
+    Expression<String>? customerId,
     Expression<String>? operatorId,
     Expression<String>? barangNama,
     Expression<String>? barangType,
@@ -4635,6 +4679,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
       if (estimasiSelesai != null) 'estimasi_selesai': estimasiSelesai,
       if (customerNama != null) 'customer_nama': customerNama,
       if (customerTelp != null) 'customer_telp': customerTelp,
+      if (customerId != null) 'customer_id': customerId,
       if (operatorId != null) 'operator_id': operatorId,
       if (barangNama != null) 'barang_nama': barangNama,
       if (barangType != null) 'barang_type': barangType,
@@ -4662,6 +4707,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
     Value<DateTime?>? estimasiSelesai,
     Value<String>? customerNama,
     Value<String?>? customerTelp,
+    Value<String?>? customerId,
     Value<String?>? operatorId,
     Value<String>? barangNama,
     Value<String?>? barangType,
@@ -4687,6 +4733,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
       estimasiSelesai: estimasiSelesai ?? this.estimasiSelesai,
       customerNama: customerNama ?? this.customerNama,
       customerTelp: customerTelp ?? this.customerTelp,
+      customerId: customerId ?? this.customerId,
       operatorId: operatorId ?? this.operatorId,
       barangNama: barangNama ?? this.barangNama,
       barangType: barangType ?? this.barangType,
@@ -4727,6 +4774,9 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
     }
     if (customerTelp.present) {
       map['customer_telp'] = Variable<String>(customerTelp.value);
+    }
+    if (customerId.present) {
+      map['customer_id'] = Variable<String>(customerId.value);
     }
     if (operatorId.present) {
       map['operator_id'] = Variable<String>(operatorId.value);
@@ -4791,6 +4841,7 @@ class ServiceOrderEntriesCompanion extends UpdateCompanion<ServiceOrderEntry> {
           ..write('estimasiSelesai: $estimasiSelesai, ')
           ..write('customerNama: $customerNama, ')
           ..write('customerTelp: $customerTelp, ')
+          ..write('customerId: $customerId, ')
           ..write('operatorId: $operatorId, ')
           ..write('barangNama: $barangNama, ')
           ..write('barangType: $barangType, ')
@@ -5939,6 +5990,456 @@ class StoreSettingsCompanion extends UpdateCompanion<StoreSetting> {
   }
 }
 
+class $CustomerEntriesTable extends CustomerEntries
+    with TableInfo<$CustomerEntriesTable, CustomerEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CustomerEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kodeMeta = const VerificationMeta('kode');
+  @override
+  late final GeneratedColumn<String> kode = GeneratedColumn<String>(
+    'kode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _namaMeta = const VerificationMeta('nama');
+  @override
+  late final GeneratedColumn<String> nama = GeneratedColumn<String>(
+    'nama',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _telpMeta = const VerificationMeta('telp');
+  @override
+  late final GeneratedColumn<String> telp = GeneratedColumn<String>(
+    'telp',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _alamatMeta = const VerificationMeta('alamat');
+  @override
+  late final GeneratedColumn<String> alamat = GeneratedColumn<String>(
+    'alamat',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _catatanMeta = const VerificationMeta(
+    'catatan',
+  );
+  @override
+  late final GeneratedColumn<String> catatan = GeneratedColumn<String>(
+    'catatan',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    kode,
+    nama,
+    telp,
+    alamat,
+    catatan,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'customer_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CustomerEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('kode')) {
+      context.handle(
+        _kodeMeta,
+        kode.isAcceptableOrUnknown(data['kode']!, _kodeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kodeMeta);
+    }
+    if (data.containsKey('nama')) {
+      context.handle(
+        _namaMeta,
+        nama.isAcceptableOrUnknown(data['nama']!, _namaMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_namaMeta);
+    }
+    if (data.containsKey('telp')) {
+      context.handle(
+        _telpMeta,
+        telp.isAcceptableOrUnknown(data['telp']!, _telpMeta),
+      );
+    }
+    if (data.containsKey('alamat')) {
+      context.handle(
+        _alamatMeta,
+        alamat.isAcceptableOrUnknown(data['alamat']!, _alamatMeta),
+      );
+    }
+    if (data.containsKey('catatan')) {
+      context.handle(
+        _catatanMeta,
+        catatan.isAcceptableOrUnknown(data['catatan']!, _catatanMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CustomerEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CustomerEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      kode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kode'],
+      )!,
+      nama: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nama'],
+      )!,
+      telp: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}telp'],
+      ),
+      alamat: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}alamat'],
+      ),
+      catatan: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}catatan'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CustomerEntriesTable createAlias(String alias) {
+    return $CustomerEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
+  final String id;
+  final String kode;
+  final String nama;
+  final String? telp;
+  final String? alamat;
+  final String? catatan;
+  final DateTime updatedAt;
+  const CustomerEntry({
+    required this.id,
+    required this.kode,
+    required this.nama,
+    this.telp,
+    this.alamat,
+    this.catatan,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['kode'] = Variable<String>(kode);
+    map['nama'] = Variable<String>(nama);
+    if (!nullToAbsent || telp != null) {
+      map['telp'] = Variable<String>(telp);
+    }
+    if (!nullToAbsent || alamat != null) {
+      map['alamat'] = Variable<String>(alamat);
+    }
+    if (!nullToAbsent || catatan != null) {
+      map['catatan'] = Variable<String>(catatan);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CustomerEntriesCompanion toCompanion(bool nullToAbsent) {
+    return CustomerEntriesCompanion(
+      id: Value(id),
+      kode: Value(kode),
+      nama: Value(nama),
+      telp: telp == null && nullToAbsent ? const Value.absent() : Value(telp),
+      alamat: alamat == null && nullToAbsent
+          ? const Value.absent()
+          : Value(alamat),
+      catatan: catatan == null && nullToAbsent
+          ? const Value.absent()
+          : Value(catatan),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CustomerEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CustomerEntry(
+      id: serializer.fromJson<String>(json['id']),
+      kode: serializer.fromJson<String>(json['kode']),
+      nama: serializer.fromJson<String>(json['nama']),
+      telp: serializer.fromJson<String?>(json['telp']),
+      alamat: serializer.fromJson<String?>(json['alamat']),
+      catatan: serializer.fromJson<String?>(json['catatan']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'kode': serializer.toJson<String>(kode),
+      'nama': serializer.toJson<String>(nama),
+      'telp': serializer.toJson<String?>(telp),
+      'alamat': serializer.toJson<String?>(alamat),
+      'catatan': serializer.toJson<String?>(catatan),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CustomerEntry copyWith({
+    String? id,
+    String? kode,
+    String? nama,
+    Value<String?> telp = const Value.absent(),
+    Value<String?> alamat = const Value.absent(),
+    Value<String?> catatan = const Value.absent(),
+    DateTime? updatedAt,
+  }) => CustomerEntry(
+    id: id ?? this.id,
+    kode: kode ?? this.kode,
+    nama: nama ?? this.nama,
+    telp: telp.present ? telp.value : this.telp,
+    alamat: alamat.present ? alamat.value : this.alamat,
+    catatan: catatan.present ? catatan.value : this.catatan,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  CustomerEntry copyWithCompanion(CustomerEntriesCompanion data) {
+    return CustomerEntry(
+      id: data.id.present ? data.id.value : this.id,
+      kode: data.kode.present ? data.kode.value : this.kode,
+      nama: data.nama.present ? data.nama.value : this.nama,
+      telp: data.telp.present ? data.telp.value : this.telp,
+      alamat: data.alamat.present ? data.alamat.value : this.alamat,
+      catatan: data.catatan.present ? data.catatan.value : this.catatan,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomerEntry(')
+          ..write('id: $id, ')
+          ..write('kode: $kode, ')
+          ..write('nama: $nama, ')
+          ..write('telp: $telp, ')
+          ..write('alamat: $alamat, ')
+          ..write('catatan: $catatan, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, kode, nama, telp, alamat, catatan, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CustomerEntry &&
+          other.id == this.id &&
+          other.kode == this.kode &&
+          other.nama == this.nama &&
+          other.telp == this.telp &&
+          other.alamat == this.alamat &&
+          other.catatan == this.catatan &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CustomerEntriesCompanion extends UpdateCompanion<CustomerEntry> {
+  final Value<String> id;
+  final Value<String> kode;
+  final Value<String> nama;
+  final Value<String?> telp;
+  final Value<String?> alamat;
+  final Value<String?> catatan;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CustomerEntriesCompanion({
+    this.id = const Value.absent(),
+    this.kode = const Value.absent(),
+    this.nama = const Value.absent(),
+    this.telp = const Value.absent(),
+    this.alamat = const Value.absent(),
+    this.catatan = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CustomerEntriesCompanion.insert({
+    required String id,
+    required String kode,
+    required String nama,
+    this.telp = const Value.absent(),
+    this.alamat = const Value.absent(),
+    this.catatan = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       kode = Value(kode),
+       nama = Value(nama),
+       updatedAt = Value(updatedAt);
+  static Insertable<CustomerEntry> custom({
+    Expression<String>? id,
+    Expression<String>? kode,
+    Expression<String>? nama,
+    Expression<String>? telp,
+    Expression<String>? alamat,
+    Expression<String>? catatan,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (kode != null) 'kode': kode,
+      if (nama != null) 'nama': nama,
+      if (telp != null) 'telp': telp,
+      if (alamat != null) 'alamat': alamat,
+      if (catatan != null) 'catatan': catatan,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CustomerEntriesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? kode,
+    Value<String>? nama,
+    Value<String?>? telp,
+    Value<String?>? alamat,
+    Value<String?>? catatan,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return CustomerEntriesCompanion(
+      id: id ?? this.id,
+      kode: kode ?? this.kode,
+      nama: nama ?? this.nama,
+      telp: telp ?? this.telp,
+      alamat: alamat ?? this.alamat,
+      catatan: catatan ?? this.catatan,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (kode.present) {
+      map['kode'] = Variable<String>(kode.value);
+    }
+    if (nama.present) {
+      map['nama'] = Variable<String>(nama.value);
+    }
+    if (telp.present) {
+      map['telp'] = Variable<String>(telp.value);
+    }
+    if (alamat.present) {
+      map['alamat'] = Variable<String>(alamat.value);
+    }
+    if (catatan.present) {
+      map['catatan'] = Variable<String>(catatan.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomerEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('kode: $kode, ')
+          ..write('nama: $nama, ')
+          ..write('telp: $telp, ')
+          ..write('alamat: $alamat, ')
+          ..write('catatan: $catatan, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5963,6 +6464,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $StoreSettingsTable storeSettings = $StoreSettingsTable(this);
+  late final $CustomerEntriesTable customerEntries = $CustomerEntriesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5981,6 +6485,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     serviceOrderEntries,
     shipmentEntries,
     storeSettings,
+    customerEntries,
   ];
 }
 
@@ -7950,6 +8455,7 @@ typedef $$ServiceOrderEntriesTableCreateCompanionBuilder =
       Value<DateTime?> estimasiSelesai,
       required String customerNama,
       Value<String?> customerTelp,
+      Value<String?> customerId,
       Value<String?> operatorId,
       required String barangNama,
       Value<String?> barangType,
@@ -7976,6 +8482,7 @@ typedef $$ServiceOrderEntriesTableUpdateCompanionBuilder =
       Value<DateTime?> estimasiSelesai,
       Value<String> customerNama,
       Value<String?> customerTelp,
+      Value<String?> customerId,
       Value<String?> operatorId,
       Value<String> barangNama,
       Value<String?> barangType,
@@ -8031,6 +8538,11 @@ class $$ServiceOrderEntriesTableFilterComposer
 
   ColumnFilters<String> get customerTelp => $composableBuilder(
     column: $table.customerTelp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerId => $composableBuilder(
+    column: $table.customerId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8154,6 +8666,11 @@ class $$ServiceOrderEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get operatorId => $composableBuilder(
     column: $table.operatorId,
     builder: (column) => ColumnOrderings(column),
@@ -8270,6 +8787,11 @@ class $$ServiceOrderEntriesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get customerId => $composableBuilder(
+    column: $table.customerId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get operatorId => $composableBuilder(
     column: $table.operatorId,
     builder: (column) => column,
@@ -8380,6 +8902,7 @@ class $$ServiceOrderEntriesTableTableManager
                 Value<DateTime?> estimasiSelesai = const Value.absent(),
                 Value<String> customerNama = const Value.absent(),
                 Value<String?> customerTelp = const Value.absent(),
+                Value<String?> customerId = const Value.absent(),
                 Value<String?> operatorId = const Value.absent(),
                 Value<String> barangNama = const Value.absent(),
                 Value<String?> barangType = const Value.absent(),
@@ -8404,6 +8927,7 @@ class $$ServiceOrderEntriesTableTableManager
                 estimasiSelesai: estimasiSelesai,
                 customerNama: customerNama,
                 customerTelp: customerTelp,
+                customerId: customerId,
                 operatorId: operatorId,
                 barangNama: barangNama,
                 barangType: barangType,
@@ -8430,6 +8954,7 @@ class $$ServiceOrderEntriesTableTableManager
                 Value<DateTime?> estimasiSelesai = const Value.absent(),
                 required String customerNama,
                 Value<String?> customerTelp = const Value.absent(),
+                Value<String?> customerId = const Value.absent(),
                 Value<String?> operatorId = const Value.absent(),
                 required String barangNama,
                 Value<String?> barangType = const Value.absent(),
@@ -8454,6 +8979,7 @@ class $$ServiceOrderEntriesTableTableManager
                 estimasiSelesai: estimasiSelesai,
                 customerNama: customerNama,
                 customerTelp: customerTelp,
+                customerId: customerId,
                 operatorId: operatorId,
                 barangNama: barangNama,
                 barangType: barangType,
@@ -9063,6 +9589,246 @@ typedef $$StoreSettingsTableProcessedTableManager =
       StoreSetting,
       PrefetchHooks Function()
     >;
+typedef $$CustomerEntriesTableCreateCompanionBuilder =
+    CustomerEntriesCompanion Function({
+      required String id,
+      required String kode,
+      required String nama,
+      Value<String?> telp,
+      Value<String?> alamat,
+      Value<String?> catatan,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$CustomerEntriesTableUpdateCompanionBuilder =
+    CustomerEntriesCompanion Function({
+      Value<String> id,
+      Value<String> kode,
+      Value<String> nama,
+      Value<String?> telp,
+      Value<String?> alamat,
+      Value<String?> catatan,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$CustomerEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $CustomerEntriesTable> {
+  $$CustomerEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kode => $composableBuilder(
+    column: $table.kode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nama => $composableBuilder(
+    column: $table.nama,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get telp => $composableBuilder(
+    column: $table.telp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get alamat => $composableBuilder(
+    column: $table.alamat,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get catatan => $composableBuilder(
+    column: $table.catatan,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CustomerEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CustomerEntriesTable> {
+  $$CustomerEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kode => $composableBuilder(
+    column: $table.kode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nama => $composableBuilder(
+    column: $table.nama,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get telp => $composableBuilder(
+    column: $table.telp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get alamat => $composableBuilder(
+    column: $table.alamat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get catatan => $composableBuilder(
+    column: $table.catatan,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CustomerEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CustomerEntriesTable> {
+  $$CustomerEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get kode =>
+      $composableBuilder(column: $table.kode, builder: (column) => column);
+
+  GeneratedColumn<String> get nama =>
+      $composableBuilder(column: $table.nama, builder: (column) => column);
+
+  GeneratedColumn<String> get telp =>
+      $composableBuilder(column: $table.telp, builder: (column) => column);
+
+  GeneratedColumn<String> get alamat =>
+      $composableBuilder(column: $table.alamat, builder: (column) => column);
+
+  GeneratedColumn<String> get catatan =>
+      $composableBuilder(column: $table.catatan, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CustomerEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CustomerEntriesTable,
+          CustomerEntry,
+          $$CustomerEntriesTableFilterComposer,
+          $$CustomerEntriesTableOrderingComposer,
+          $$CustomerEntriesTableAnnotationComposer,
+          $$CustomerEntriesTableCreateCompanionBuilder,
+          $$CustomerEntriesTableUpdateCompanionBuilder,
+          (
+            CustomerEntry,
+            BaseReferences<_$AppDatabase, $CustomerEntriesTable, CustomerEntry>,
+          ),
+          CustomerEntry,
+          PrefetchHooks Function()
+        > {
+  $$CustomerEntriesTableTableManager(
+    _$AppDatabase db,
+    $CustomerEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CustomerEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CustomerEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CustomerEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> kode = const Value.absent(),
+                Value<String> nama = const Value.absent(),
+                Value<String?> telp = const Value.absent(),
+                Value<String?> alamat = const Value.absent(),
+                Value<String?> catatan = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CustomerEntriesCompanion(
+                id: id,
+                kode: kode,
+                nama: nama,
+                telp: telp,
+                alamat: alamat,
+                catatan: catatan,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String kode,
+                required String nama,
+                Value<String?> telp = const Value.absent(),
+                Value<String?> alamat = const Value.absent(),
+                Value<String?> catatan = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CustomerEntriesCompanion.insert(
+                id: id,
+                kode: kode,
+                nama: nama,
+                telp: telp,
+                alamat: alamat,
+                catatan: catatan,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CustomerEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CustomerEntriesTable,
+      CustomerEntry,
+      $$CustomerEntriesTableFilterComposer,
+      $$CustomerEntriesTableOrderingComposer,
+      $$CustomerEntriesTableAnnotationComposer,
+      $$CustomerEntriesTableCreateCompanionBuilder,
+      $$CustomerEntriesTableUpdateCompanionBuilder,
+      (
+        CustomerEntry,
+        BaseReferences<_$AppDatabase, $CustomerEntriesTable, CustomerEntry>,
+      ),
+      CustomerEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9093,4 +9859,6 @@ class $AppDatabaseManager {
       $$ShipmentEntriesTableTableManager(_db, _db.shipmentEntries);
   $$StoreSettingsTableTableManager get storeSettings =>
       $$StoreSettingsTableTableManager(_db, _db.storeSettings);
+  $$CustomerEntriesTableTableManager get customerEntries =>
+      $$CustomerEntriesTableTableManager(_db, _db.customerEntries);
 }

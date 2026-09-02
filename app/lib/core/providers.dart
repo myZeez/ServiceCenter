@@ -157,6 +157,10 @@ final gridLayoutProvider =
 Future<void> simpanGridLayout(WidgetRef ref, String key, GridLayout layout) =>
     ref.read(databaseProvider).setMeta('grid.$key', encodeLayout(layout));
 
+final customersProvider = StreamProvider<List<CustomerEntry>>(
+  (ref) => ref.watch(databaseProvider).watchCustomers(),
+);
+
 /// Identitas toko untuk kepala dan kaki nota.
 final storeSettingsProvider = StreamProvider<StoreSetting?>(
   (ref) => ref.watch(databaseProvider).watchStoreSettings(),

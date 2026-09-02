@@ -145,8 +145,12 @@ class ServiceOrderEntries extends Table {
   DateTimeColumn get tanggalMasuk => dateTime()();
   DateTimeColumn get estimasiSelesai => dateTime().nullable()();
 
+  // Salinan, bukan tautan. Nota yang sudah tercetak harus tetap cocok
+  // dengan kertasnya walau data pelanggannya berubah kemudian.
   TextColumn get customerNama => text()();
   TextColumn get customerTelp => text().nullable()();
+  TextColumn get customerId => text().nullable()();
+
   TextColumn get operatorId => text().nullable()();
 
   TextColumn get barangNama => text()();
@@ -195,6 +199,21 @@ class ShipmentEntries extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Master pelanggan. Nota tetap menyimpan salinan nama dan teleponnya
+/// sendiri; tabel ini hanya untuk mencari dan menautkan.
+class CustomerEntries extends Table {
+  TextColumn get id => text()();
+  TextColumn get kode => text()();
+  TextColumn get nama => text()();
+  TextColumn get telp => text().nullable()();
+  TextColumn get alamat => text().nullable()();
+  TextColumn get catatan => text().nullable()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Identitas toko untuk kepala dan kaki nota.
 class StoreSettings extends Table {
   IntColumn get id => integer()();
@@ -232,6 +251,7 @@ class SyncMeta extends Table {
     ServiceOrderEntries,
     ShipmentEntries,
     StoreSettings,
+    CustomerEntries,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -240,7 +260,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -270,6 +290,13 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 6) {
             await m.createTable(storeSettings);
+          }
+          if (from < 7) {
+            await m.createTable(customerEntries);
+            await m.addColumn(
+              serviceOrderEntries,
+              serviceOrderEntries.customerId,
+            );
           }
         },
       );
@@ -494,6 +521,22 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> upsertShipment(ShipmentEntriesCompanion row) =>
       into(shipmentEntries).insertOnConflictUpdate(row);
+
+  Stream<List<CustomerEntry>> watchCustomers() =>
+      (select(customerEntries)
+            ..orderBy([(t) => OrderingTerm.asc(t.nama)]))
+          .watch();
+
+  Future<void> upsertCustomer(CustomerEntriesCompanion row) =>
+      into(customerEntries).insertOnConflictUpdate(row);
+
+  /// Nota milik satu pelanggan, terbaru di atas. Dipakai untuk melihat
+  /// riwayat kunjungannya.
+  Stream<List<ServiceOrderEntry>> watchNotaPelanggan(String customerId) =>
+      (select(serviceOrderEntries)
+            ..where((t) => t.customerId.equals(customerId))
+            ..orderBy([(t) => OrderingTerm.desc(t.tanggalMasuk)]))
+          .watch();
 
   Stream<StoreSetting?> watchStoreSettings() =>
       (select(storeSettings)..where((t) => t.id.equals(1)))

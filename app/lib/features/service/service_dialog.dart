@@ -15,6 +15,7 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import '../scan/scan_page.dart';
+import 'customer_field.dart';
 import 'service_status.dart';
 
 const _uuid = Uuid();
@@ -73,6 +74,11 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   final _biaya = TextEditingController();
   final _keterangan = TextEditingController();
 
+  final _namaFokus = FocusNode();
+
+  /// Pelanggan lama yang tertaut. Null berarti akan dibuatkan yang baru.
+  CustomerEntry? _pelanggan;
+
   String? _teknisiId;
   int? _brandId;
   DateTime? _estimasi;
@@ -124,6 +130,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     ]) {
       c.dispose();
     }
+    _namaFokus.dispose();
     super.dispose();
   }
 
@@ -146,6 +153,23 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     final user = ref.read(currentUserProvider);
 
     try {
+      // Pelanggan baru dibuatkan catatannya sendiri supaya kunjungan
+      // berikutnya tinggal dipilih. Yang sudah tertaut tidak disentuh --
+      // mengubah data master dari formulir nota berarti satu koreksi ketik
+      // diam-diam mengubah riwayat pelanggan lain yang bernama sama.
+      var customerId = _pelanggan?.id;
+      if (customerId == null) {
+        final baru = await client
+            .from('customers')
+            .insert({
+              'nama': _nama.text.trim(),
+              'telp': _kosongNull(_telp),
+            })
+            .select()
+            .single();
+        customerId = baru['id'] as String;
+      }
+
       String? claimId = widget.nota?.claimId;
 
       // Unit bergaransi menghasilkan dua catatan sekaligus: nota untuk
@@ -180,6 +204,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             _estimasi == null ? null : _iso.format(_estimasi!),
         'customer_nama': _nama.text.trim(),
         'customer_telp': _kosongNull(_telp),
+        'customer_id': customerId,
         'operator_id': user?.id,
         'barang_nama': _barang.text.trim(),
         'barang_type': _kosongNull(_type),
@@ -275,6 +300,21 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     final techs = ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
     final size = MediaQuery.sizeOf(context);
+
+    // Nota yang sedang disunting mungkin sudah tertaut; tautannya dicari
+    // sekali saat daftar pelanggan tersedia.
+    final idTertaut = widget.nota?.customerId;
+    if (_pelanggan == null && idTertaut != null) {
+      final daftar = ref.watch(customersProvider).valueOrNull;
+      if (daftar != null) {
+        for (final c in daftar) {
+          if (c.id == idTertaut) {
+            _pelanggan = c;
+            break;
+          }
+        }
+      }
+    }
 
     return Center(
       child: Padding(
@@ -378,16 +418,18 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       children: [
         const SectionLabel('Pelanggan'),
         const SizedBox(height: AppSpacing.s),
-        LabeledField(
-          label: 'Nama',
-          required: true,
-          child: TextFormField(
-            controller: _nama,
-            autofocus: widget.isNew,
-            textCapitalization: TextCapitalization.characters,
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Nama wajib diisi' : null,
-          ),
+        CustomerField(
+          controller: _nama,
+          focusNode: _namaFokus,
+          pelanggan: ref.watch(customersProvider).valueOrNull ??
+              const <CustomerEntry>[],
+          terpilih: _pelanggan,
+          onPilih: (c) => setState(() {
+            _pelanggan = c;
+            _nama.text = c.nama;
+            if ((c.telp ?? '').isNotEmpty) _telp.text = c.telp!;
+          }),
+          onBaru: () => setState(() => _pelanggan = null),
         ),
         const SizedBox(height: AppSpacing.s),
         LabeledField(

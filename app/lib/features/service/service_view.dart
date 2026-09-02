@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -11,12 +12,17 @@ import '../scan/scan_page.dart';
 import 'service_dialog.dart';
 import 'service_status.dart';
 
-final _rp = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+final _rp = NumberFormat.currency(
+  locale: 'id_ID',
+  symbol: 'Rp',
+  decimalDigits: 0,
+);
 final _tgl = DateFormat('dd/MM/yy');
 
-final serviceOrdersProvider = StreamProvider.autoDispose<List<ServiceOrderEntry>>(
-  (ref) => ref.watch(databaseProvider).watchServiceOrders(),
-);
+final serviceOrdersProvider =
+    StreamProvider.autoDispose<List<ServiceOrderEntry>>(
+      (ref) => ref.watch(databaseProvider).watchServiceOrders(),
+    );
 
 class ServiceFilter {
   const ServiceFilter({this.status, this.query = ''});
@@ -30,8 +36,9 @@ class ServiceFilter {
       );
 }
 
-final serviceFilterProvider =
-    StateProvider<ServiceFilter>((ref) => const ServiceFilter());
+final serviceFilterProvider = StateProvider<ServiceFilter>(
+  (ref) => const ServiceFilter(),
+);
 
 class ServiceView extends ConsumerStatefulWidget {
   const ServiceView({super.key});
@@ -56,7 +63,8 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
   @override
   Widget build(BuildContext context) {
     final semua =
-        ref.watch(serviceOrdersProvider).valueOrNull ?? const <ServiceOrderEntry>[];
+        ref.watch(serviceOrdersProvider).valueOrNull ??
+        const <ServiceOrderEntry>[];
     final filter = ref.watch(serviceFilterProvider);
     final techs = {
       for (final p
@@ -79,107 +87,122 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
           (n.customerTelp ?? '').contains(q);
     }).toList();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.s,
-        vertical: AppSpacing.xs,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          PageHeader(
-            title: 'Servis',
-            subtitle: '${semua.length} nota tercatat',
-            actions: [
-              SizedBox(
-                width: 300,
-                child: TextField(
-                  controller: _search,
-                  decoration: InputDecoration(
-                    hintText: 'Cari no nota, nama, SN, telp',
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      size: 17,
-                      color: AppColors.grey,
-                    ),
-                    prefixIconConstraints: const BoxConstraints(minWidth: 36),
-                    suffixIcon: ScanFieldButton(
-                      title: 'Pindai SN untuk mencari',
-                      onScanned: (v) {
-                        _search.text = v;
-                        _setQuery(v);
-                      },
-                    ),
-                  ),
-                  onChanged: _setQuery,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.s),
-              FilledButton.icon(
-                onPressed: () => showServiceDialog(context),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('NOTA BARU'),
-              ),
-            ],
+    // Ctrl+N membuka formulir tanpa memindahkan tangan ke tetikus. Fokus
+    // diambil otomatis agar pintasannya hidup begitu halaman terbuka, bukan
+    // setelah ada yang diklik lebih dulu.
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true): () =>
+            showServiceDialog(context),
+      },
+      child: Focus(
+        autofocus: true,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s,
+            vertical: AppSpacing.xs,
           ),
-          const SizedBox(height: AppSpacing.sm),
-
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              PageHeader(
+                title: 'Servis',
+                subtitle:
+                    '${semua.length} nota tercatat  ·  Ctrl+N untuk tambah',
+                actions: [
+                  SizedBox(
+                    width: 300,
+                    child: TextField(
+                      controller: _search,
+                      decoration: InputDecoration(
+                        hintText: 'Cari no nota, nama, SN, telp',
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          size: 17,
+                          color: AppColors.grey,
+                        ),
+                        prefixIconConstraints: const BoxConstraints(
+                          minWidth: 36,
+                        ),
+                        suffixIcon: ScanFieldButton(
+                          title: 'Pindai SN untuk mencari',
+                          onScanned: (v) {
+                            _search.text = v;
+                            _setQuery(v);
+                          },
+                        ),
+                      ),
+                      onChanged: _setQuery,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.s),
+                  FilledButton.icon(
+                    onPressed: () => showServiceDialog(context),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('TAMBAH SERVIS'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: StatTile(
+                      value: '${semua.length}',
+                      label: 'Semua nota',
+                      selected: filter.status == null,
+                      onTap: () => ref
+                          .read(serviceFilterProvider.notifier)
+                          .update((s) => s.copyWith(clear: true)),
+                    ),
+                  ),
+                  for (final s in ServiceStatus.all) ...[
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: StatTile(
+                        value: '${perStatus[s] ?? 0}',
+                        label: ServiceStatus.label(s),
+                        accent: ServiceStatus.color(s),
+                        selected: filter.status == s,
+                        onTap: () => ref
+                            .read(serviceFilterProvider.notifier)
+                            .update((f) => f.copyWith(status: s)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: AppSpacing.s),
+
               Expanded(
-                child: StatTile(
-                  value: '${semua.length}',
-                  label: 'Semua nota',
-                  selected: filter.status == null,
-                  onTap: () => ref
-                      .read(serviceFilterProvider.notifier)
-                      .update((s) => s.copyWith(clear: true)),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.base),
+                    border: Border.all(color: const Color(0xFFE4E7E7)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: tampil.isEmpty
+                      ? EmptyState(
+                          icon: Icons.receipt_long_outlined,
+                          title: semua.isEmpty
+                              ? 'Belum ada nota'
+                              : 'Tidak ada nota yang cocok',
+                          description: semua.isEmpty
+                              ? 'Nota dibuat saat pelanggan menyerahkan unitnya.'
+                              : 'Ubah filter atau kata pencarian di atas.',
+                          action: OutlinedButton(
+                            onPressed: () => showServiceDialog(context),
+                            child: const Text('TAMBAH SERVIS'),
+                          ),
+                        )
+                      : _Tabel(items: tampil, techs: techs),
                 ),
               ),
-              for (final s in ServiceStatus.all) ...[
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: StatTile(
-                    value: '${perStatus[s] ?? 0}',
-                    label: ServiceStatus.label(s),
-                    accent: ServiceStatus.color(s),
-                    selected: filter.status == s,
-                    onTap: () => ref
-                        .read(serviceFilterProvider.notifier)
-                        .update((f) => f.copyWith(status: s)),
-                  ),
-                ),
-              ],
             ],
           ),
-          const SizedBox(height: AppSpacing.s),
-
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(AppRadius.base),
-                border: Border.all(color: const Color(0xFFE4E7E7)),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: tampil.isEmpty
-                  ? EmptyState(
-                      icon: Icons.receipt_long_outlined,
-                      title: semua.isEmpty
-                          ? 'Belum ada nota'
-                          : 'Tidak ada nota yang cocok',
-                      description: semua.isEmpty
-                          ? 'Nota dibuat saat pelanggan menyerahkan unitnya.'
-                          : 'Ubah filter atau kata pencarian di atas.',
-                      action: OutlinedButton(
-                        onPressed: () => showServiceDialog(context),
-                        child: const Text('BUAT NOTA'),
-                      ),
-                    )
-                  : _Tabel(items: tampil, techs: techs),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -358,8 +381,10 @@ class _BarisState extends State<_Baris> {
                 child: Padding(
                   padding: const EdgeInsets.only(right: AppSpacing.s),
                   child: Text(
-                    [n.barangNama, if (n.barangType != null) n.barangType!]
-                        .join('  '),
+                    [
+                      n.barangNama,
+                      if (n.barangType != null) n.barangType!,
+                    ].join('  '),
                     style: _sel,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -425,14 +450,14 @@ class _H extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        text.toUpperCase(),
-        overflow: TextOverflow.clip,
-        softWrap: false,
-        style: const TextStyle(
-          fontSize: 9.5,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1,
-          color: AppColors.black,
-        ),
-      );
+    text.toUpperCase(),
+    overflow: TextOverflow.clip,
+    softWrap: false,
+    style: const TextStyle(
+      fontSize: 9.5,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1,
+      color: AppColors.black,
+    ),
+  );
 }

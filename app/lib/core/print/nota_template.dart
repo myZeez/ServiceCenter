@@ -26,7 +26,7 @@ List<int> susunNota({
   StoreSetting? toko,
   String? namaTeknisi,
   String? namaOperator,
-  int lebar = 40,
+  int lebar = 32,
   int salinan = 1,
 }) {
   final p = EscPos(lebar: lebar);
@@ -58,8 +58,21 @@ void _satuNota(
   String? namaOperator,
 }) {
   // --- kepala ----------------------------------------------------------
-  p.tengah(toko?.nama ?? 'SERVICE CENTER', tebalkan: true, besarkan: true);
-  if ((toko?.alamat ?? '').trim().isNotEmpty) p.tengah(toko!.alamat!);
+  final namaToko = toko?.nama ?? 'SERVICE CENTER';
+
+  // Huruf ganda hanya memuat separuh kolom. Nama toko yang panjang lebih
+  // terbaca sebagai satu baris tebal berukuran biasa daripada dipecah
+  // menjadi dua baris besar.
+  p.tengah(
+    namaToko,
+    tebalkan: true,
+    besarkan: namaToko.length <= p.lebar ~/ 2,
+  );
+
+  // Alamat sering ditulis beberapa baris; baris barunya dipertahankan.
+  for (final baris in (toko?.alamat ?? '').split('\n')) {
+    if (baris.trim().isNotEmpty) p.tengah(baris.trim());
+  }
   if ((toko?.telepon ?? '').trim().isNotEmpty) {
     p.tengah('Telp ${toko!.telepon}');
   }
@@ -157,7 +170,7 @@ List<String> _bungkusKecil(String teks, int lebar) {
 }
 
 /// Cetak percobaan untuk memastikan lebar kolomnya pas.
-List<int> susunUjiCetak({int lebar = 40}) {
+List<int> susunUjiCetak({int lebar = 32}) {
   final p = EscPos(lebar: lebar)..mulai();
 
   p.tengah('UJI CETAK', tebalkan: true, besarkan: true);

@@ -11,11 +11,12 @@ import 'dart:convert';
 enum Rata { kiri, tengah, kanan }
 
 class EscPos {
-  EscPos({this.lebar = 40});
+  EscPos({this.lebar = 32});
 
-  /// Jumlah karakter per baris. M-188D umumnya 40 pada font standar,
-  /// tetapi bergantung font yang aktif di printer -- karena itu bisa diatur
-  /// dari Pengaturan dan diuji dengan cetak percobaan.
+  /// Jumlah karakter per baris. Kertas 57,5mm pada M-188D memuat sekitar 32
+  /// karakter di font standar; angka pastinya bergantung font yang aktif di
+  /// printer, karena itu bisa diatur dari Pengaturan dan dipastikan lewat
+  /// cetak percobaan.
   final int lebar;
 
   final List<int> _buf = [];

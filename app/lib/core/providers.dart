@@ -176,7 +176,7 @@ final printerLebarProvider = StreamProvider<int>(
   (ref) => ref
       .watch(databaseProvider)
       .watchMeta('printer.lebar')
-      .map((v) => int.tryParse(v ?? '') ?? 40),
+      .map((v) => int.tryParse(v ?? '') ?? 32),
 );
 
 Future<void> simpanPrinter(WidgetRef ref, String nama, int lebar) async {

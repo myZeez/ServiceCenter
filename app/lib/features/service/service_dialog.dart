@@ -235,7 +235,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     if (n == null) return;
 
     final printer = ref.read(printerNamaProvider).valueOrNull ?? '';
-    final lebar = ref.read(printerLebarProvider).valueOrNull ?? 40;
+    final lebar = ref.read(printerLebarProvider).valueOrNull ?? 32;
     final toko = ref.read(storeSettingsProvider).valueOrNull;
 
     final orang = {

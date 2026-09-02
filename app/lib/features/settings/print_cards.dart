@@ -41,7 +41,7 @@ class _PrinterCardState extends ConsumerState<PrinterCard> {
   }
 
   Future<void> _uji() async {
-    final lebar = int.tryParse(_lebar.text) ?? 40;
+    final lebar = int.tryParse(_lebar.text) ?? 32;
     final galat = RawPrinter.kirim(
       _dipilih ?? '',
       susunUjiCetak(lebar: lebar),
@@ -106,8 +106,9 @@ class _PrinterCardState extends ConsumerState<PrinterCard> {
             const SizedBox(height: AppSpacing.s),
             LabeledField(
               label: 'Lebar Kolom',
-              hint: 'Jumlah karakter per baris. M-188D umumnya 40, tapi '
-                  'bergantung font yang aktif — pastikan lewat uji cetak.',
+              hint: 'Jumlah karakter per baris. Kertas 57,5mm biasanya 32 — '
+                  'pastikan lewat uji cetak, garis penggarisnya harus pas '
+                  'satu baris.',
               child: TextField(
                 controller: _lebar,
                 keyboardType: TextInputType.number,
@@ -153,7 +154,7 @@ class _PrinterCardState extends ConsumerState<PrinterCard> {
                             await simpanPrinter(
                               ref,
                               _dipilih!,
-                              int.tryParse(_lebar.text) ?? 40,
+                              int.tryParse(_lebar.text) ?? 32,
                             );
                             if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(

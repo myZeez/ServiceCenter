@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'local/database.dart';
 import 'sync/sync_service.dart';
+import 'widgets/grid_canvas.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -142,6 +143,23 @@ final claimsProvider = StreamProvider<List<Claim>>((ref) {
         .toList(),
   );
 });
+
+/// Susunan grid yang dipilih pengguna, per halaman.
+///
+/// Disimpan lokal, bukan di server: ini selera menata layar dan berbeda
+/// tiap orang serta tiap ukuran monitor -- tidak ada gunanya dipaksa sama
+/// di semua perangkat.
+final gridSpansProvider =
+    StreamProvider.family<Map<String, GridSpan>, String>((ref, key) {
+  return ref.watch(databaseProvider).watchMeta('grid.$key').map(decodeSpans);
+});
+
+Future<void> simpanGridSpans(
+  WidgetRef ref,
+  String key,
+  Map<String, GridSpan> spans,
+) =>
+    ref.read(databaseProvider).setMeta('grid.$key', encodeSpans(spans));
 
 /// Jumlah klaim per status. Dipakai stat tile di halaman utama, yang
 /// sekaligus berfungsi sebagai filter status.

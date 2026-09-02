@@ -423,6 +423,11 @@ class AppDatabase extends _$AppDatabase {
     return row != null;
   }
 
+  Stream<String?> watchMeta(String key) =>
+      (select(syncMeta)..where((t) => t.key.equals(key)))
+          .watchSingleOrNull()
+          .map((row) => row?.value);
+
   Future<String?> getMeta(String key) async {
     final row = await (select(syncMeta)..where((t) => t.key.equals(key)))
         .getSingleOrNull();

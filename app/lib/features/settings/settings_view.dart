@@ -30,8 +30,17 @@ class SettingsView extends ConsumerWidget {
         children: [
           PageHeader(
             title: 'Pengaturan',
-            subtitle: 'Pengguna dan data master yang dipakai seluruh aplikasi',
+            subtitle: 'Pengguna dan data master yang dipakai seluruh aplikasi'
+                '  ·  tarik sudut kanan bawah kartu untuk mengubah ukurannya',
             actions: [
+              if ((ref.watch(gridSpansProvider('pengaturan')).valueOrNull ??
+                      const {})
+                  .isNotEmpty)
+                TextButton(
+                  onPressed: () => simpanGridSpans(ref, 'pengaturan', const {}),
+                  child: const Text('SUSUNAN AWAL'),
+                ),
+              const SizedBox(width: AppSpacing.xs),
               OutlinedButton.icon(
                 onPressed: () => ref.read(syncServiceProvider).syncNow(),
                 icon: const Icon(Icons.refresh, size: 16),
@@ -53,9 +62,8 @@ class SettingsView extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.s),
-          // Tinggi tiap kartu ditentukan isinya lewat rowSpan, bukan dipaksa
-          // muat di tinggi jendela. Halaman boleh lebih panjang dan digulir
-          // -- jauh lebih baik daripada memampatkan semuanya sampai sempit.
+          // Ukuran tiap kartu bisa ditarik dari sudut kanan bawahnya, dan
+          // pilihannya tersimpan di perangkat ini.
           Expanded(
             child: LayoutBuilder(
               builder: (context, c) {
@@ -65,12 +73,37 @@ class SettingsView extends ConsumerWidget {
                     rowHeight: 52,
                     gap: AppSpacing.s,
                     padding: const EdgeInsets.only(bottom: AppSpacing.s),
+                    spans: ref.watch(gridSpansProvider('pengaturan')).valueOrNull ??
+                        const {},
+                    onSpansChanged: (v) =>
+                        simpanGridSpans(ref, 'pengaturan', v),
                     areas: const [
-                      GridArea(colSpan: 4, rowSpan: 7, child: _UsersCard()),
-                      GridArea(colSpan: 4, rowSpan: 7, child: _BrandsCard()),
-                      GridArea(colSpan: 4, rowSpan: 7, child: _PartTypesCard()),
-                      GridArea(colSpan: 5, rowSpan: 9, child: BrandFeesCard()),
                       GridArea(
+                        id: 'pengguna',
+                        colSpan: 4,
+                        rowSpan: 7,
+                        child: _UsersCard(),
+                      ),
+                      GridArea(
+                        id: 'brand',
+                        colSpan: 4,
+                        rowSpan: 7,
+                        child: _BrandsCard(),
+                      ),
+                      GridArea(
+                        id: 'part',
+                        colSpan: 4,
+                        rowSpan: 7,
+                        child: _PartTypesCard(),
+                      ),
+                      GridArea(
+                        id: 'fee',
+                        colSpan: 5,
+                        rowSpan: 9,
+                        child: BrandFeesCard(),
+                      ),
+                      GridArea(
+                        id: 'bagi_hasil',
                         colSpan: 7,
                         rowSpan: 9,
                         child: RevenueSplitCard(),

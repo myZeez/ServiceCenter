@@ -31,13 +31,15 @@ class SettingsView extends ConsumerWidget {
           PageHeader(
             title: 'Pengaturan',
             subtitle: 'Pengguna dan data master yang dipakai seluruh aplikasi'
-                '  ·  tarik sudut kanan bawah kartu untuk mengubah ukurannya',
+                '  ·  tarik tepi kartu untuk mengubah ukuran, tepi kirinya '
+                'untuk memindah',
             actions: [
-              if ((ref.watch(gridSpansProvider('pengaturan')).valueOrNull ??
-                      const {})
-                  .isNotEmpty)
+              if (!(ref.watch(gridLayoutProvider('pengaturan')).valueOrNull ??
+                      const GridLayout())
+                  .isEmpty)
                 TextButton(
-                  onPressed: () => simpanGridSpans(ref, 'pengaturan', const {}),
+                  onPressed: () =>
+                      simpanGridLayout(ref, 'pengaturan', const GridLayout()),
                   child: const Text('SUSUNAN AWAL'),
                 ),
               const SizedBox(width: AppSpacing.xs),
@@ -73,10 +75,11 @@ class SettingsView extends ConsumerWidget {
                     rowHeight: 52,
                     gap: AppSpacing.s,
                     padding: const EdgeInsets.only(bottom: AppSpacing.s),
-                    spans: ref.watch(gridSpansProvider('pengaturan')).valueOrNull ??
-                        const {},
-                    onSpansChanged: (v) =>
-                        simpanGridSpans(ref, 'pengaturan', v),
+                    layout:
+                        ref.watch(gridLayoutProvider('pengaturan')).valueOrNull ??
+                            const GridLayout(),
+                    onLayoutChanged: (v) =>
+                        simpanGridLayout(ref, 'pengaturan', v),
                     areas: const [
                       GridArea(
                         id: 'pengguna',

@@ -149,17 +149,13 @@ final claimsProvider = StreamProvider<List<Claim>>((ref) {
 /// Disimpan lokal, bukan di server: ini selera menata layar dan berbeda
 /// tiap orang serta tiap ukuran monitor -- tidak ada gunanya dipaksa sama
 /// di semua perangkat.
-final gridSpansProvider =
-    StreamProvider.family<Map<String, GridSpan>, String>((ref, key) {
-  return ref.watch(databaseProvider).watchMeta('grid.$key').map(decodeSpans);
+final gridLayoutProvider =
+    StreamProvider.family<GridLayout, String>((ref, key) {
+  return ref.watch(databaseProvider).watchMeta('grid.$key').map(decodeLayout);
 });
 
-Future<void> simpanGridSpans(
-  WidgetRef ref,
-  String key,
-  Map<String, GridSpan> spans,
-) =>
-    ref.read(databaseProvider).setMeta('grid.$key', encodeSpans(spans));
+Future<void> simpanGridLayout(WidgetRef ref, String key, GridLayout layout) =>
+    ref.read(databaseProvider).setMeta('grid.$key', encodeLayout(layout));
 
 /// Jumlah klaim per status. Dipakai stat tile di halaman utama, yang
 /// sekaligus berfungsi sebagai filter status.

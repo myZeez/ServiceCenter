@@ -67,7 +67,7 @@ class ServiceReportsView extends ConsumerWidget {
     final bulan = ref.watch(bulanProvider);
 
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.s,
@@ -92,6 +92,7 @@ class ServiceReportsView extends ConsumerWidget {
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 tabs: [
+                  Tab(text: 'HARIAN'),
                   Tab(text: 'OMSET'),
                   Tab(text: 'PELUNASAN'),
                   Tab(text: 'KESELURUHAN'),
@@ -103,6 +104,7 @@ class ServiceReportsView extends ConsumerWidget {
             Expanded(
               child: TabBarView(
                 children: [
+                  const _Harian(),
                   _Omset(bulan: bulan),
                   _Pelunasan(bulan: bulan),
                   _Keseluruhan(bulan: bulan),
@@ -113,6 +115,246 @@ class ServiceReportsView extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// =====================================================================
+// Laporan harian untuk pusat — dua tabel, keluar dan masuk
+// =====================================================================
+
+final tanggalHarianProvider = StateProvider<DateTime>((ref) {
+  final n = DateTime.now();
+  return DateTime(n.year, n.month, n.day);
+});
+
+bool _hariSama(DateTime? a, DateTime b) =>
+    a != null && a.year == b.year && a.month == b.month && a.day == b.day;
+
+class _Harian extends ConsumerWidget {
+  const _Harian();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tanggal = ref.watch(tanggalHarianProvider);
+    final semua =
+        ref.watch(serviceOrdersProvider).valueOrNull ??
+        const <ServiceOrderEntry>[];
+
+    // Keluar: pekerjaannya rampung hari itu. Masuk: unitnya diterima hari
+    // itu. Keduanya termasuk garansi maupun reguler -- pusat membaca
+    // seluruh lalu lintas unit, bukan hanya yang berbayar.
+    final keluar =
+        semua.where((n) => _hariSama(n.tanggalSelesai, tanggal)).toList()
+          ..sort((a, b) => a.noNota.compareTo(b.noNota));
+    final masuk =
+        semua.where((n) => _hariSama(n.tanggalMasuk, tanggal)).toList()
+          ..sort((a, b) => a.noNota.compareTo(b.noNota));
+
+    final total = keluar.fold<double>(0, (a, n) => a + n.biaya);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: () async {
+                final p = await showDatePicker(
+                  context: context,
+                  initialDate: tanggal,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now().add(const Duration(days: 1)),
+                );
+                if (p != null) {
+                  ref.read(tanggalHarianProvider.notifier).state = p;
+                }
+              },
+              icon: const Icon(Icons.calendar_today, size: 15),
+              label: Text(_tglPanjang.format(tanggal).toUpperCase()),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            OutlinedButton(
+              onPressed: () {
+                final n = DateTime.now();
+                ref.read(tanggalHarianProvider.notifier).state =
+                    DateTime(n.year, n.month, n.day);
+              },
+              child: const Text('HARI INI'),
+            ),
+            const Spacer(),
+            _TombolExport(
+              aktif: keluar.isNotEmpty || masuk.isNotEmpty,
+              onExport: () => ExcelExport.harian(
+                keluar: keluar,
+                masuk: masuk,
+                tanggal: tanggal,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.s),
+
+        Expanded(
+          child: _Kartu(
+            judul: 'Nota Keluar',
+            ringkas: '${keluar.length} nota  ·  ${_rp.format(total)}',
+            kosong: keluar.isEmpty,
+            pesanKosong: 'Belum ada unit yang selesai pada tanggal ini.',
+            child: _TabelHarian(
+              kolom: const [
+                (0, 'Nama', 2),
+                (96, 'No Nota', 0),
+                (0, 'Jenis Barang', 2),
+                (0, 'Perbaikan', 3),
+                (112, 'Biaya', 0),
+                (96, 'Tgl Masuk', 0),
+                (104, 'Keterangan', 0),
+              ],
+              baris: [
+                for (final n in keluar)
+                  (
+                    n,
+                    [
+                      n.customerNama,
+                      n.noNota,
+                      _barang(n),
+                      n.perbaikan ?? '—',
+                      n.biaya == 0 ? 'Rp0' : _rp.format(n.biaya),
+                      _tgl.format(n.tanggalMasuk),
+                      ExcelExport.keteranganHarian(n),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s),
+
+        Expanded(
+          child: _Kartu(
+            judul: 'Nota Masuk',
+            ringkas: '${masuk.length} unit diterima',
+            kosong: masuk.isEmpty,
+            pesanKosong: 'Belum ada unit yang masuk pada tanggal ini.',
+            child: _TabelHarian(
+              kolom: const [
+                (0, 'Nama', 2),
+                (96, 'No Nota', 0),
+                (128, 'No HP', 0),
+                (0, 'Jenis Barang', 2),
+                (0, 'Kerusakan', 3),
+                (104, 'Pelunasan', 0),
+              ],
+              baris: [
+                for (final n in masuk)
+                  (
+                    n,
+                    [
+                      n.customerNama,
+                      n.noNota,
+                      n.customerTelp ?? '—',
+                      _barang(n),
+                      n.keluhan ?? '—',
+                      n.tanggalLunas == null
+                          ? '—'
+                          : _tgl.format(n.tanggalLunas!),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  static String _barang(ServiceOrderEntry n) => [
+        n.barangNama,
+        if ((n.barangType ?? '').isNotEmpty) n.barangType!,
+      ].join(' ');
+}
+
+/// Tabel sederhana untuk laporan harian. Lebar 0 berarti kolomnya berbagi
+/// ruang sisa menurut angka flex-nya.
+class _TabelHarian extends StatelessWidget {
+  const _TabelHarian({required this.kolom, required this.baris});
+
+  final List<(double, String, int)> kolom;
+  final List<(ServiceOrderEntry, List<String>)> baris;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget sel(double lebar, int flex, Widget isi) {
+      final padded = Padding(
+        padding: const EdgeInsets.only(right: AppSpacing.s),
+        child: isi,
+      );
+      return lebar > 0
+          ? SizedBox(width: lebar, child: padded)
+          : Expanded(flex: flex, child: padded);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm,
+            AppSpacing.xs,
+            AppSpacing.sm,
+            6,
+          ),
+          child: Row(
+            children: [
+              for (final (lebar, judul, flex) in kolom)
+                sel(
+                  lebar,
+                  flex,
+                  Text(
+                    judul.toUpperCase(),
+                    overflow: TextOverflow.clip,
+                    softWrap: false,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const Divider(),
+        Expanded(
+          child: ListView.builder(
+            padding: EdgeInsets.zero,
+            itemCount: baris.length,
+            itemBuilder: (context, i) {
+              final (nota, isi) = baris[i];
+              return _BarisKlik(
+                onTap: () => showServiceDialog(context, nota: nota),
+                children: [
+                  for (var k = 0; k < kolom.length; k++)
+                    sel(
+                      kolom[k].$1,
+                      kolom[k].$3,
+                      Text(
+                        isi[k],
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: k == 1
+                              ? FontWeight.w700
+                              : FontWeight.w400,
+                          color: isi[k] == '—'
+                              ? AppColors.grey
+                              : AppColors.black,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

@@ -59,6 +59,58 @@ class ExcelExport {
     return jalur;
   }
 
+  /// Beberapa tabel dalam satu berkas, masing-masing jadi lembar sendiri.
+  ///
+  /// Laporan harian memang dibaca sebagai dua tabel berdampingan; memecahnya
+  /// jadi dua berkas terpisah akan membuat penerimanya harus menggabungkan
+  /// sendiri.
+  static Future<String?> simpanBanyak({
+    required String namaBerkas,
+    required List<LembarExcel> lembar,
+  }) async {
+    final excel = Excel.createExcel();
+
+    for (var i = 0; i < lembar.length; i++) {
+      final l = lembar[i];
+      if (i == 0) {
+        final bawaan = excel.getDefaultSheet();
+        if (bawaan != null) excel.rename(bawaan, l.nama);
+      }
+      final sheet = excel[l.nama];
+
+      if (l.judul != null) {
+        sheet.appendRow([TextCellValue(l.judul!)]);
+        sheet.appendRow([]);
+      }
+      sheet.appendRow([for (final k in l.kepala) TextCellValue(k)]);
+      for (final b in l.baris) {
+        sheet.appendRow(b);
+      }
+      if (l.penutup != null) {
+        sheet.appendRow([]);
+        sheet.appendRow(l.penutup!);
+      }
+      sheet.setColumnAutoFit(0);
+    }
+
+    final bytes = excel.encode();
+    if (bytes == null) return null;
+
+    final lokasi = await getSaveLocation(
+      suggestedName: namaBerkas,
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'Excel', extensions: ['xlsx']),
+      ],
+    );
+    if (lokasi == null) return null;
+
+    var jalur = lokasi.path;
+    if (!jalur.toLowerCase().endsWith('.xlsx')) jalur = '$jalur.xlsx';
+
+    await File(jalur).writeAsBytes(bytes, flush: true);
+    return jalur;
+  }
+
   // ------------------------------------------------------------------
   // Pelunasan
   // ------------------------------------------------------------------
@@ -214,8 +266,117 @@ class ExcelExport {
     );
   }
 
+  // ------------------------------------------------------------------
+  // Laporan harian untuk pusat
+  // ------------------------------------------------------------------
+
+  static Future<String?> harian({
+    required List<ServiceOrderEntry> keluar,
+    required List<ServiceOrderEntry> masuk,
+    required DateTime tanggal,
+  }) {
+    final judul = 'LAPORAN PERHARI TGL ${_tgl.format(tanggal)}';
+    final total = keluar.fold<double>(0, (a, n) => a + n.biaya);
+
+    return simpanBanyak(
+      namaBerkas: 'Laporan Harian ${_aman(_tgl.format(tanggal))}.xlsx',
+      lembar: [
+        LembarExcel(
+          nama: 'Nota Keluar',
+          judul: judul,
+          kepala: const [
+            'NAMA',
+            'NO NOTA',
+            'JENIS BARANG',
+            'PERBAIKAN',
+            'BIAYA',
+            'TANGGAL MASUK',
+            'KETERANGAN',
+          ],
+          baris: [
+            for (final n in keluar)
+              [
+                TextCellValue(n.customerNama),
+                TextCellValue(n.noNota),
+                TextCellValue(_barang(n)),
+                TextCellValue(n.perbaikan ?? ''),
+                DoubleCellValue(n.biaya),
+                TextCellValue(_tgl.format(n.tanggalMasuk)),
+                TextCellValue(keteranganHarian(n)),
+              ],
+          ],
+          // Baris total ditaruh di kolom biaya, sejajar dengan angkanya --
+          // begitulah laporan ini dibaca di pusat.
+          penutup: [
+            null,
+            null,
+            null,
+            TextCellValue('TOTAL'),
+            DoubleCellValue(total),
+          ],
+        ),
+        LembarExcel(
+          nama: 'Nota Masuk',
+          judul: judul,
+          kepala: const [
+            'NAMA',
+            'NO NOTA',
+            'NO HP',
+            'JENIS BARANG',
+            'KERUSAKAN',
+            'PELUNASAN',
+          ],
+          baris: [
+            for (final n in masuk)
+              [
+                TextCellValue(n.customerNama),
+                TextCellValue(n.noNota),
+                TextCellValue(n.customerTelp ?? ''),
+                TextCellValue(_barang(n)),
+                TextCellValue(n.keluhan ?? ''),
+                n.tanggalLunas == null
+                    ? null
+                    : TextCellValue(_tgl.format(n.tanggalLunas!)),
+              ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  static String _barang(ServiceOrderEntry n) => [
+        n.barangNama,
+        if ((n.barangType ?? '').isNotEmpty) n.barangType!,
+      ].join(' ');
+
+  /// Kolom keterangan pada laporan harian menampung tiga hal berbeda:
+  /// pembatalan, status garansi, dan cara bayar. Urutannya disengaja --
+  /// yang paling menjelaskan kenapa biayanya nol didahulukan.
+  static String keteranganHarian(ServiceOrderEntry n) {
+    if (n.status == 'batal') return 'Cancel';
+    if (n.garansi) return 'Garansi';
+    return n.keterangan ?? '';
+  }
+
   /// Nama bulan mengandung spasi; karakter yang dilarang di nama berkas
   /// Windows dibuang agar dialog simpan tidak menolaknya.
   static String _aman(String teks) =>
       teks.replaceAll(RegExp(r'[\\/:*?"<>|]'), '-');
+}
+
+/// Satu lembar dalam berkas Excel.
+class LembarExcel {
+  const LembarExcel({
+    required this.nama,
+    required this.kepala,
+    required this.baris,
+    this.judul,
+    this.penutup,
+  });
+
+  final String nama;
+  final String? judul;
+  final List<String> kepala;
+  final List<List<CellValue?>> baris;
+  final List<CellValue?>? penutup;
 }

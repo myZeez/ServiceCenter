@@ -204,7 +204,7 @@ class _Harian extends ConsumerWidget {
             child: _TabelHarian(
               kolom: const [
                 (0, 'Nama', 2),
-                (96, 'No Nota', 0),
+                (118, 'No Nota', 0),
                 (0, 'Jenis Barang', 2),
                 (0, 'Perbaikan', 3),
                 (112, 'Biaya', 0),
@@ -240,7 +240,7 @@ class _Harian extends ConsumerWidget {
             child: _TabelHarian(
               kolom: const [
                 (0, 'Nama', 2),
-                (96, 'No Nota', 0),
+                (118, 'No Nota', 0),
                 (128, 'No HP', 0),
                 (0, 'Jenis Barang', 2),
                 (0, 'Kerusakan', 3),
@@ -710,7 +710,7 @@ class _Pelunasan extends ConsumerWidget {
                 nota: n,
                 teknisi: teknisi[n.teknisiId],
                 kolom: [
-                  (92.0, n.noNota, true),
+                  (118.0, n.noNota, true),
                   (0.0, n.customerNama, true),
                   (0.0, n.keluhan ?? '—', false),
                   (0.0, n.perbaikan ?? '—', false),
@@ -778,7 +778,7 @@ class _Keseluruhan extends ConsumerWidget {
             nota: n,
             teknisi: teknisi[n.teknisiId],
             kolom: [
-              (92.0, n.noNota, true),
+              (118.0, n.noNota, true),
               (0.0, n.customerNama, true),
               (108.0, n.customerTelp ?? '—', false),
               (

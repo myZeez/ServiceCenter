@@ -240,7 +240,7 @@ class _Tabel extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const SizedBox(width: 92, child: _H('No Nota')),
+                  const SizedBox(width: 118, child: _H('No Nota')),
                   const SizedBox(width: 76, child: _H('Masuk')),
                   const Expanded(flex: 3, child: _H('Pelanggan')),
                   if (tampilTelp) const SizedBox(width: 108, child: _H('Telp')),
@@ -327,7 +327,7 @@ class _BarisState extends State<_Baris> {
           child: Row(
             children: [
               SizedBox(
-                width: 92,
+                width: 118,
                 child: Row(
                   children: [
                     if (n.garansi)

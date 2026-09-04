@@ -83,6 +83,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   int? _brandId;
   DateTime? _estimasi;
   bool _garansi = false;
+  String? _claimBaru;
   String _status = ServiceStatus.masuk;
   String? _caraBayar;
   DateTime? _tanggalLunas;
@@ -175,7 +176,11 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       // Unit bergaransi menghasilkan dua catatan sekaligus: nota untuk
       // pelanggan, dan klaim untuk brand. Datanya diketik satu kali.
       if (widget.isNew && _garansi) {
-        claimId = _uuid.v4();
+        // Dibuat sekali lalu dipakai lagi kalau penyimpanannya diulang.
+        // Klaimnya bisa saja sudah sampai server sebelum notanya gagal
+        // tersimpan; dengan id yang sama, percobaan berikutnya menyunting
+        // klaim yang itu juga alih-alih menerbitkan klaim kembar.
+        claimId = _claimBaru ??= _uuid.v4();
         final now = DateTime.now();
 
         await ref.read(databaseProvider).upsertClaimLocal(
@@ -479,9 +484,20 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         const SizedBox(height: AppSpacing.s),
         LabeledField(
           label: 'Nomor Seri',
+          required: _garansi,
+          hint: _garansi
+              ? 'Brand mengenali unit dari nomor serinya. Klaim tanpa ini '
+                    'tidak bisa diproses siapa pun.'
+              : null,
           child: TextFormField(
             controller: _sn,
             textCapitalization: TextCapitalization.characters,
+            // Wajib hanya saat unitnya diklaimkan. Servis biasa sering
+            // masuk tanpa nomor seri terbaca -- stikernya sudah hilang atau
+            // unitnya mati total -- dan itu tidak menghalangi perbaikan.
+            validator: (v) => _garansi && (v ?? '').trim().isEmpty
+                ? 'Nomor seri wajib untuk klaim garansi'
+                : null,
             decoration: InputDecoration(
               suffixIcon: ScanFieldButton(
                 onScanned: (v) => setState(() => _sn.text = v),

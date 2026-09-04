@@ -21,20 +21,59 @@ class Db {
 
   final SupabaseClient _c;
 
+  /// Berapa lama menunggu sebelum menarik ulang, saat Realtime tidak bisa
+  /// dipakai. Cukup jarang supaya tidak membebani kuota, cukup sering supaya
+  /// perubahan dari komputer lain tidak tertinggal lama.
+  static const _jedaTarikUlang = Duration(seconds: 20);
+
   /// Seluruh isi tabel, diperbarui sendiri saat ada perubahan di server.
   ///
   /// Sengaja tidak disaring di sisi server. Satu langganan per tabel jauh
   /// lebih hemat daripada satu langganan per kombinasi filter, dan tabel di
   /// sini semuanya kecil. Penyaringan dan pengurutan dikerjakan di Dart oleh
   /// yang memakainya.
+  ///
+  /// Isinya dikirim sekali lewat query biasa lebih dulu, baru disusul
+  /// langganan Realtime. Itu bukan sekadar mempercepat tampilan: kalau
+  /// langganannya gagal terpasang -- Realtime belum dinyalakan untuk tabel
+  /// itu, tokennya ditolak, jaringan kantor memblokir websocket -- layarnya
+  /// tetap terisi, lalu jatuh ke penarikan ulang berkala. Sebelumnya
+  /// kegagalan langganan membuat seluruh halaman kosong dengan pesan yang
+  /// tidak bisa ditindaklanjuti siapa pun di toko.
+  ///
+  /// Penarikan berkala mengganti seluruh daftar, bukan menambahinya, jadi
+  /// baris yang dihapus di server tetap hilang di layar -- lebih lambat
+  /// daripada Realtime, tetapi tidak pernah salah.
   Stream<List<T>> _semua<T>(
     String tabel,
     T Function(Map<String, dynamic>) bentuk, {
     List<String> kunci = const ['id'],
-  }) => _c
-      .from(tabel)
-      .stream(primaryKey: kunci)
-      .map((rows) => rows.map(bentuk).toList());
+  }) async* {
+    List<T> olah(List<Map<String, dynamic>> rows) => rows.map(bentuk).toList();
+
+    Future<List<T>> tarik() async => olah(await _c.from(tabel).select());
+
+    yield await tarik();
+
+    // Sengaja await-for, bukan yield*: hanya await-for yang dijamin
+    // melemparkan galat aliran ke penangkap di sekelilingnya, dan justru
+    // penangkapan itulah gunanya blok ini.
+    try {
+      await for (final rows in _c.from(tabel).stream(primaryKey: kunci)) {
+        yield olah(rows);
+      }
+    } catch (_) {
+      yield* _berkala(tarik);
+    }
+  }
+
+  /// Menarik ulang terus-menerus. Dipakai hanya saat Realtime gagal.
+  Stream<List<T>> _berkala<T>(Future<List<T>> Function() tarik) async* {
+    while (true) {
+      await Future<void>.delayed(_jedaTarikUlang);
+      yield await tarik();
+    }
+  }
 
   // ------------------------------------------------------------------
   // Master

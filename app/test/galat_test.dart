@@ -42,6 +42,22 @@ void main() {
       expect(pesan.toLowerCase(), contains('hak'));
     });
 
+    test('langganan Realtime gagal menyebut tabel dan migrasinya', () {
+      // Ini yang muncul di HP setelah jamnya dibetulkan.
+      final pesan = pesanGalat(
+        Exception(
+          'RealtimeSubscribeException(status: channelError, details: '
+          'Exception: Unable to subscribe to changes with given parameters. '
+          'Please check Realtime is enabled for the given connect parameters: '
+          '[event: *, schema: public, table: claims, filters: [], select: nil])',
+        ),
+      );
+
+      expect(pesan, contains('claims'));
+      expect(pesan, contains('0012'));
+      expect(pesan.toLowerCase(), isNot(contains('channelerror')));
+    });
+
     test('koneksi putus dikenali dari galat soket', () {
       final pesan = pesanGalat(
         Exception('SocketException: Failed host lookup'),

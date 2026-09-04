@@ -42,6 +42,18 @@ String pesanGalat(Object e) {
   }
 
   final teks = e.toString();
+
+  // Langganan Realtime gagal terpasang. Paling sering karena tabelnya belum
+  // didaftarkan ke publikasi supabase_realtime -- lihat migrasi 0012.
+  if (teks.contains('RealtimeSubscribeException') ||
+      teks.contains('Unable to subscribe to changes')) {
+    final tabel = RegExp(r'table: (\w+)').firstMatch(teks)?.group(1);
+    return 'Realtime belum aktif untuk tabel '
+        '${tabel ?? 'yang diminta'} di server.\n\n'
+        'Jalankan migrasi 0012_realtime.sql di Supabase SQL Editor. '
+        'Sementara itu data tetap ditarik berkala, hanya tidak seketika.';
+  }
+
   if (teks.contains('SocketException') ||
       teks.contains('ClientException') ||
       teks.contains('Failed host lookup')) {

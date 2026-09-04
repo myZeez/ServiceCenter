@@ -84,11 +84,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('REZA'), findsOneWidget);
-    // Teknisi yang sedang kosong tetap punya kartunya sendiri.
-    expect(find.text('ANDI'), findsOneWidget);
+    // Diperiksa lewat teks yang hanya ada di panel: nama teknisi juga
+    // muncul di kolom TEKNISI pada tabel nota di sebelahnya.
+    expect(find.text('BULAN INI'), findsOneWidget);
     expect(find.text('Rp450.000  ·  1 selesai'), findsOneWidget);
-    expect(find.text('unit dikerjakan'), findsNWidgets(2));
+    // Teknisi yang sedang kosong tetap punya barisnya sendiri.
+    expect(find.text('Rp0  ·  0 selesai'), findsOneWidget);
+    expect(find.text('UNIT'), findsNWidgets(2));
+  });
+
+  testWidgets('panel disembunyikan di jendela sempit', (tester) async {
+    // Kolom nota yang tergencet sampai nama pelanggan terpotong lebih
+    // merugikan daripada tidak melihat beban teknisi sama sekali.
+    await tester.binding.setSurfaceSize(const Size(1000, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          serviceOrdersProvider.overrideWith(
+            (ref) => Stream.value([_nota(id: '1', teknisi: 't1')]),
+          ),
+          allProfilesProvider.overrideWith(
+            (ref) => Stream.value([
+              const Profile(id: 't1', nama: 'Reza', role: 'teknisi'),
+            ]),
+          ),
+          omsetSettingsProvider.overrideWith((ref) => Stream.value(null)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.build(),
+          home: const Scaffold(body: ServiceView()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('BULAN INI'), findsNothing);
   });
 
   testWidgets('kartu omset tampil di halaman pekerjaanku', (tester) async {

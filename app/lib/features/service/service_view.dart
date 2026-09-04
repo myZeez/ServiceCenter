@@ -176,31 +176,49 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
               ),
               const SizedBox(height: AppSpacing.s),
 
-              const _BarisTeknisi(),
-
               Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.base),
-                    border: Border.all(color: const Color(0xFFE4E7E7)),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: tampil.isEmpty
-                      ? EmptyState(
-                          icon: Icons.receipt_long_outlined,
-                          title: semua.isEmpty
-                              ? 'Belum ada nota'
-                              : 'Tidak ada nota yang cocok',
-                          description: semua.isEmpty
-                              ? 'Nota dibuat saat pelanggan menyerahkan unitnya.'
-                              : 'Ubah filter atau kata pencarian di atas.',
-                          action: OutlinedButton(
-                            onPressed: () => showServiceDialog(context),
-                            child: const Text('TAMBAH SERVIS'),
-                          ),
-                        )
-                      : _Tabel(items: tampil, techs: techs),
+                child: LayoutBuilder(
+                  builder: (context, c) {
+                    final daftarNota = Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(AppRadius.base),
+                        border: Border.all(color: const Color(0xFFE4E7E7)),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: tampil.isEmpty
+                          ? EmptyState(
+                              icon: Icons.receipt_long_outlined,
+                              title: semua.isEmpty
+                                  ? 'Belum ada nota'
+                                  : 'Tidak ada nota yang cocok',
+                              description: semua.isEmpty
+                                  ? 'Nota dibuat saat pelanggan menyerahkan '
+                                        'unitnya.'
+                                  : 'Ubah filter atau kata pencarian di atas.',
+                              action: OutlinedButton(
+                                onPressed: () => showServiceDialog(context),
+                                child: const Text('TAMBAH SERVIS'),
+                              ),
+                            )
+                          : _Tabel(items: tampil, techs: techs),
+                    );
+
+                    // Di jendela sempit panelnya disembunyikan, bukan
+                    // dipaksa muat: kolom nota yang tergencet sampai nama
+                    // pelanggan terpotong lebih merugikan daripada tidak
+                    // melihat beban teknisi sama sekali.
+                    if (c.maxWidth < 1180) return daftarNota;
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: daftarNota),
+                        const SizedBox(width: AppSpacing.s),
+                        const SizedBox(width: 292, child: _PanelTeknisi()),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -211,107 +229,151 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
   }
 }
 
-/// Beban dan hasil tiap teknisi bulan ini.
+/// Beban dan hasil tiap teknisi bulan ini, di sisi kanan daftar nota.
 ///
-/// Ditaruh di halaman servis, bukan di laporan: yang dijawabnya adalah
-/// pertanyaan harian -- siapa yang sedang penuh, siapa yang bisa diberi
-/// unit berikutnya -- dan itu diputuskan di meja depan, bukan saat tutup
-/// buku.
-class _BarisTeknisi extends ConsumerWidget {
-  const _BarisTeknisi();
+/// Ditaruh di halaman servis, bukan di laporan: yang dijawabnya pertanyaan
+/// harian -- siapa yang sedang penuh, siapa yang bisa diberi unit
+/// berikutnya -- dan itu diputuskan di meja depan, bukan saat tutup buku.
+///
+/// Bentuknya daftar menurun, bukan kartu berjajar: jumlah teknisi bisa
+/// bertambah, dan yang berjajar mendatar akan terpotong di tepi kanan
+/// begitu orangnya lebih dari lima.
+class _PanelTeknisi extends ConsumerWidget {
+  const _PanelTeknisi();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final daftar = ref.watch(ringkasTeknisiProvider);
-    if (daftar.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s),
-      child: SizedBox(
-        height: 96,
-        // Digulir mendatar, bukan dibagi rata: jumlah teknisi bisa bertambah,
-        // dan kartu yang menyempit sampai angkanya terpotong lebih buruk
-        // daripada kartu yang harus digeser.
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: daftar.length,
-          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.xs),
-          itemBuilder: (context, i) => _KartuTeknisi(daftar[i]),
-        ),
-      ),
-    );
-  }
-}
-
-class _KartuTeknisi extends StatelessWidget {
-  const _KartuTeknisi(this.r);
-
-  final RingkasTeknisi r;
-
-  @override
-  Widget build(BuildContext context) {
-    final penuh = r.unitBerjalan >= 5;
 
     return Container(
-      width: 228,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.s,
-      ),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(AppRadius.base),
         border: Border.all(color: const Color(0xFFE4E7E7)),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            r.teknisi.nama.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall,
-          ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                '${r.unitBerjalan}',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -1,
-                  height: 1,
-                  // Merah hanya saat antreannya menumpuk, supaya warnanya
-                  // masih berarti sesuatu ketika muncul.
-                  color: penuh ? AppColors.red : AppColors.black,
-                ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.sm,
+              AppSpacing.s,
+              AppSpacing.sm,
+              AppSpacing.s,
+            ),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: AppColors.black, width: 1.5),
               ),
-              const SizedBox(width: 5),
-              // Flexible, bukan Text telanjang: anak sebuah Row tidak punya
-              // batas lebar, jadi label yang sedikit lebih panjang -- atau
-              // ukuran huruf sistem yang dinaikkan -- akan meluber keluar
-              // kartu alih-alih dipotong.
-              Flexible(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
+            ),
+            child: Row(
+              children: [
+                Expanded(
                   child: Text(
-                    'unit dikerjakan',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall,
+                    'TEKNISI',
+                    style: Theme.of(context).textTheme.labelMedium,
                   ),
                 ),
-              ),
-            ],
+                Text(
+                  'BULAN INI',
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ],
+            ),
           ),
-          Text(
-            '${_rp.format(r.omset)}  ·  ${r.notaSelesai} selesai',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          Expanded(
+            child: daftar.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      child: Text(
+                        'Belum ada teknisi aktif.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: daftar.length,
+                    itemBuilder: (context, i) => _BarisTeknisi(daftar[i]),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BarisTeknisi extends StatelessWidget {
+  const _BarisTeknisi(this.r);
+
+  final RingkasTeknisi r;
+
+  @override
+  Widget build(BuildContext context) {
+    // Merah hanya saat antreannya menumpuk, supaya warnanya masih berarti
+    // sesuatu ketika muncul.
+    final penuh = r.unitBerjalan >= 5;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 9,
+      ),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFEFF1F1))),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  r.teknisi.nama,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  '${_rp.format(r.omset)}  ·  ${r.notaSelesai} selesai',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, color: AppColors.grey),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          // Lebar tetap supaya angkanya berderet rapi ke bawah, tidak
+          // bergeser mengikuti panjang nama di sebelahnya.
+          SizedBox(
+            width: 54,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${r.unitBerjalan}',
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                    letterSpacing: -0.5,
+                    color: penuh ? AppColors.red : AppColors.black,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text('UNIT', style: Theme.of(context).textTheme.labelSmall),
+              ],
+            ),
           ),
         ],
       ),

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/models.dart';
+import '../../core/data/galat.dart';
 import '../../core/providers.dart';
 import '../../core/revenue/revenue_providers.dart';
 import '../../core/theme.dart';
@@ -15,9 +16,8 @@ final _rp = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 
 final _tgl = DateFormat('d MMM yyyy');
 final _iso = DateFormat('yyyy-MM-dd');
 
-// Pembacaan memakai data lokal supaya halaman ini tetap terbaca saat
-// offline. Penyimpanan tetap langsung ke server -- aturan bagi hasil
-// berlaku untuk semua perangkat, jadi tidak boleh diantrekan dan bentrok.
+// Aturan bagi hasil berlaku untuk semua perangkat sekaligus, jadi tidak
+// boleh ada dua orang yang mengubahnya dari salinan masing-masing.
 
 Future<void> _simpan(
   BuildContext context,
@@ -30,7 +30,7 @@ Future<void> _simpan(
   } on PostgrestException catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(e.message)));
+        .showSnackBar(SnackBar(content: Text(pesanGalat(e))));
   } catch (_) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

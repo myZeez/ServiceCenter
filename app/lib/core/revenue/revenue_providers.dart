@@ -72,8 +72,8 @@ final _rulesProvider = StreamProvider.autoDispose<List<BrandRuleEntry>>(
 
 /// Hasil perhitungan bagi hasil untuk periode terpilih.
 ///
-/// Seluruhnya dari data di perangkat, jadi angka ini tetap muncul saat
-/// offline -- sama seperti bagian aplikasi lainnya. Server hanya menjadi
+/// Dihitung di aplikasi, bukan oleh server: rumusnya diuji dengan test dan
+/// hasilnya sama persis di perangkat mana pun. Server hanya menjadi
 /// tempat data itu berasal, bukan syarat untuk melihatnya.
 final revenueResultProvider = Provider.autoDispose<RevenueResult?>((ref) {
   final claims = ref.watch(_closedClaimsProvider).valueOrNull;
@@ -83,8 +83,8 @@ final revenueResultProvider = Provider.autoDispose<RevenueResult?>((ref) {
 
   if (claims == null || fees == null) return null;
 
-  // Aturan bawaan dipakai bila belum pernah tersinkron, supaya layarnya
-  // tetap bisa dibaca alih-alih kosong tanpa penjelasan.
+  // Aturan bawaan dipakai bila baris pengaturannya belum terbaca, supaya
+  // layarnya tetap bisa dibaca alih-alih kosong tanpa penjelasan.
   final settings = RevenueSettings(
     umum: config == null
         ? const AturanBagi()

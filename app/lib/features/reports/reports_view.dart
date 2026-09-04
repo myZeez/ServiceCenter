@@ -142,7 +142,7 @@ class _NarrowStack extends StatelessWidget {
   }
 }
 
-/// Ringkasan dari data di perangkat, jadi tetap terisi walau sedang offline.
+/// Ringkasan yang dihitung di aplikasi dari klaim yang sedang ditampilkan.
 class _SummaryCard extends ConsumerWidget {
   const _SummaryCard();
 

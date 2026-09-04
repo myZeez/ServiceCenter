@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/omset/omset_providers.dart';
+import '../../core/data/galat.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
@@ -63,7 +64,7 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      ).showSnackBar(SnackBar(content: Text(pesanGalat(e))));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

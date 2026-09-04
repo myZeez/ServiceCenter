@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/data/models.dart';
 import '../../core/print/nota_template.dart';
 import '../../core/print/raw_printer.dart';
+import '../../core/data/galat.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
@@ -240,7 +241,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         ),
       );
     } on PostgrestException catch (e) {
-      setState(() => _error = e.message);
+      setState(() => _error = pesanGalat(e));
     } catch (_) {
       setState(
         () => _error = 'Gagal menyimpan. Membuat nota membutuhkan koneksi, '

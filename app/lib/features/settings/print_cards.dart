@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/print/nota_template.dart';
 import '../../core/print/raw_printer.dart';
+import '../../core/data/galat.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
@@ -225,7 +226,7 @@ class _StoreCardState extends ConsumerState<StoreCard> {
     } on PostgrestException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+          .showSnackBar(SnackBar(content: Text(pesanGalat(e))));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

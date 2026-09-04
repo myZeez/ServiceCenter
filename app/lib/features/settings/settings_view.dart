@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/models.dart';
+import '../../core/data/galat.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
@@ -342,7 +343,7 @@ class _UserRow extends ConsumerWidget {
     } on PostgrestException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+          .showSnackBar(SnackBar(content: Text(pesanGalat(e))));
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -511,7 +512,7 @@ Future<void> _write(
         content: Text(
           e.code == '23505'
               ? 'Nama atau kode itu sudah dipakai.'
-              : 'Gagal menyimpan: ${e.message}',
+              : 'Gagal menyimpan: ${pesanGalat(e)}',
         ),
       ),
     );

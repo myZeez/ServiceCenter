@@ -6,6 +6,7 @@ import '../../core/data/models.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/gagal_muat.dart';
 import '../../core/widgets/koneksi.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import '../mywork/my_work_page.dart';
@@ -95,17 +96,13 @@ class ClaimsPage extends ConsumerWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
-              error: (e, _) => EmptyState(
-                icon: Icons.error_outline,
-                title: 'Gagal memuat data',
-                description: '$e',
-              ),
+              error: (e, _) => GagalMuat(e),
               data: (list) => list.isEmpty
                   ? EmptyState(
                       icon: Icons.inbox_outlined,
                       title: 'Belum ada klaim',
                       description: 'Klaim yang kamu catat akan muncul di sini, '
-                          'termasuk saat perangkat sedang offline.',
+                          'dan langsung terlihat di perangkat lain.',
                       action: OutlinedButton(
                         onPressed: () => _push(context, const ClaimFormPage()),
                         child: const Text('CATAT KLAIM PERTAMA'),

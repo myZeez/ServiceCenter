@@ -484,11 +484,10 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                     const SizedBox(height: AppSpacing.s),
                     Text(
                       widget.isEdit
-                          ? 'Perubahan tersimpan di perangkat lebih dulu, '
-                              'lalu dikirim begitu ada koneksi.'
-                          : 'Tanggal terisi otomatis. Data tersimpan di '
-                              'perangkat lebih dulu, lalu dikirim begitu ada '
-                              'koneksi.',
+                          ? 'Perubahan langsung tersimpan ke server dan '
+                              'terlihat di perangkat lain.'
+                          : 'Tanggal terisi otomatis. Data langsung tersimpan '
+                              'ke server dan terlihat di perangkat lain.',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ],

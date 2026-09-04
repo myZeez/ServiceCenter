@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config.dart';
+import 'core/data/pemantau_http.dart';
 import 'core/data/prefs.dart';
 import 'core/data/siklus.dart';
 import 'core/providers.dart';
@@ -28,6 +29,11 @@ Future<void> main() async {
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
     publishableKey: AppConfig.supabaseAnonKey,
+    // Merekam seluruh percakapan dengan server, tetapi hanya di build
+    // debug. Kegagalan yang paling menyusahkan tidak melempar galat apa
+    // pun -- UPDATE yang dijawab 200 dengan badan kosong -- dan hanya
+    // terlihat kalau lalu lintasnya sendiri yang diamati.
+    httpClient: PemantauHttp.bungkus(),
   );
 
   // Printer dan susunan kartu dibaca lebih dulu supaya layar tidak perlu

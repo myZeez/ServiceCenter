@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models.dart';
@@ -95,13 +96,22 @@ class Db {
           .listen(
             (rows) {
               if (!hidup) return;
+              // Kedatangan dicatat, bukan hanya kegagalan. Langganan ke
+              // tabel yang tidak terdaftar di publikasi tetap terpasang
+              // tanpa protes -- ia hanya tidak pernah mengirim apa pun, dan
+              // tanpa catatan ini keadaan itu tidak bisa dibedakan dari
+              // server yang memang sedang sepi.
+              debugPrint('[realtime] $tabel: ${rows.length} baris');
               pernahTerisi = true;
               keluar.add(olah(rows));
             },
-            // Ditelan dengan sengaja. Langganan yang gagal bukan alasan
-            // mengosongkan layar -- penarikan berkala yang menjaga isinya
-            // tetap benar, hanya tidak seketika.
-            onError: (Object _) {},
+            // Tidak diteruskan ke layar dengan sengaja: langganan yang
+            // gagal bukan alasan mengosongkan halaman, karena penarikan
+            // berkala tetap menjaga isinya benar. Tetapi dicatat -- galat
+            // yang ditelan tanpa sisa membuat penyebabnya tidak bisa
+            // diperiksa siapa pun kemudian.
+            onError: (Object e) =>
+                debugPrint('[realtime] langganan $tabel gagal: $e'),
           );
     };
 
@@ -196,13 +206,10 @@ class Db {
   ///
   /// Menambahkan .select() membuat server mengembalikan baris yang benar-
   /// benar tersentuh, jadi kosong berarti tidak ada yang berubah.
-  static Future<void> _pastikan(
+  Future<void> _pastikan(
     PostgrestTransformBuilder<PostgrestList> permintaan,
     String apa,
-  ) async {
-    final kena = await permintaan;
-    if (kena.isEmpty) throw GagalTulis(apa);
-  }
+  ) => pastikanTulis(permintaan, apa, _c);
 
   // ------------------------------------------------------------------
   // Administrasi servis
@@ -211,6 +218,14 @@ class Db {
   Stream<List<ServiceOrderEntry>> watchServiceOrders() =>
       _semua('service_orders', ServiceOrderEntry.fromMap)
           .map((l) => l..sort((a, b) => b.tanggalMasuk.compareTo(a.tanggalMasuk)));
+
+  /// Mengubah nota servis. Teknisi hanya boleh menyentuh kolom pekerjaan --
+  /// status, catatan, dan teknisinya; biaya serta identitas nota ditahan
+  /// trigger di server.
+  Future<void> ubahNota(String id, Map<String, dynamic> perubahan) => _pastikan(
+    _c.from('service_orders').update(perubahan).eq('id', id).select('id'),
+    'nota servis',
+  );
 
   Stream<List<ShipmentEntry>> watchShipments() =>
       _semua('shipments', ShipmentEntry.fromMap)
@@ -267,4 +282,60 @@ class GagalTulis implements Exception {
 
   @override
   String toString() => 'GagalTulis: $apa';
+}
+
+/// Memastikan sebuah penulisan benar-benar mengenai baris di server.
+///
+/// Ini penjagaan terpenting dalam berkas ini, dan sengaja berupa fungsi
+/// lepas: sebagian layar menulis langsung lewat SupabaseClient tanpa
+/// melalui [Db], dan justru di sanalah cacatnya paling lama tidak
+/// ketahuan.
+///
+/// Postgres menganggap UPDATE dan DELETE yang tidak cocok dengan satu
+/// baris pun sebagai berhasil -- tidak ada galat, tidak ada apa pun.
+/// Aturan akses yang menyaring barisnya keluar menghasilkan persis keadaan
+/// itu. Tabel nota servis, kirim, pelanggan, brand, dan seluruh pengaturan
+/// hanya boleh ditulis admin; teknisi yang menyuntingnya dari HP tidak
+/// pernah mendapat penolakan, hanya diam.
+///
+/// Menambahkan .select() membuat server mengembalikan baris yang
+/// benar-benar tersentuh, jadi kosong berarti tidak ada yang berubah.
+Future<void> pastikanTulis(
+  PostgrestTransformBuilder<PostgrestList> permintaan,
+  String apa,
+  SupabaseClient client,
+) async {
+  try {
+    final kena = await permintaan;
+    if (kena.isEmpty) {
+      _catat(client, 'tulis $apa: server menerima, 0 baris tersentuh');
+      throw GagalTulis(apa);
+    }
+  } on PostgrestException catch (e) {
+    _catat(client, 'tulis $apa ditolak: ${e.code} ${e.message}');
+    rethrow;
+  }
+}
+
+/// Menulis sebab kegagalan ke log perangkat.
+///
+/// Kegagalan menulis selalu sampai ke pengembang sebagai "tidak tersimpan"
+/// tanpa keterangan lain, dan tanpa catatan ini tidak ada cara memisahkan
+/// aturan akses, sesi yang kedaluwarsa, dan jaringan. Sengaja tetap hidup
+/// di build rilis: di situlah kejadiannya, bukan di meja pengembang.
+///
+/// Yang dicatat hanya sebab dan identitas sesi -- tidak ada token, tidak
+/// ada isi data pelanggan.
+void _catat(SupabaseClient client, String pesan) {
+  final sesi = client.auth.currentSession;
+  final kedaluwarsa = sesi?.expiresAt == null
+      ? 'tidak ada sesi'
+      : DateTime.fromMillisecondsSinceEpoch(
+          sesi!.expiresAt! * 1000,
+        ).toLocal().toIso8601String();
+
+  debugPrint(
+    '[db] $pesan | user=${client.auth.currentUser?.id ?? '-'} '
+    '| sesi berakhir=$kedaluwarsa | sekarang=${DateTime.now()}',
+  );
 }

@@ -45,6 +45,7 @@ dependencies:
   excel: ^4.0.6
   file_selector: ^1.1.0
   shared_preferences: ^2.5.5
+  http: ^1.6.0
 
 dev_dependencies:
   # Hanya untuk test ekspor: berkas xlsx dibongkar lalu XML gayanya

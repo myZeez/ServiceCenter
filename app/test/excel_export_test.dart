@@ -1,17 +1,16 @@
 // Berkas Excel-nya benar-benar disusun lalu dibaca ulang, bukan sekadar
 // dipercaya. Yang menentukan laporan ini rapi atau tidak ada di dalam
-// berkasnya -- lebar kolom, format angka, jenis sel -- dan tidak satu pun
-// dari itu terlihat oleh flutter analyze.
+// berkasnya -- garis, lebar kolom, format angka, jenis sel -- dan tidak
+// satu pun dari itu terlihat oleh flutter analyze.
 
 import 'package:archive/archive.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xml/xml.dart';
 
+import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/export/excel_export.dart';
 
-/// Menyusun lalu membaca ulang, seperti yang dilakukan Excel saat berkasnya
-/// dibuka.
 Sheet _bolakBalik(LembarExcel lembar) {
   final bytes = ExcelExport.susun([lembar]);
   expect(bytes, isNotNull);
@@ -23,42 +22,76 @@ Sheet _bolakBalik(LembarExcel lembar) {
 /// Berkas xlsx adalah zip berisi XML. Sebagian gaya -- perataan sel --
 /// tidak dibaca kembali oleh decoder paket excel, jadi satu-satunya cara
 /// memastikannya adalah membaca berkasnya seperti yang dibaca Excel.
-XmlDocument _styles(LembarExcel lembar) {
-  final zip = ZipDecoder().decodeBytes(ExcelExport.susun([lembar])!);
+XmlDocument _styles(List<LembarExcel> lembar) {
+  final zip = ZipDecoder().decodeBytes(ExcelExport.susun(lembar)!);
   final berkas = zip.files.firstWhere((f) => f.name == 'xl/styles.xml');
   return XmlDocument.parse(String.fromCharCodes(berkas.content as List<int>));
 }
 
 LembarExcel _contoh({String? judul, List<CellValue?>? penutup}) => LembarExcel(
   nama: 'Uji',
-  judul: judul,
-  subjudul: judul == null ? null : 'Periode September 2026',
-  kolom: const [
-    KolomExcel('Tanggal Lunas', jenis: JenisKolom.tanggal),
-    KolomExcel('Nama Customer'),
-    KolomExcel('Biaya', jenis: JenisKolom.rupiah),
+  tabel: [
+    TabelExcel(
+      judul: judul,
+      kolom: const [
+        KolomExcel('Tanggal Lunas', jenis: JenisKolom.tanggal),
+        KolomExcel('Nama Customer'),
+        KolomExcel('Biaya', jenis: JenisKolom.rupiah),
+      ],
+      baris: [
+        [
+          DateCellValue(year: 2026, month: 9, day: 4),
+          TextCellValue('Budi'),
+          DoubleCellValue(150000),
+        ],
+        [null, TextCellValue('Sari'), DoubleCellValue(90000)],
+      ],
+      penutup: penutup,
+    ),
   ],
-  baris: [
-    [
-      DateCellValue(year: 2026, month: 9, day: 4),
-      TextCellValue('Budi'),
-      DoubleCellValue(150000),
-    ],
-    [null, TextCellValue('Sari'), DoubleCellValue(90000)],
-  ],
-  penutup: penutup,
+);
+
+ServiceOrderEntry _nota({
+  required String noNota,
+  required DateTime masuk,
+  DateTime? selesai,
+  double biaya = 150000,
+}) => ServiceOrderEntry(
+  id: noNota,
+  noNota: noNota,
+  tanggalMasuk: masuk,
+  customerNama: 'Budi',
+  barangNama: 'ASUS',
+  status: 'diambil',
+  biaya: biaya,
+  tanggalSelesai: selesai,
+  updatedAt: masuk,
 );
 
 void main() {
   group('Bentuk tabel', () {
-    test('kepala kolom ditebalkan dan diberi garis bawah', () {
+    test('setiap sel bergaris kotak penuh', () {
+      // Bentuk yang dipakai laporan toko selama ini. Tanpa garis, kolom
+      // yang isinya kosong tidak kelihatan batasnya saat dicetak.
+      final sheet = _bolakBalik(_contoh());
+
+      for (final (r, c) in [(0, 0), (0, 2), (1, 1), (2, 2)]) {
+        final gaya = sheet
+            .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r))
+            .cellStyle;
+        expect(gaya?.leftBorder.borderStyle, BorderStyle.Thin, reason: 'r$r c$c');
+        expect(gaya?.rightBorder.borderStyle, BorderStyle.Thin, reason: 'r$r c$c');
+        expect(gaya?.topBorder.borderStyle, BorderStyle.Thin, reason: 'r$r c$c');
+        expect(gaya?.bottomBorder.borderStyle, BorderStyle.Thin, reason: 'r$r c$c');
+      }
+    });
+
+    test('kepala kolom ditebalkan', () {
       final sheet = _bolakBalik(_contoh());
       final sel = sheet.cell(
         CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0),
       );
-
       expect(sel.cellStyle?.isBold, isTrue);
-      expect(sel.cellStyle?.bottomBorder.borderStyle, BorderStyle.Thin);
     });
 
     test('tidak ada warna latar sama sekali', () {
@@ -80,15 +113,11 @@ void main() {
       final sheet = _bolakBalik(_contoh());
       final lebar = sheet.getColumnWidths;
 
-      // Semua kolom harus punya lebar tersetel -- kalau tidak, Excel
-      // memakai lebar bawaan dan angka panjang muncul sebagai "#####".
       for (var c = 0; c < 3; c++) {
         expect(lebar[c], isNotNull, reason: 'kolom $c tanpa lebar');
         expect(lebar[c]!, greaterThanOrEqualTo(10));
         expect(lebar[c]!, lessThanOrEqualTo(46));
       }
-
-      // "Tanggal Lunas" lebih panjang daripada "Biaya", jadi kolomnya juga.
       expect(lebar[0]!, greaterThan(lebar[2]!));
     });
   });
@@ -106,13 +135,12 @@ void main() {
       expect((sel.value as IntCellValue).value, 150000);
     });
 
-    test('biaya memakai pemisah ribuan tanpa desimal', () {
+    test('rupiah ditulis lengkap dengan awalannya', () {
       final sheet = _bolakBalik(_contoh());
       final sel = sheet.cell(
         CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: 1),
       );
-
-      expect(sel.cellStyle?.numberFormat.formatCode, '#,##0');
+      expect(sel.cellStyle?.numberFormat.formatCode, '"Rp"#,##0');
     });
 
     test('tanggal tetap tanggal, bukan teks', () {
@@ -132,90 +160,150 @@ void main() {
       final sel = sheet.cell(
         CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 2),
       );
-
       expect(sel.value, isNull);
     });
 
-    test('angka dan tanggal rata kanan di dalam berkasnya', () {
-      // Diperiksa dari XML-nya langsung, bukan lewat Excel.decodeBytes:
-      // decoder paket excel tidak membaca kembali perataan sel, jadi
-      // bolak-balik lewat sana selalu menjawab "rata kiri" betapa pun
-      // berkasnya benar. Yang menentukan apa yang dilihat Excel adalah isi
-      // styles.xml ini.
-      final gaya = _styles(_contoh());
+    test('rupiah rata kanan, tanggal rata tengah', () {
+      // Diperiksa dari XML-nya langsung: decoder paket excel tidak membaca
+      // kembali perataan sel, jadi bolak-balik lewat sana selalu menjawab
+      // "rata kiri" betapa pun berkasnya benar.
+      final gaya = _styles([_contoh()]);
 
-      // Tiap format angka bikinan sendiri harus dipakai oleh xf yang rata
-      // kanan. Kalau perataannya hilang, angka menempel di tepi kiri kolom
-      // dan kolom biaya jadi tidak bisa dibaca berderet.
-      for (final kode in ['#,##0', 'dd/mm/yyyy']) {
+      String? rataUntuk(String kodeFormat) {
         final id = gaya
             .findAllElements('numFmt')
-            .firstWhere((e) => e.getAttribute('formatCode') == kode)
+            .firstWhere((e) => e.getAttribute('formatCode') == kodeFormat)
             .getAttribute('numFmtId');
-
-        final xf = gaya
+        return gaya
             .findAllElements('cellXfs')
             .single
             .findElements('xf')
-            .where((e) => e.getAttribute('numFmtId') == id);
-
-        expect(xf, isNotEmpty, reason: 'tidak ada sel berformat $kode');
-        for (final e in xf) {
-          expect(
-            e.findElements('alignment').single.getAttribute('horizontal'),
-            'right',
-            reason: 'format $kode tidak rata kanan',
-          );
-        }
+            .firstWhere((e) => e.getAttribute('numFmtId') == id)
+            .findElements('alignment')
+            .single
+            .getAttribute('horizontal');
       }
+
+      expect(rataUntuk('"Rp"#,##0'), 'right');
+      expect(rataUntuk('dd/mm/yyyy'), 'center');
     });
   });
 
-  group('Kepala laporan', () {
-    test('judul dan periode ditulis di atas tabel', () {
-      final sheet = _bolakBalik(_contoh(judul: 'LAPORAN PELUNASAN SERVIS'));
+  group('Judul tabel', () {
+    test('digabung selebar tabel dan ditaruh di tengah', () {
+      final bytes = ExcelExport.susun([
+        _contoh(judul: 'LAPORAN PERHARI TGL 04/09/2026'),
+      ]);
+      final sheet = Excel.decodeBytes(bytes!)['Uji'];
 
-      String? teks(int baris) {
-        final v = sheet
-            .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: baris))
-            .value;
-        return v is TextCellValue ? v.value.text : null;
-      }
+      // Tiga kolom, jadi A1:C1.
+      expect(sheet.spannedItems, contains('A1:C1'));
 
-      expect(teks(0), 'LAPORAN PELUNASAN SERVIS');
-      expect(teks(1), contains('September 2026'));
-      // Baris kosong pemisah, lalu kepala kolom.
-      expect(teks(3), 'Tanggal Lunas');
+      final v = sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0))
+          .value;
+      expect((v as TextCellValue).value.text, 'LAPORAN PERHARI TGL 04/09/2026');
     });
 
-    test('tanpa judul, tabel mulai dari baris pertama', () {
+    test('tanpa judul, kepala kolom ada di baris pertama', () {
       final sheet = _bolakBalik(_contoh());
-      final sel = sheet.cell(
-        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0),
-      );
-
-      expect((sel.value as TextCellValue).value.text, 'Tanggal Lunas');
+      final v = sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0))
+          .value;
+      expect((v as TextCellValue).value.text, 'Tanggal Lunas');
     });
   });
 
   group('Baris total', () {
-    test('menempel di bawah data dengan garis pemisah', () {
-      // Baris kosong di antaranya membuat Excel berhenti menganggapnya satu
-      // tabel saat diurutkan atau disaring.
+    test('menempel di bawah data dengan garis', () {
       final sheet = _bolakBalik(
         _contoh(
           penutup: [null, TextCellValue('TOTAL'), DoubleCellValue(240000)],
         ),
       );
-
       final total = sheet.cell(
         CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: 3),
       );
 
       expect((total.value as IntCellValue).value, 240000);
       expect(total.cellStyle?.isBold, isTrue);
-      expect(total.cellStyle?.topBorder.borderStyle, BorderStyle.Thin);
-      expect(total.cellStyle?.numberFormat.formatCode, '#,##0');
+      expect(total.cellStyle?.numberFormat.formatCode, '"Rp"#,##0');
+    });
+  });
+
+  group('Laporan harian sebulan', () {
+    test('satu tab untuk tiap tanggal di kalender', () {
+      // Tanggal yang sepi tetap dibuatkan tabnya. Tab yang hilang membuat
+      // pembacanya harus memeriksa apakah hari itu memang tidak ada
+      // transaksi atau laporannya yang belum diisi.
+      final lembar = ExcelExport.lembarHarianBulanan(
+        semua: [],
+        bulan: DateTime(2026, 2),
+      );
+
+      expect(lembar.length, 28, reason: 'Februari 2026 bukan tahun kabisat');
+      expect(lembar.first.nama, '1');
+      expect(lembar.last.nama, '28');
+    });
+
+    test('bulan 31 hari menghasilkan 31 tab', () {
+      final lembar = ExcelExport.lembarHarianBulanan(
+        semua: [],
+        bulan: DateTime(2026, 8),
+      );
+      expect(lembar.length, 31);
+    });
+
+    test('nota masuk dan nota keluar dipisah jadi dua tabel', () {
+      final lembar = ExcelExport.lembarHarian(
+        semua: [
+          _nota(
+            noNota: 'A',
+            masuk: DateTime(2026, 9, 3),
+            selesai: DateTime(2026, 9, 4),
+          ),
+          _nota(noNota: 'B', masuk: DateTime(2026, 9, 4)),
+        ],
+        tanggal: DateTime(2026, 9, 4),
+      );
+
+      expect(lembar.tabel.length, 2);
+      // Keluar: selesai hari itu. Masuk: diterima hari itu.
+      expect(lembar.tabel[0].baris.length, 1);
+      expect(lembar.tabel[1].baris.length, 1);
+    });
+
+    test('tiap tanggal hanya memuat transaksinya sendiri', () {
+      final lembar = ExcelExport.lembarHarianBulanan(
+        semua: [
+          _nota(
+            noNota: 'A',
+            masuk: DateTime(2026, 9, 1),
+            selesai: DateTime(2026, 9, 1),
+          ),
+        ],
+        bulan: DateTime(2026, 9),
+      );
+
+      expect(lembar[0].tabel[0].baris.length, 1, reason: 'tanggal 1');
+      expect(lembar[1].tabel[0].baris.length, 0, reason: 'tanggal 2');
+    });
+  });
+
+  group('Keterangan harian', () {
+    test('nota batal ditandai Cancel apa pun isinya', () {
+      final n = ServiceOrderEntry(
+        id: 'x',
+        noNota: 'x',
+        tanggalMasuk: DateTime(2026, 9, 4),
+        customerNama: 'Budi',
+        barangNama: 'ASUS',
+        status: 'batal',
+        garansi: true,
+        keterangan: 'diambil pelanggan',
+        updatedAt: DateTime(2026, 9, 4),
+      );
+      expect(ExcelExport.keteranganHarian(n), 'Cancel');
     });
   });
 }

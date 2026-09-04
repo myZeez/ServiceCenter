@@ -21,6 +21,7 @@ final _rp = NumberFormat.currency(
 );
 final _tgl = DateFormat('dd/MM/yyyy');
 final _tglPanjang = DateFormat('EEEE, d MMMM yyyy', 'id');
+final _namaBulan = DateFormat('MMMM yyyy', 'id');
 
 /// Laporan servis dihitung per bulan, mengikuti cara laporan ini dibaca:
 /// tutup buku bulanan, bukan kuartalan seperti bagi hasil garansi.
@@ -183,13 +184,14 @@ class _Harian extends ConsumerWidget {
               child: const Text('HARI INI'),
             ),
             const Spacer(),
+            // Yang diekspor sebulan penuh, satu tab per tanggal -- itu
+            // bentuk yang dipakai pusat. Tanggal yang dipilih di layar
+            // menentukan bulannya, bukan membatasi isinya.
             _TombolExport(
-              aktif: keluar.isNotEmpty || masuk.isNotEmpty,
-              onExport: () => ExcelExport.harian(
-                keluar: keluar,
-                masuk: masuk,
-                tanggal: tanggal,
-              ),
+              label: 'EXCEL ${_namaBulan.format(tanggal).toUpperCase()}',
+              aktif: semua.isNotEmpty,
+              onExport: () =>
+                  ExcelExport.harianBulanan(semua: semua, bulan: tanggal),
             ),
           ],
         ),
@@ -916,10 +918,15 @@ class _Kirim extends ConsumerWidget {
 /// dialog simpan Windows sering mengarah ke folder terakhir yang dipakai,
 /// dan tanpa jalurnya orang harus mencari sendiri berkasnya ke mana.
 class _TombolExport extends StatefulWidget {
-  const _TombolExport({required this.aktif, required this.onExport});
+  const _TombolExport({
+    required this.aktif,
+    required this.onExport,
+    this.label = 'EXCEL',
+  });
 
   final bool aktif;
   final Future<String?> Function() onExport;
+  final String label;
 
   @override
   State<_TombolExport> createState() => _TombolExportState();
@@ -963,7 +970,7 @@ class _TombolExportState extends State<_TombolExport> {
     return OutlinedButton.icon(
       onPressed: widget.aktif ? _jalankan : null,
       icon: const Icon(Icons.table_view_outlined, size: 15),
-      label: const Text('EXCEL'),
+      label: Text(widget.label),
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         side: const BorderSide(color: AppColors.black, width: 1.5),

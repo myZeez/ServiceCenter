@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/data/models.dart';
+import '../../core/data/galat.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
@@ -175,24 +176,35 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
       'catatan': _nullIfEmpty(_catatan),
     };
 
-    if (widget.isNew) {
-      await db.simpanClaim({...isi, 'id': claimId, 'created_by': user.id});
-    } else {
-      await db.ubahClaim(claimId, isi);
-    }
+    try {
+      if (widget.isNew) {
+        await db.simpanClaim({...isi, 'id': claimId, 'created_by': user.id});
+      } else {
+        await db.ubahClaim(claimId, isi);
+      }
 
-    for (final id in _removedPartIds) {
-      await db.hapusPart(id);
+      for (final id in _removedPartIds) {
+        await db.hapusPart(id);
+      }
+      for (final p in _parts.where((e) => e.typeId != null)) {
+        await db.simpanPart({
+          'id': p.existingId ?? _uuid.v4(),
+          'claim_id': claimId,
+          'part_type_id': p.typeId!,
+          'sn_bad_part': p.sn.text.trim().isEmpty ? null : p.sn.text.trim(),
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(pesanGalat(e)),
+          duration: const Duration(seconds: 8),
+        ),
+      );
+      return;
     }
-    for (final p in _parts.where((e) => e.typeId != null)) {
-      await db.simpanPart({
-        'id': p.existingId ?? _uuid.v4(),
-        'claim_id': claimId,
-        'part_type_id': p.typeId!,
-        'sn_bad_part': p.sn.text.trim().isEmpty ? null : p.sn.text.trim(),
-      });
-    }
-
 
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -210,9 +222,23 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
     if (widget.claim == null || _teknisiId == null) return;
     setState(() => _busy = true);
 
-    await ref
-        .read(databaseProvider)
-        .gantiTeknisi(widget.claim!.id, _teknisiId!);
+    try {
+      await ref
+          .read(databaseProvider)
+          .gantiTeknisi(widget.claim!.id, _teknisiId!);
+    } catch (e) {
+      // Dulu galat di sini tidak pernah ditangkap, dan penulisan yang
+      // ditolak diam-diam tetap ditutup dengan "Teknisi diganti".
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(pesanGalat(e)),
+          duration: const Duration(seconds: 8),
+        ),
+      );
+      return;
+    }
 
     if (!mounted) return;
     Navigator.of(context).pop();

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/data/models.dart';
+import '../../core/data/galat.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
@@ -168,25 +169,37 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
       'catatan': nullIfEmpty(_catatan),
     };
 
-    if (widget.isEdit) {
-      await db.ubahClaim(claimId, isi);
-    } else {
-      await db.simpanClaim({...isi, 'id': claimId, 'created_by': user.id});
-    }
+    try {
+      if (widget.isEdit) {
+        await db.ubahClaim(claimId, isi);
+      } else {
+        await db.simpanClaim({...isi, 'id': claimId, 'created_by': user.id});
+      }
 
-    for (final id in _removedPartIds) {
-      await db.hapusPart(id);
-    }
+      for (final id in _removedPartIds) {
+        await db.hapusPart(id);
+      }
 
-    for (final p in _parts.where((e) => e.partTypeId != null)) {
-      await db.simpanPart({
-        'id': p.existingId ?? _uuid.v4(),
-        'claim_id': claimId,
-        'part_type_id': p.partTypeId!,
-        'sn_bad_part': p.snController.text.trim().isEmpty
-            ? null
-            : p.snController.text.trim(),
-      });
+      for (final p in _parts.where((e) => e.partTypeId != null)) {
+        await db.simpanPart({
+          'id': p.existingId ?? _uuid.v4(),
+          'claim_id': claimId,
+          'part_type_id': p.partTypeId!,
+          'sn_bad_part': p.snController.text.trim().isEmpty
+              ? null
+              : p.snController.text.trim(),
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(pesanGalat(e)),
+          duration: const Duration(seconds: 8),
+        ),
+      );
+      return;
     }
 
     if (!mounted) return;

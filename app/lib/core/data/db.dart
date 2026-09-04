@@ -161,10 +161,12 @@ class Db {
   /// melewati trigger di server, yang hanya mengizinkan teknisi menyentuh
   /// kolom teknisi.
   Future<void> simpanClaim(Map<String, dynamic> baris) =>
-      _c.from('claims').upsert(baris);
+      _pastikan(_c.from('claims').upsert(baris).select('id'), 'klaim');
 
-  Future<void> ubahClaim(String id, Map<String, dynamic> perubahan) =>
-      _c.from('claims').update(perubahan).eq('id', id);
+  Future<void> ubahClaim(String id, Map<String, dynamic> perubahan) => _pastikan(
+    _c.from('claims').update(perubahan).eq('id', id).select('id'),
+    'klaim',
+  );
 
   /// Mengganti teknisi yang mengerjakan. Ini satu-satunya perubahan yang
   /// boleh dilakukan teknisi terhadap klaim yang sudah ada -- kolom lain
@@ -176,10 +178,31 @@ class Db {
       ubahClaim(claimId, {'status': status});
 
   Future<void> simpanPart(Map<String, dynamic> baris) =>
-      _c.from('claim_parts').upsert(baris);
+      _pastikan(_c.from('claim_parts').upsert(baris).select('id'), 'part');
 
-  Future<void> hapusPart(String id) =>
-      _c.from('claim_parts').delete().eq('id', id);
+  Future<void> hapusPart(String id) => _pastikan(
+    _c.from('claim_parts').delete().eq('id', id).select('id'),
+    'part',
+  );
+
+  /// Memastikan penulisannya benar-benar mengenai sebuah baris.
+  ///
+  /// Ini penjagaan yang paling penting di berkas ini. Postgres menganggap
+  /// UPDATE dan DELETE yang tidak cocok dengan satu baris pun sebagai
+  /// berhasil -- tidak ada galat, tidak ada apa pun. Aturan akses yang
+  /// menyaring barisnya keluar menghasilkan persis keadaan itu, dan tanpa
+  /// pemeriksaan ini aplikasi akan berkata "tersimpan" atas perubahan yang
+  /// tidak pernah terjadi.
+  ///
+  /// Menambahkan .select() membuat server mengembalikan baris yang benar-
+  /// benar tersentuh, jadi kosong berarti tidak ada yang berubah.
+  static Future<void> _pastikan(
+    PostgrestTransformBuilder<PostgrestList> permintaan,
+    String apa,
+  ) async {
+    final kena = await permintaan;
+    if (kena.isEmpty) throw GagalTulis(apa);
+  }
 
   // ------------------------------------------------------------------
   // Administrasi servis
@@ -229,4 +252,19 @@ class Db {
   /// untuk tabel yang dibatasi aturan akses, bahwa pengguna ini memang
   /// tidak berhak melihatnya.
   static T? _satu<T>(List<T> l) => l.isEmpty ? null : l.first;
+}
+
+/// Penulisan yang diterima server tetapi tidak mengubah satu baris pun.
+///
+/// Hampir selalu berarti aturan akses menolaknya secara diam-diam: akun
+/// yang dipakai tidak berhak atas baris itu, atau barisnya sudah tidak ada
+/// di server.
+class GagalTulis implements Exception {
+  const GagalTulis(this.apa);
+
+  /// Apa yang gagal ditulis, untuk disebut dalam pesannya.
+  final String apa;
+
+  @override
+  String toString() => 'GagalTulis: $apa';
 }

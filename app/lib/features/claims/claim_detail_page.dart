@@ -1,10 +1,10 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/data/models.dart';
+import '../../core/data/galat.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
@@ -107,7 +107,9 @@ class ClaimDetailPage extends ConsumerWidget {
                     emphasis: true,
                     editable: isAdmin,
                     onEdit: () => _editText(
-                      context, ref, claim,
+                      context,
+                      ref,
+                      claim,
                       label: 'Serial Number',
                       initial: claim.sn,
                       required: true,
@@ -121,7 +123,9 @@ class ClaimDetailPage extends ConsumerWidget {
                     value: claim.keluhan ?? '—',
                     editable: isAdmin,
                     onEdit: () => _editText(
-                      context, ref, claim,
+                      context,
+                      ref,
+                      claim,
                       label: 'Keluhan',
                       initial: claim.keluhan ?? '',
                       multiline: true,
@@ -133,7 +137,9 @@ class ClaimDetailPage extends ConsumerWidget {
                     value: claim.noPerbaikan ?? '—',
                     editable: isAdmin,
                     onEdit: () => _editText(
-                      context, ref, claim,
+                      context,
+                      ref,
+                      claim,
                       label: 'No Perbaikan / RMA',
                       initial: claim.noPerbaikan ?? '',
                       hint: 'IDD7R20024',
@@ -158,11 +164,10 @@ class ClaimDetailPage extends ConsumerWidget {
                         ],
                       );
                       if (picked == null) return;
-                      await _apply(
-                        ref,
-                        claim.id,
-                        {'brand_id': int.parse(picked)},
-                      );
+                      if (!context.mounted) return;
+                      await _apply(context, ref, claim.id, {
+                        'brand_id': int.parse(picked),
+                      });
                     },
                   ),
                   _Editable(
@@ -185,11 +190,10 @@ class ClaimDetailPage extends ConsumerWidget {
                         claim.tanggal.hour,
                         claim.tanggal.minute,
                       );
-                      await _apply(
-                        ref,
-                        claim.id,
-                        {'tanggal': merged.toUtc().toIso8601String()},
-                      );
+                      if (!context.mounted) return;
+                      await _apply(context, ref, claim.id, {
+                        'tanggal': merged.toUtc().toIso8601String(),
+                      });
                     },
                   ),
 
@@ -202,7 +206,9 @@ class ClaimDetailPage extends ConsumerWidget {
                     value: claim.namaPelanggan,
                     editable: isAdmin,
                     onEdit: () => _editText(
-                      context, ref, claim,
+                      context,
+                      ref,
+                      claim,
                       label: 'Nama Pelanggan',
                       initial: claim.namaPelanggan,
                       required: true,
@@ -214,7 +220,9 @@ class ClaimDetailPage extends ConsumerWidget {
                     value: claim.telp ?? '—',
                     editable: isAdmin,
                     onEdit: () => _editText(
-                      context, ref, claim,
+                      context,
+                      ref,
+                      claim,
                       label: 'Telepon',
                       initial: claim.telp ?? '',
                       hint: '0812-3456-7890',
@@ -229,7 +237,8 @@ class ClaimDetailPage extends ConsumerWidget {
                     trailing: isAdmin
                         ? InlineAction(
                             label: 'Tambah',
-                            onTap: () => _editPart(context, ref, claim.id, null),
+                            onTap: () =>
+                                _editPart(context, ref, claim.id, null),
                           )
                         : null,
                   ),
@@ -293,7 +302,9 @@ class ClaimDetailPage extends ConsumerWidget {
                     value: (claim.catatan ?? '').isEmpty ? '—' : claim.catatan!,
                     editable: isAdmin,
                     onEdit: () => _editText(
-                      context, ref, claim,
+                      context,
+                      ref,
+                      claim,
                       label: 'Catatan',
                       initial: claim.catatan ?? '',
                       multiline: true,
@@ -333,12 +344,40 @@ class ClaimDetailPage extends ConsumerWidget {
   /// Menyimpan satu kolom langsung ke server. Layar tidak perlu digambar
   /// ulang sendiri: Realtime yang mengabarkan perubahannya balik, ke sini
   /// dan ke perangkat lain sekaligus.
+  ///
+  /// Galatnya ditampilkan, bukan ditelan. Penulisan yang ditolak aturan
+  /// akses tidak melempar apa pun dari Postgres -- yang terjadi hanyalah
+  /// tidak ada baris yang berubah -- jadi tanpa pesan di layar orang akan
+  /// menutup halaman ini yakin perubahannya sudah tersimpan.
   static Future<void> _apply(
+    BuildContext context,
     WidgetRef ref,
     String claimId,
     Map<String, dynamic> values,
+  ) => _jaga(
+    context,
+    () => ref.read(databaseProvider).ubahClaim(claimId, values),
+  );
+
+  /// Menjalankan sebuah penulisan dan memunculkan galatnya di layar.
+  /// Mengembalikan true bila berhasil.
+  static Future<bool> _jaga(
+    BuildContext context,
+    Future<void> Function() tulis,
   ) async {
-    await ref.read(databaseProvider).ubahClaim(claimId, values);
+    try {
+      await tulis();
+      return true;
+    } catch (e) {
+      if (!context.mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(pesanGalat(e)),
+          duration: const Duration(seconds: 8),
+        ),
+      );
+      return false;
+    }
   }
 
   Future<void> _editText(
@@ -371,7 +410,13 @@ class ClaimDetailPage extends ConsumerWidget {
     // String kosong disimpan sebagai null, bukan "", supaya tampilan dan
     // laporan memperlakukan kolom kosong secara seragam.
     final trimmed = result.trim();
-    await _apply(ref, claim.id, build(trimmed.isEmpty ? null : trimmed));
+    if (!context.mounted) return;
+    await _apply(
+      context,
+      ref,
+      claim.id,
+      build(trimmed.isEmpty ? null : trimmed),
+    );
   }
 
   Future<void> _editPart(
@@ -388,12 +433,16 @@ class ClaimDetailPage extends ConsumerWidget {
     );
     if (result == null) return;
 
-    await ref.read(databaseProvider).simpanPart({
-      'id': part?.id ?? _uuid.v4(),
-      'claim_id': claimId,
-      'part_type_id': result.typeId,
-      'sn_bad_part': result.sn,
-    });
+    if (!context.mounted) return;
+    await _jaga(
+      context,
+      () => ref.read(databaseProvider).simpanPart({
+        'id': part?.id ?? _uuid.v4(),
+        'claim_id': claimId,
+        'part_type_id': result.typeId,
+        'sn_bad_part': result.sn,
+      }),
+    );
   }
 
   Future<void> _deletePart(
@@ -424,7 +473,8 @@ class ClaimDetailPage extends ConsumerWidget {
     );
     if (ok != true) return;
 
-    await ref.read(databaseProvider).hapusPart(part.id);
+    if (!context.mounted) return;
+    await _jaga(context, () => ref.read(databaseProvider).hapusPart(part.id));
   }
 
   Future<void> _pickTechnician(
@@ -432,7 +482,8 @@ class ClaimDetailPage extends ConsumerWidget {
     WidgetRef ref,
     Claim claim,
   ) async {
-    final techs = ref.read(techniciansProvider).valueOrNull ?? const <Profile>[];
+    final techs =
+        ref.read(techniciansProvider).valueOrNull ?? const <Profile>[];
 
     final picked = await _pick(
       context,
@@ -445,7 +496,14 @@ class ClaimDetailPage extends ConsumerWidget {
 
     if (picked == null || picked == claim.teknisiId) return;
 
-    await ref.read(databaseProvider).gantiTeknisi(claim.id, picked);
+    if (!context.mounted) return;
+
+    if (!await _jaga(
+      context,
+      () => ref.read(databaseProvider).gantiTeknisi(claim.id, picked),
+    )) {
+      return;
+    }
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -475,7 +533,11 @@ class ClaimDetailPage extends ConsumerWidget {
     );
 
     if (picked == null || picked == claim.status) return;
-    await ref.read(databaseProvider).gantiStatus(claim.id, picked);
+    if (!context.mounted) return;
+    await _jaga(
+      context,
+      () => ref.read(databaseProvider).gantiStatus(claim.id, picked),
+    );
   }
 
   static Future<String?> _pick(
@@ -649,8 +711,8 @@ class _TextEditDialogState extends State<_TextEditDialog> {
             ),
             validator: widget.required
                 ? (v) => (v == null || v.trim().isEmpty)
-                    ? '${widget.label} wajib diisi'
-                    : null
+                      ? '${widget.label} wajib diisi'
+                      : null
                 : null,
           ),
         ),
@@ -813,13 +875,15 @@ class _PickerDialog extends StatelessWidget {
                   ),
                 ),
               ),
-              child: o.chip ??
+              child:
+                  o.chip ??
                   Text(
                     o.label,
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight:
-                          o.selected ? FontWeight.w700 : FontWeight.w400,
+                      fontWeight: o.selected
+                          ? FontWeight.w700
+                          : FontWeight.w400,
                     ),
                   ),
             ),

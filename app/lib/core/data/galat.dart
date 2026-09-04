@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'db.dart';
+
 /// Menerjemahkan galat dari server jadi kalimat yang bisa ditindaklanjuti.
 ///
 /// Sebelumnya isi PostgrestException ditampilkan apa adanya. Yang terbaca
@@ -9,6 +11,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// tidak memberi tahu apa pun tentang apa yang harus dilakukan, padahal
 /// penyebabnya sepele dan ada di tangan mereka sendiri.
 String pesanGalat(Object e) {
+  // Penulisan yang diterima server tetapi tidak menyentuh satu baris pun.
+  // Dulu ini lolos tanpa suara dan aplikasi berkata "tersimpan".
+  if (e is GagalTulis) {
+    return 'Perubahan tidak tersimpan: server menolaknya tanpa alasan yang '
+        'bisa dibaca.\n\n'
+        'Biasanya akun yang dipakai tidak berhak atas ${e.apa} itu, atau '
+        'datanya sudah dihapus dari perangkat lain. Coba keluar lalu masuk '
+        'lagi; kalau tetap begitu, sebutkan ini ke admin.';
+  }
+
   if (e is PostgrestException) {
     final pesan = e.message.toLowerCase();
 

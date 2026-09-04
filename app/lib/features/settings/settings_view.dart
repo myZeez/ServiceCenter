@@ -8,6 +8,7 @@ import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
 import '../../core/widgets/grid_canvas.dart';
 import '../../core/widgets/swiss_widgets.dart';
+import 'nomor_nota_card.dart';
 import 'omset_card.dart';
 import 'print_cards.dart';
 import 'revenue_cards.dart';
@@ -158,6 +159,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         rowSpan: 8,
                         child: OmsetCard(),
                       ),
+                      GridArea(
+                        id: 'nomor_nota',
+                        colSpan: 6,
+                        rowSpan: 8,
+                        child: NomorNotaCard(),
+                      ),
                     ],
                   );
                 }
@@ -178,6 +185,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     SizedBox(height: 400, child: PrinterCard()),
                     SizedBox(height: AppSpacing.s),
                     SizedBox(height: 460, child: OmsetCard()),
+                    SizedBox(height: AppSpacing.s),
+                    SizedBox(height: 470, child: NomorNotaCard()),
                     SizedBox(height: AppSpacing.sm),
                   ],
                 );

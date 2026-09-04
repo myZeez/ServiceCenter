@@ -2,6 +2,9 @@
 // Dipakai sebelum mengosongkan data supaya jelas berapa yang akan hilang.
 //
 // Jalankan: dart run tool/hitung_lokal.dart
+// ignore_for_file: avoid_print  -- alat baris perintah, keluarannya memang
+// untuk dibaca langsung di terminal.
+
 import 'dart:io';
 import 'package:sqlite3/sqlite3.dart';
 
@@ -23,5 +26,5 @@ void main() {
     final n = db.select('select count(*) c from "$nama"').first['c'];
     print('${nama.toString().padRight(24)} $n');
   }
-  db.dispose();
+  db.close();
 }

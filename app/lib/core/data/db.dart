@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models.dart';
+import 'siklus.dart';
 
 /// Satu-satunya tempat data tinggal.
 ///
@@ -21,10 +24,15 @@ class Db {
 
   final SupabaseClient _c;
 
-  /// Berapa lama menunggu sebelum menarik ulang, saat Realtime tidak bisa
-  /// dipakai. Cukup jarang supaya tidak membebani kuota, cukup sering supaya
-  /// perubahan dari komputer lain tidak tertinggal lama.
-  static const _jedaTarikUlang = Duration(seconds: 20);
+  /// Selang penarikan ulang berkala.
+  ///
+  /// Berjalan berdampingan dengan Realtime, bukan sebagai gantinya. Inilah
+  /// yang menyembuhkan keadaan paling menipu: langganan yang tersambung
+  /// lalu diam. Websocket yang putus saat HP ditidurkan, atau tabel yang
+  /// belum terdaftar di publikasi Realtime, tidak melempar galat apa pun --
+  /// alirannya hanya berhenti mengirim, dan layar membeku pada tarikan
+  /// pertama tanpa satu pun tanda bahwa ada yang salah.
+  static const _jedaSegar = Duration(seconds: 90);
 
   /// Seluruh isi tabel, diperbarui sendiri saat ada perubahan di server.
   ///
@@ -33,46 +41,77 @@ class Db {
   /// sini semuanya kecil. Penyaringan dan pengurutan dikerjakan di Dart oleh
   /// yang memakainya.
   ///
-  /// Isinya dikirim sekali lewat query biasa lebih dulu, baru disusul
-  /// langganan Realtime. Itu bukan sekadar mempercepat tampilan: kalau
-  /// langganannya gagal terpasang -- Realtime belum dinyalakan untuk tabel
-  /// itu, tokennya ditolak, jaringan kantor memblokir websocket -- layarnya
-  /// tetap terisi, lalu jatuh ke penarikan ulang berkala. Sebelumnya
-  /// kegagalan langganan membuat seluruh halaman kosong dengan pesan yang
-  /// tidak bisa ditindaklanjuti siapa pun di toko.
+  /// Tiga sumber mengisi aliran ini: satu tarikan awal supaya layar segera
+  /// terisi, kabar Realtime supaya perubahan tampak seketika, dan penarikan
+  /// berkala supaya keadaan selalu kembali benar dengan sendirinya.
   ///
   /// Penarikan berkala mengganti seluruh daftar, bukan menambahinya, jadi
   /// baris yang dihapus di server tetap hilang di layar -- lebih lambat
   /// daripada Realtime, tetapi tidak pernah salah.
+  ///
+  /// Galat hanya diteruskan bila tarikan pertama gagal. Sesudah ada isi di
+  /// layar, gangguan jaringan ditelan diam-diam: keadaan terakhir yang
+  /// benar jauh lebih berguna daripada layar galat, dan penarikan
+  /// berikutnya akan membetulkannya sendiri.
   Stream<List<T>> _semua<T>(
     String tabel,
     T Function(Map<String, dynamic>) bentuk, {
     List<String> kunci = const ['id'],
-  }) async* {
+  }) {
     List<T> olah(List<Map<String, dynamic>> rows) => rows.map(bentuk).toList();
-
     Future<List<T>> tarik() async => olah(await _c.from(tabel).select());
 
-    yield await tarik();
+    final keluar = StreamController<List<T>>();
+    StreamSubscription<List<Map<String, dynamic>>>? langganan;
+    Timer? jam;
+    var hidup = false;
+    var pernahTerisi = false;
 
-    // Sengaja await-for, bukan yield*: hanya await-for yang dijamin
-    // melemparkan galat aliran ke penangkap di sekelilingnya, dan justru
-    // penangkapan itulah gunanya blok ini.
-    try {
-      await for (final rows in _c.from(tabel).stream(primaryKey: kunci)) {
-        yield olah(rows);
+    Future<void> segarkan() async {
+      if (!hidup) return;
+      try {
+        final isi = await tarik();
+        if (!hidup) return;
+        pernahTerisi = true;
+        keluar.add(isi);
+      } catch (e, s) {
+        if (!hidup) return;
+        if (!pernahTerisi) keluar.addError(e, s);
       }
-    } catch (_) {
-      yield* _berkala(tarik);
     }
-  }
 
-  /// Menarik ulang terus-menerus. Dipakai hanya saat Realtime gagal.
-  Stream<List<T>> _berkala<T>(Future<List<T>> Function() tarik) async* {
-    while (true) {
-      await Future<void>.delayed(_jedaTarikUlang);
-      yield await tarik();
-    }
+    keluar.onListen = () {
+      hidup = true;
+      segarkan();
+
+      jam = Timer.periodic(_jedaSegar, (_) {
+        // Aplikasi yang tergeletak di saku tidak perlu menarik apa pun.
+        if (Siklus.aktif) segarkan();
+      });
+
+      langganan = _c
+          .from(tabel)
+          .stream(primaryKey: kunci)
+          .listen(
+            (rows) {
+              if (!hidup) return;
+              pernahTerisi = true;
+              keluar.add(olah(rows));
+            },
+            // Ditelan dengan sengaja. Langganan yang gagal bukan alasan
+            // mengosongkan layar -- penarikan berkala yang menjaga isinya
+            // tetap benar, hanya tidak seketika.
+            onError: (Object _) {},
+          );
+    };
+
+    keluar.onCancel = () async {
+      hidup = false;
+      jam?.cancel();
+      await langganan?.cancel();
+    };
+
+    return keluar.stream;
   }
 
   // ------------------------------------------------------------------

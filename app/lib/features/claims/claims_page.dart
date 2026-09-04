@@ -88,27 +88,51 @@ class ClaimsPage extends ConsumerWidget {
         children: [
           const _FilterBar(),
           Expanded(
-            child: claims.when(
-              loading: () => const Center(
-                child: SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+            // Tarik ke bawah untuk memasang ulang langganannya. Perubahan
+            // memang datang sendiri, tetapi saat itu tidak terjadi -- sinyal
+            // yang baru pulih, aplikasi yang lama tertidur -- orang butuh
+            // cara memaksanya tanpa harus menutup aplikasi.
+            child: RefreshIndicator(
+              onRefresh: () async {
+                segarkanData(ref);
+                await ref.read(allClaimsProvider.future);
+              },
+              child: claims.when(
+                loading: () => const Center(
+                  child: SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
+                error: (e, _) => GagalMuat(e),
+                data: (list) => list.isEmpty
+                    ? ListView(
+                        // Tetap ListView walau kosong: RefreshIndicator hanya
+                        // bekerja di atas sesuatu yang bisa digulir, dan
+                        // justru saat daftarnya kosong orang paling ingin
+                        // mencoba menyegarkan.
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.sizeOf(context).height * 0.6,
+                            child: EmptyState(
+                              icon: Icons.inbox_outlined,
+                              title: 'Belum ada klaim',
+                              description:
+                                  'Klaim yang kamu catat akan muncul di '
+                                  'sini, dan langsung terlihat di perangkat '
+                                  'lain.',
+                              action: OutlinedButton(
+                                onPressed: () =>
+                                    _push(context, const ClaimFormPage()),
+                                child: const Text('CATAT KLAIM PERTAMA'),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : _ClaimCards(list),
               ),
-              error: (e, _) => GagalMuat(e),
-              data: (list) => list.isEmpty
-                  ? EmptyState(
-                      icon: Icons.inbox_outlined,
-                      title: 'Belum ada klaim',
-                      description: 'Klaim yang kamu catat akan muncul di sini, '
-                          'dan langsung terlihat di perangkat lain.',
-                      action: OutlinedButton(
-                        onPressed: () => _push(context, const ClaimFormPage()),
-                        child: const Text('CATAT KLAIM PERTAMA'),
-                      ),
-                    )
-                  : _ClaimCards(list),
             ),
           ),
         ],

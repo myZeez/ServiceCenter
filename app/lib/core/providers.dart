@@ -205,9 +205,32 @@ final claimByIdProvider = Provider.family<AsyncValue<Claim?>, String>(
 // Administrasi servis
 // ---------------------------------------------------------------------
 
+final serviceOrdersProvider = StreamProvider<List<ServiceOrderEntry>>(
+  (ref) => ref.watch(databaseProvider).watchServiceOrders(),
+);
+
 final customersProvider = StreamProvider<List<CustomerEntry>>(
   (ref) => ref.watch(databaseProvider).watchCustomers(),
 );
+
+/// Memasang ulang seluruh langganan data.
+///
+/// Dipanggil saat aplikasi kembali dibuka. Di Android, sistem memutus
+/// websocket begitu aplikasinya ditidurkan, dan langganan yang terputus
+/// begitu tidak melempar galat apa pun -- alirannya hanya berhenti
+/// mengirim. Tanpa pemasangan ulang, yang terlihat saat aplikasi dibuka
+/// lagi adalah keadaan terakhir sebelum HP dikunci, tanpa satu pun tanda
+/// bahwa itu sudah basi.
+void segarkanData(WidgetRef ref) {
+  ref.invalidate(allClaimsProvider);
+  ref.invalidate(allPartsProvider);
+  ref.invalidate(allProfilesProvider);
+  ref.invalidate(allBrandsProvider);
+  ref.invalidate(allPartTypesProvider);
+  ref.invalidate(serviceOrdersProvider);
+  ref.invalidate(customersProvider);
+  ref.invalidate(storeSettingsProvider);
+}
 
 /// Identitas toko untuk kepala dan kaki nota.
 final storeSettingsProvider = StreamProvider<StoreSetting?>(

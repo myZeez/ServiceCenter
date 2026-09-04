@@ -10,7 +10,6 @@ import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import 'service_dialog.dart';
-import 'service_view.dart' show serviceOrdersProvider;
 import 'service_status.dart';
 import 'shipment_dialog.dart';
 

@@ -4,7 +4,6 @@ import '../../core/data/models.dart';
 import '../../core/omset/omset_providers.dart';
 import '../../core/providers.dart';
 import 'service_status.dart';
-import 'service_view.dart' show serviceOrdersProvider;
 
 /// Beban dan hasil seorang teknisi pada bulan berjalan.
 class RingkasTeknisi {

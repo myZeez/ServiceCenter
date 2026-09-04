@@ -8,8 +8,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/omset/omset_providers.dart';
 import 'package:sc_management/core/providers.dart';
-import 'package:sc_management/features/service/service_view.dart'
-    show serviceOrdersProvider;
 import 'package:sc_management/features/service/teknisi_ringkas.dart';
 
 final _kini = DateTime.now();

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config.dart';
 import 'core/data/prefs.dart';
+import 'core/data/siklus.dart';
 import 'core/providers.dart';
 import 'core/theme.dart';
 import 'features/auth/login_page.dart';
@@ -56,11 +57,44 @@ class ScManagementApp extends StatelessWidget {
 }
 
 /// Menentukan layar pertama: login atau daftar klaim.
-class _AuthGate extends ConsumerWidget {
+class _AuthGate extends ConsumerStatefulWidget {
   const _AuthGate();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends ConsumerState<_AuthGate> {
+  late final AppLifecycleListener _siklus;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Android memutus websocket begitu aplikasinya ditidurkan, dan langganan
+    // yang terputus begitu tidak melempar galat apa pun -- alirannya hanya
+    // berhenti mengirim. Tanpa pemasangan ulang di sini, yang terlihat saat
+    // aplikasi dibuka lagi adalah keadaan terakhir sebelum layar dikunci,
+    // tanpa satu pun tanda bahwa itu sudah basi.
+    _siklus = AppLifecycleListener(
+      onResume: () {
+        Siklus.aktif = true;
+        segarkanData(ref);
+      },
+      onPause: () => Siklus.aktif = false,
+      onHide: () => Siklus.aktif = false,
+      onShow: () => Siklus.aktif = true,
+    );
+  }
+
+  @override
+  void dispose() {
+    _siklus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     if (ref.watch(currentUserProvider) == null) return const LoginPage();
 
     // Layar lebar memakai kerangka bersidebar; layar sempit memakai

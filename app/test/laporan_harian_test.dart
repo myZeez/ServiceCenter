@@ -15,7 +15,7 @@ import 'package:sc_management/core/export/excel_export.dart';
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/theme.dart';
 import 'package:sc_management/features/service/service_reports_view.dart';
-import 'package:sc_management/features/service/service_view.dart'
+import 'package:sc_management/core/providers.dart'
     show serviceOrdersProvider;
 
 ServiceOrderEntry _nota({

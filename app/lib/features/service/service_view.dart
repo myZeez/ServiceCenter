@@ -20,11 +20,6 @@ final _rp = NumberFormat.currency(
 );
 final _tgl = DateFormat('dd/MM/yy');
 
-final serviceOrdersProvider =
-    StreamProvider.autoDispose<List<ServiceOrderEntry>>(
-      (ref) => ref.watch(databaseProvider).watchServiceOrders(),
-    );
-
 class ServiceFilter {
   const ServiceFilter({this.status, this.query = ''});
   final String? status;

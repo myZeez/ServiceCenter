@@ -47,6 +47,12 @@ dependencies:
   shared_preferences: ^2.5.5
 
 dev_dependencies:
+  # Hanya untuk test ekspor: berkas xlsx dibongkar lalu XML gayanya
+  # diperiksa langsung. Decoder paket excel tidak membaca kembali
+  # perataan sel, jadi bolak-balik lewat Excel.decodeBytes bukan alat
+  # ukur yang sah untuk itu.
+  archive: ^3.6.1
+  xml: ^6.6.1
   flutter_test:
     sdk: flutter
 

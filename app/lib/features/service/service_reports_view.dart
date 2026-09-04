@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/export/excel_export.dart';
-import '../../core/local/database.dart';
+import '../../core/data/models.dart';
 import '../../core/omset/omset_providers.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';

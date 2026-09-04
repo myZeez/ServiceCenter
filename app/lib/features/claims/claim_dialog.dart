@@ -1,12 +1,11 @@
 import 'dart:ui';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../core/local/database.dart';
+import '../../core/data/models.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
@@ -161,65 +160,39 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
     setState(() => _busy = true);
 
     final db = ref.read(databaseProvider);
-    final now = DateTime.now();
     final claimId = widget.claim?.id ?? _uuid.v4();
 
+    final isi = {
+      'tanggal': _tanggal.toUtc().toIso8601String(),
+      'brand_id': _brandId!,
+      'nama_pelanggan': _nama.text.trim(),
+      'telp': _nullIfEmpty(_telp),
+      'sn': _snUnit.text.trim(),
+      'teknisi_id': _teknisiId,
+      'keluhan': _nullIfEmpty(_keluhan),
+      'no_perbaikan': _nullIfEmpty(_noPerbaikan),
+      'status': _status,
+      'catatan': _nullIfEmpty(_catatan),
+    };
+
     if (widget.isNew) {
-      await db.upsertClaimLocal(
-        ClaimsCompanion.insert(
-          id: claimId,
-          tanggal: _tanggal,
-          brandId: _brandId!,
-          namaPelanggan: _nama.text.trim(),
-          telp: Value(_nullIfEmpty(_telp)),
-          sn: _snUnit.text.trim(),
-          teknisiId: Value(_teknisiId),
-          keluhan: Value(_nullIfEmpty(_keluhan)),
-          noPerbaikan: Value(_nullIfEmpty(_noPerbaikan)),
-          status: Value(_status),
-          catatan: Value(_nullIfEmpty(_catatan)),
-          createdBy: user.id,
-          createdAt: now,
-          updatedAt: now,
-          syncPending: const Value(true),
-        ),
-      );
+      await db.simpanClaim({...isi, 'id': claimId, 'created_by': user.id});
     } else {
-      await db.updateClaimFull(
-        claimId,
-        ClaimsCompanion(
-          tanggal: Value(_tanggal),
-          brandId: Value(_brandId!),
-          namaPelanggan: Value(_nama.text.trim()),
-          telp: Value(_nullIfEmpty(_telp)),
-          sn: Value(_snUnit.text.trim()),
-          teknisiId: Value(_teknisiId),
-          keluhan: Value(_nullIfEmpty(_keluhan)),
-          noPerbaikan: Value(_nullIfEmpty(_noPerbaikan)),
-          status: Value(_status),
-          catatan: Value(_nullIfEmpty(_catatan)),
-          updatedAt: Value(now),
-          syncPending: const Value(true),
-        ),
-      );
+      await db.ubahClaim(claimId, isi);
     }
 
     for (final id in _removedPartIds) {
-      await db.markPartDeleted(id);
+      await db.hapusPart(id);
     }
     for (final p in _parts.where((e) => e.typeId != null)) {
-      await db.upsertPartLocal(
-        ClaimPartsCompanion.insert(
-          id: p.existingId ?? _uuid.v4(),
-          claimId: claimId,
-          partTypeId: p.typeId!,
-          snBadPart: Value(p.sn.text.trim().isEmpty ? null : p.sn.text.trim()),
-          syncPending: const Value(true),
-        ),
-      );
+      await db.simpanPart({
+        'id': p.existingId ?? _uuid.v4(),
+        'claim_id': claimId,
+        'part_type_id': p.typeId!,
+        'sn_bad_part': p.sn.text.trim().isEmpty ? null : p.sn.text.trim(),
+      });
     }
 
-    ref.read(syncServiceProvider).syncNow();
 
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -239,8 +212,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
 
     await ref
         .read(databaseProvider)
-        .reassignTechnician(widget.claim!.id, _teknisiId!);
-    ref.read(syncServiceProvider).syncNow();
+        .gantiTeknisi(widget.claim!.id, _teknisiId!);
 
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -663,9 +635,8 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
           Expanded(
             child: Text(
               c == null
-                  ? 'Tanggal terisi otomatis. Data tersimpan di perangkat dulu.'
-                  : 'Diubah terakhir ${_stampFmt.format(c.updatedAt)}'
-                      '${c.syncPending ? '  ·  belum terkirim' : ''}',
+                  ? 'Tanggal terisi otomatis saat disimpan.'
+                  : 'Diubah terakhir ${_stampFmt.format(c.updatedAt)}',
               style: Theme.of(context).textTheme.labelSmall,
             ),
           ),

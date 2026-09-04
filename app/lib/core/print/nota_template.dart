@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
 
-import '../local/database.dart';
+import '../data/models.dart';
 import 'escpos.dart';
 
 final _tglJam = DateFormat('dd/MM/yyyy HH:mm');

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config.dart';
+import 'core/data/prefs.dart';
 import 'core/providers.dart';
 import 'core/theme.dart';
 import 'features/auth/login_page.dart';
@@ -28,7 +29,16 @@ Future<void> main() async {
     publishableKey: AppConfig.supabaseAnonKey,
   );
 
-  runApp(const ProviderScope(child: ScManagementApp()));
+  // Printer dan susunan kartu dibaca lebih dulu supaya layar tidak perlu
+  // menunggui berkas pengaturan yang isinya sekadar nama printer.
+  final prefs = await Prefs.buka();
+
+  runApp(
+    ProviderScope(
+      overrides: [prefsProvider.overrideWithValue(prefs)],
+      child: const ScManagementApp(),
+    ),
+  );
 }
 
 class ScManagementApp extends StatelessWidget {
@@ -46,33 +56,12 @@ class ScManagementApp extends StatelessWidget {
 }
 
 /// Menentukan layar pertama: login atau daftar klaim.
-class _AuthGate extends ConsumerStatefulWidget {
+class _AuthGate extends ConsumerWidget {
   const _AuthGate();
 
   @override
-  ConsumerState<_AuthGate> createState() => _AuthGateState();
-}
-
-class _AuthGateState extends ConsumerState<_AuthGate> {
-  bool _syncStarted = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final user = ref.watch(currentUserProvider);
-
-    if (user == null) {
-      _syncStarted = false;
-      return const LoginPage();
-    }
-
-    // Sinkronisasi baru berjalan setelah ada yang login, karena semua
-    // aturan akses di server bergantung pada identitas user.
-    if (!_syncStarted) {
-      _syncStarted = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(syncServiceProvider).start();
-      });
-    }
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(currentUserProvider) == null) return const LoginPage();
 
     // Layar lebar memakai kerangka bersidebar; layar sempit memakai
     // navigasi berhalaman yang lebih cocok untuk satu tangan.

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/local/database.dart';
+import '../../core/data/models.dart';
 import '../../core/providers.dart';
 import '../../core/revenue/revenue_calculator.dart';
 import '../../core/revenue/revenue_providers.dart';

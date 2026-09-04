@@ -11,18 +11,27 @@ app/                   aplikasi Flutter
 
 ## Cara kerjanya
 
-Aplikasi **tidak pernah** membaca atau menulis langsung ke Supabase. Semua
-operasi lewat database SQLite di perangkat, lalu disinkronkan di latar
-belakang. Inilah yang bikin app tetap jalan waktu sinyal hilang.
+Data hanya tinggal di satu tempat: Supabase. Tiap layar berlangganan
+langsung ke tabelnya lewat Realtime, jadi tambah, ubah, dan hapus sampai ke
+semua perangkat dalam hitungan detik.
 
 ```
-Teknisi input  →  SQLite lokal  →  antre  →  Supabase (Postgres)
-                  ↑ sumber data
-                    untuk tampilan
+Input  →  Supabase (Postgres)  →  Realtime  →  semua layar, semua perangkat
 ```
 
-Konsekuensinya: klaim yang diinput saat offline tercatat dengan **jam saat
-diinput**, bukan jam saat akhirnya terkirim.
+**Konsekuensinya jujur: tanpa koneksi, aplikasi tidak bisa dipakai.**
+
+Sebelumnya aplikasi menyimpan cerminannya sendiri di SQLite dan menyalin
+isi server tiap beberapa menit, supaya tetap jalan tanpa sinyal. Cerminan
+itu dibuang karena tidak pernah bisa membuang baris: sinkronisasinya hanya
+menanyakan apa yang berubah, dan baris yang dihapus di server tidak muncul
+di jawaban mana pun. Admin menghapus sebuah nota, teknisi masih melihatnya,
+dan tidak ada yang bisa menjelaskan mana yang benar. Kemampuan bekerja
+tanpa sinyal ditukar dengan satu kenyataan yang sama untuk semua orang.
+
+Dua hal tetap disimpan di perangkat lewat `shared_preferences`, karena
+memang tidak punya tempat di database bersama: nama printer dan susunan
+kartu di layar.
 
 ## Hak akses
 
@@ -113,16 +122,18 @@ flutter build apk --release --dart-define-from-file=env.json
 
 ## Kalau skema database diubah
 
-File di `lib/core/local/database.dart` adalah cerminan lokal dari tabel
-Postgres. Kalau salah satunya berubah, yang lain harus ikut, lalu:
+Tiga hal harus ikut berubah:
 
-```bash
-cd app
-dart run build_runner build
-```
+1. Migrasi baru di `supabase/migrations/`.
+2. Model yang bersangkutan di `app/lib/core/data/models.dart` — nama kolom
+   di `fromMap` harus persis sama dengan di Postgres.
+3. Tabel baru harus didaftarkan ke Realtime. Contohnya ada di migrasi
+   `0012_realtime.sql`: masukkan ke publikasi `supabase_realtime` **dan**
+   setel `replica identity full`. Tanpa yang kedua, kabar penghapusan
+   dibuang diam-diam dan barisnya tetap tampil di layar orang lain.
 
-Naikkan juga `schemaVersion` di `AppDatabase` dan tambahkan migrasi drift,
-supaya data di perangkat yang sudah terpasang tidak hilang.
+Salah nama kolom tidak ketahuan saat `flutter analyze`. Penjaganya ada di
+`test/models_test.dart` — tambahkan barisnya di situ.
 
 ## Belum dikerjakan
 

@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/local/database.dart';
+import '../../core/data/models.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
@@ -138,7 +138,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
       } else {
         await client.from('shipments').update(data).eq('id', widget.kirim!.id);
       }
-      await ref.read(syncServiceProvider).syncNow();
+
 
       if (!mounted) return;
       Navigator.of(context).pop();

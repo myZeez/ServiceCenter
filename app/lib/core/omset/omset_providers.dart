@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../local/database.dart';
+import '../data/models.dart';
 import '../providers.dart';
 import 'omset_calculator.dart';
 

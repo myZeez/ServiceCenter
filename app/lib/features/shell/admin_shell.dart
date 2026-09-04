@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
-import '../../core/sync/sync_service.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/koneksi.dart';
 import '../claims/claims_view.dart';
 import '../mywork/my_work_view.dart';
 import '../reports/reports_view.dart';
@@ -121,7 +121,7 @@ class _Sidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(currentProfileProvider).valueOrNull;
+    final profile = ref.watch(currentProfileProvider);
 
     return Container(
       width: 228,
@@ -186,7 +186,7 @@ class _Sidebar extends ConsumerWidget {
           ],
 
           const Spacer(),
-          const _SyncRow(),
+          const IndikatorKoneksi(),
           const Divider(),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.s),
@@ -297,51 +297,3 @@ class _NavItemState extends State<_NavItem> {
   }
 }
 
-class _SyncRow extends ConsumerWidget {
-  const _SyncRow();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final pending = ref.watch(pendingCountProvider).valueOrNull ?? 0;
-    final status = ref.watch(syncStatusProvider).valueOrNull;
-    final state = status?.state ?? SyncState.idle;
-
-    final (icon, color, text) = switch (state) {
-      SyncState.syncing => (Icons.sync, AppColors.blue, 'Menyinkronkan'),
-      SyncState.offline => (
-          Icons.cloud_off_outlined,
-          AppColors.red,
-          'Offline · $pending antre',
-        ),
-      SyncState.error => (Icons.error_outline, AppColors.red, 'Sinkron gagal'),
-      SyncState.idle => (
-          Icons.cloud_done_outlined,
-          AppColors.grey,
-          pending > 0 ? '$pending menunggu kirim' : 'Tersinkron',
-        ),
-    };
-
-    return InkWell(
-      onTap: () => ref.read(syncServiceProvider).syncNow(),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.s,
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                text,
-                style: TextStyle(fontSize: 11, color: color),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

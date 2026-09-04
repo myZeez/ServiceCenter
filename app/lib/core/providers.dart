@@ -1,35 +1,46 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'local/database.dart';
-import 'sync/sync_service.dart';
+import 'data/db.dart';
+import 'data/models.dart';
+import 'data/prefs.dart';
 import 'widgets/grid_canvas.dart';
-
-final databaseProvider = Provider<AppDatabase>((ref) {
-  final db = AppDatabase();
-  ref.onDispose(db.close);
-  return db;
-});
 
 final supabaseProvider = Provider<SupabaseClient>(
   (ref) => Supabase.instance.client,
 );
 
-final syncServiceProvider = Provider<SyncService>((ref) {
-  final svc = SyncService(ref.watch(databaseProvider), ref.watch(supabaseProvider));
-  ref.onDispose(svc.dispose);
-  return svc;
+final databaseProvider = Provider<Db>(
+  (ref) => Db(ref.watch(supabaseProvider)),
+);
+
+/// Diisi di main() sebelum aplikasi berjalan, supaya layar tidak perlu
+/// menunggui pembacaan berkas pengaturan yang isinya sekadar nama printer.
+final prefsProvider = Provider<Prefs>(
+  (ref) => throw StateError('prefsProvider harus di-override di main()'),
+);
+
+/// Apakah saluran Realtime sedang tersambung.
+///
+/// Menggantikan indikator sinkronisasi yang dulu. Dulu yang perlu diketahui
+/// pengguna adalah berapa banyak perubahan masih mengantre di perangkat;
+/// sekarang tidak ada antrean sama sekali -- yang perlu diketahui hanyalah
+/// apakah yang terlihat di layar masih mengikuti server.
+///
+/// Keadaannya ditengok berkala, bukan ditunggu dari pemberitahuan pustaka:
+/// yang dicari justru saat sambungan putus tanpa sempat memberi kabar.
+final koneksiProvider = StreamProvider<bool>((ref) {
+  final c = ref.watch(supabaseProvider);
+  Stream<bool> pantau() async* {
+    yield c.realtime.isConnected;
+    yield* Stream.periodic(
+      const Duration(seconds: 3),
+      (_) => c.realtime.isConnected,
+    );
+  }
+
+  return pantau().distinct();
 });
-
-final syncStatusProvider = StreamProvider<SyncStatus>(
-  (ref) => ref.watch(syncServiceProvider).status,
-);
-
-/// Berapa perubahan lokal yang belum terkirim. Ditampilkan di app bar supaya
-/// teknisi tahu pekerjaannya sudah sampai server atau belum.
-final pendingCountProvider = StreamProvider<int>(
-  (ref) => ref.watch(databaseProvider).watchPendingCount(),
-);
 
 // ---------------------------------------------------------------------
 // Auth
@@ -45,37 +56,29 @@ final currentUserProvider = Provider<User?>((ref) {
 });
 
 /// Profil (nama + role) dari user yang sedang login.
-///
-/// Sengaja stream: saat login pertama, profilnya baru sampai di perangkat
-/// setelah sinkronisasi berjalan. Kalau dibaca sekali saja, hak akses admin
-/// tidak pernah muncul sampai aplikasi dijalankan ulang.
-final currentProfileProvider = StreamProvider<Profile?>((ref) {
+final currentProfileProvider = Provider<Profile?>((ref) {
   final user = ref.watch(currentUserProvider);
-  if (user == null) return Stream.value(null);
-  return ref.watch(databaseProvider).watchProfileById(user.id);
+  if (user == null) return null;
+  final semua = ref.watch(allProfilesProvider).valueOrNull;
+  if (semua == null) return null;
+  for (final p in semua) {
+    if (p.id == user.id) return p;
+  }
+  return null;
 });
 
-final isAdminProvider = Provider<bool>((ref) {
-  final profile = ref.watch(currentProfileProvider).valueOrNull;
-  return profile?.role == 'admin';
-});
+final isAdminProvider = Provider<bool>(
+  (ref) => ref.watch(currentProfileProvider)?.role == 'admin',
+);
 
 // ---------------------------------------------------------------------
 // Master data
+//
+// Satu langganan per tabel, lalu diturunkan. Kalau tiap tampilan membuka
+// langganannya sendiri, satu tabel bisa terpasang lima kali untuk isi yang
+// sama persis.
 // ---------------------------------------------------------------------
 
-/// Hanya yang aktif -- dipakai untuk pilihan saat input klaim.
-final brandsProvider = StreamProvider<List<Brand>>(
-  (ref) => ref.watch(databaseProvider).watchBrands(),
-);
-
-final partTypesProvider = StreamProvider<List<PartType>>(
-  (ref) => ref.watch(databaseProvider).watchPartTypes(),
-);
-
-/// Termasuk yang nonaktif. Dipakai saat menerjemahkan brand_id dan
-/// part_type_id pada klaim lama menjadi nama -- tanpa ini, menonaktifkan
-/// sebuah brand membuat riwayat klaimnya tampil tanpa nama.
 final allBrandsProvider = StreamProvider<List<Brand>>(
   (ref) => ref.watch(databaseProvider).watchAllBrands(),
 );
@@ -84,13 +87,27 @@ final allPartTypesProvider = StreamProvider<List<PartType>>(
   (ref) => ref.watch(databaseProvider).watchAllPartTypes(),
 );
 
-final techniciansProvider = StreamProvider<List<Profile>>(
-  (ref) => ref.watch(databaseProvider).watchTechnicians(),
-);
-
-/// Semua pengguna termasuk yang nonaktif. Khusus halaman kelola pengguna.
 final allProfilesProvider = StreamProvider<List<Profile>>(
   (ref) => ref.watch(databaseProvider).watchAllProfiles(),
+);
+
+/// Hanya yang aktif -- dipakai untuk pilihan saat input klaim.
+final brandsProvider = Provider<AsyncValue<List<Brand>>>(
+  (ref) => ref
+      .watch(allBrandsProvider)
+      .whenData((l) => l.where((b) => b.aktif).toList()),
+);
+
+final partTypesProvider = Provider<AsyncValue<List<PartType>>>(
+  (ref) => ref
+      .watch(allPartTypesProvider)
+      .whenData((l) => l.where((p) => p.aktif).toList()),
+);
+
+final techniciansProvider = Provider<AsyncValue<List<Profile>>>(
+  (ref) => ref.watch(allProfilesProvider).whenData(
+        (l) => l.where((p) => p.aktif && p.role == 'teknisi').toList(),
+      ),
 );
 
 // ---------------------------------------------------------------------
@@ -111,51 +128,76 @@ class ClaimFilter {
     String? query,
     bool clearBrand = false,
     bool clearStatus = false,
-  }) =>
-      ClaimFilter(
-        brandId: clearBrand ? null : (brandId ?? this.brandId),
-        status: clearStatus ? null : (status ?? this.status),
-        query: query ?? this.query,
-      );
+  }) => ClaimFilter(
+    brandId: clearBrand ? null : (brandId ?? this.brandId),
+    status: clearStatus ? null : (status ?? this.status),
+    query: query ?? this.query,
+  );
 }
 
-final claimFilterProvider =
-    StateProvider<ClaimFilter>((ref) => const ClaimFilter());
+final claimFilterProvider = StateProvider<ClaimFilter>(
+  (ref) => const ClaimFilter(),
+);
 
-final claimsProvider = StreamProvider<List<Claim>>((ref) {
+/// Seluruh klaim, terbaru di atas. Sumber bagi semua tampilan klaim.
+final allClaimsProvider = StreamProvider<List<Claim>>(
+  (ref) => ref.watch(databaseProvider).watchClaims(),
+);
+
+final allPartsProvider = StreamProvider<List<ClaimPart>>(
+  (ref) => ref.watch(databaseProvider).watchParts(),
+);
+
+final claimsProvider = Provider<AsyncValue<List<Claim>>>((ref) {
   final filter = ref.watch(claimFilterProvider);
-  final stream = ref
-      .watch(databaseProvider)
-      .watchClaims(brandId: filter.brandId, status: filter.status);
-
-  if (filter.query.trim().isEmpty) return stream;
-
-  // Pencarian dilakukan di memori, bukan di server, supaya tetap jalan
-  // waktu offline.
   final q = filter.query.toLowerCase().trim();
-  return stream.map(
-    (list) => list
-        .where((c) =>
-            c.namaPelanggan.toLowerCase().contains(q) ||
-            c.sn.toLowerCase().contains(q) ||
-            (c.noPerbaikan ?? '').toLowerCase().contains(q) ||
-            (c.telp ?? '').contains(q))
-        .toList(),
-  );
+
+  return ref.watch(allClaimsProvider).whenData(
+        (list) => list.where((c) {
+          if (filter.brandId != null && c.brandId != filter.brandId) {
+            return false;
+          }
+          if (filter.status != null && c.status != filter.status) return false;
+          if (q.isEmpty) return true;
+          return c.namaPelanggan.toLowerCase().contains(q) ||
+              c.sn.toLowerCase().contains(q) ||
+              (c.noPerbaikan ?? '').toLowerCase().contains(q) ||
+              (c.telp ?? '').contains(q);
+        }).toList(),
+      );
 });
 
-/// Susunan grid yang dipilih pengguna, per halaman.
-///
-/// Disimpan lokal, bukan di server: ini selera menata layar dan berbeda
-/// tiap orang serta tiap ukuran monitor -- tidak ada gunanya dipaksa sama
-/// di semua perangkat.
-final gridLayoutProvider =
-    StreamProvider.family<GridLayout, String>((ref, key) {
-  return ref.watch(databaseProvider).watchMeta('grid.$key').map(decodeLayout);
-});
+/// Jumlah klaim per status. Dipakai stat tile di halaman utama, yang
+/// sekaligus berfungsi sebagai filter status.
+final statusCountsProvider = Provider<AsyncValue<Map<String, int>>>(
+  (ref) => ref.watch(allClaimsProvider).whenData((list) {
+    final hasil = <String, int>{};
+    for (final c in list) {
+      hasil[c.status] = (hasil[c.status] ?? 0) + 1;
+    }
+    return hasil;
+  }),
+);
 
-Future<void> simpanGridLayout(WidgetRef ref, String key, GridLayout layout) =>
-    ref.read(databaseProvider).setMeta('grid.$key', encodeLayout(layout));
+final partsOfClaimProvider =
+    Provider.family<AsyncValue<List<ClaimPart>>, String>(
+  (ref, claimId) => ref
+      .watch(allPartsProvider)
+      .whenData((l) => l.where((p) => p.claimId == claimId).toList()),
+);
+
+final claimByIdProvider = Provider.family<AsyncValue<Claim?>, String>(
+  (ref, id) => ref.watch(allClaimsProvider).whenData((l) {
+    for (final c in l) {
+      if (c.id == id) return c;
+    }
+    return null;
+  }),
+);
+
+// ---------------------------------------------------------------------
+// Administrasi servis
+// ---------------------------------------------------------------------
 
 final customersProvider = StreamProvider<List<CustomerEntry>>(
   (ref) => ref.watch(databaseProvider).watchCustomers(),
@@ -166,40 +208,32 @@ final storeSettingsProvider = StreamProvider<StoreSetting?>(
   (ref) => ref.watch(databaseProvider).watchStoreSettings(),
 );
 
-/// Printer dan lebar kolomnya disimpan lokal, bukan di server: tiap
-/// komputer punya printer sendiri, dan yang di meja depan berbeda dari
-/// yang di ruang teknisi.
+// ---------------------------------------------------------------------
+// Pengaturan yang melekat pada perangkat
+// ---------------------------------------------------------------------
+
+/// Susunan grid yang dipilih pengguna, per halaman.
+final gridLayoutProvider = StreamProvider.family<GridLayout, String>(
+  (ref, key) =>
+      ref.watch(prefsProvider).watch('grid.$key').map(decodeLayout),
+);
+
+Future<void> simpanGridLayout(WidgetRef ref, String key, GridLayout layout) =>
+    ref.read(prefsProvider).tulis('grid.$key', encodeLayout(layout));
+
 final printerNamaProvider = StreamProvider<String>(
-  (ref) => ref
-      .watch(databaseProvider)
-      .watchMeta('printer.nama')
-      .map((v) => v ?? ''),
+  (ref) => ref.watch(prefsProvider).watch('printer.nama').map((v) => v ?? ''),
 );
 
 final printerLebarProvider = StreamProvider<int>(
   (ref) => ref
-      .watch(databaseProvider)
-      .watchMeta('printer.lebar')
+      .watch(prefsProvider)
+      .watch('printer.lebar')
       .map((v) => int.tryParse(v ?? '') ?? 32),
 );
 
 Future<void> simpanPrinter(WidgetRef ref, String nama, int lebar) async {
-  final db = ref.read(databaseProvider);
-  await db.setMeta('printer.nama', nama);
-  await db.setMeta('printer.lebar', '$lebar');
+  final p = ref.read(prefsProvider);
+  await p.tulis('printer.nama', nama);
+  await p.tulis('printer.lebar', '$lebar');
 }
-
-/// Jumlah klaim per status. Dipakai stat tile di halaman utama, yang
-/// sekaligus berfungsi sebagai filter status.
-final statusCountsProvider = StreamProvider<Map<String, int>>(
-  (ref) => ref.watch(databaseProvider).watchStatusCounts(),
-);
-
-final partsOfClaimProvider =
-    StreamProvider.family<List<ClaimPart>, String>((ref, claimId) {
-  return ref.watch(databaseProvider).watchPartsOf(claimId);
-});
-
-final claimByIdProvider = StreamProvider.family<Claim?, String>((ref, id) {
-  return ref.watch(databaseProvider).watchClaim(id);
-});

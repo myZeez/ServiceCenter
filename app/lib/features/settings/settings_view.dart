@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/local/database.dart';
+import '../../core/data/models.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
@@ -72,10 +72,17 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                       label: const Text('UBAH LAYOUT'),
                     ),
               const SizedBox(width: AppSpacing.xs),
+              // Perubahan datang sendiri lewat Realtime. Tombol ini untuk
+              // saat sambungannya sempat putus: langganannya dipasang
+              // ulang, bukan datanya ditarik ulang secara manual.
               OutlinedButton.icon(
-                onPressed: () => ref.read(syncServiceProvider).syncNow(),
+                onPressed: () {
+                  ref.invalidate(allProfilesProvider);
+                  ref.invalidate(allBrandsProvider);
+                  ref.invalidate(allPartTypesProvider);
+                },
                 icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('MUAT ULANG'),
+                label: const Text('SAMBUNG ULANG'),
               ),
             ],
           ),
@@ -330,13 +337,8 @@ class _UserRow extends ConsumerWidget {
           .update(changes)
           .eq('id', profile.id);
 
-      final db = ref.read(databaseProvider);
-      if (changes['role'] != null) {
-        await db.setProfileRole(profile.id, changes['role'] as String);
-      }
-      if (changes['aktif'] != null) {
-        await db.setProfileActive(profile.id, changes['aktif'] as bool);
-      }
+      // Dulu perubahannya perlu ditulis ulang ke cermin lokal supaya layar
+      // ikut berubah. Sekarang layar berlangganan langsung ke tabelnya.
     } on PostgrestException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
@@ -501,7 +503,7 @@ Future<void> _write(
 ) async {
   try {
     await action();
-    await ref.read(syncServiceProvider).syncNow();
+
   } on PostgrestException catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -747,7 +749,7 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
           'role': _role,
         },
       );
-      await ref.read(syncServiceProvider).syncNow();
+  
 
       if (!mounted) return;
       Navigator.of(context).pop();

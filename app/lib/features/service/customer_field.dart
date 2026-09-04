@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/local/database.dart';
+import '../../core/data/models.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
 

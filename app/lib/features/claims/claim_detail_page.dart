@@ -1,10 +1,10 @@
-import 'package:drift/drift.dart' show Value;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../core/local/database.dart';
+import '../../core/data/models.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
@@ -60,16 +60,6 @@ class ClaimDetailPage extends ConsumerWidget {
       appBar: AppBar(
         titleSpacing: AppSpacing.sm,
         title: Text(claim.noPerbaikan ?? 'Detail Klaim'),
-        actions: [
-          if (claim.syncPending)
-            const Padding(
-              padding: EdgeInsets.only(right: AppSpacing.sm),
-              child: Tooltip(
-                message: 'Belum terkirim ke server',
-                child: Icon(Icons.schedule, size: 18, color: AppColors.red),
-              ),
-            ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
@@ -123,7 +113,7 @@ class ClaimDetailPage extends ConsumerWidget {
                       required: true,
                       scannable: true,
                       // Aman: kolom wajib tidak pernah lolos validasi kosong.
-                      build: (v) => ClaimsCompanion(sn: Value(v!)),
+                      build: (v) => {'sn': v},
                     ),
                   ),
                   _Editable(
@@ -135,7 +125,7 @@ class ClaimDetailPage extends ConsumerWidget {
                       label: 'Keluhan',
                       initial: claim.keluhan ?? '',
                       multiline: true,
-                      build: (v) => ClaimsCompanion(keluhan: Value(v)),
+                      build: (v) => {'keluhan': v},
                     ),
                   ),
                   _Editable(
@@ -147,7 +137,7 @@ class ClaimDetailPage extends ConsumerWidget {
                       label: 'No Perbaikan / RMA',
                       initial: claim.noPerbaikan ?? '',
                       hint: 'IDD7R20024',
-                      build: (v) => ClaimsCompanion(noPerbaikan: Value(v)),
+                      build: (v) => {'no_perbaikan': v},
                     ),
                   ),
                   _Editable(
@@ -171,7 +161,7 @@ class ClaimDetailPage extends ConsumerWidget {
                       await _apply(
                         ref,
                         claim.id,
-                        ClaimsCompanion(brandId: Value(int.parse(picked))),
+                        {'brand_id': int.parse(picked)},
                       );
                     },
                   ),
@@ -198,7 +188,7 @@ class ClaimDetailPage extends ConsumerWidget {
                       await _apply(
                         ref,
                         claim.id,
-                        ClaimsCompanion(tanggal: Value(merged)),
+                        {'tanggal': merged.toUtc().toIso8601String()},
                       );
                     },
                   ),
@@ -216,7 +206,7 @@ class ClaimDetailPage extends ConsumerWidget {
                       label: 'Nama Pelanggan',
                       initial: claim.namaPelanggan,
                       required: true,
-                      build: (v) => ClaimsCompanion(namaPelanggan: Value(v!)),
+                      build: (v) => {'nama_pelanggan': v},
                     ),
                   ),
                   _Editable(
@@ -229,7 +219,7 @@ class ClaimDetailPage extends ConsumerWidget {
                       initial: claim.telp ?? '',
                       hint: '0812-3456-7890',
                       keyboard: TextInputType.phone,
-                      build: (v) => ClaimsCompanion(telp: Value(v)),
+                      build: (v) => {'telp': v},
                     ),
                   ),
 
@@ -307,7 +297,7 @@ class ClaimDetailPage extends ConsumerWidget {
                       label: 'Catatan',
                       initial: claim.catatan ?? '',
                       multiline: true,
-                      build: (v) => ClaimsCompanion(catatan: Value(v)),
+                      build: (v) => {'catatan': v},
                     ),
                   ),
 
@@ -340,21 +330,15 @@ class ClaimDetailPage extends ConsumerWidget {
   // Penyimpanan
   // ------------------------------------------------------------------
 
-  /// Menyimpan satu kolom. updatedAt dan syncPending selalu ikut supaya
-  /// perubahan sekecil apa pun tetap masuk antrean kirim.
+  /// Menyimpan satu kolom langsung ke server. Layar tidak perlu digambar
+  /// ulang sendiri: Realtime yang mengabarkan perubahannya balik, ke sini
+  /// dan ke perangkat lain sekaligus.
   static Future<void> _apply(
     WidgetRef ref,
     String claimId,
-    ClaimsCompanion values,
+    Map<String, dynamic> values,
   ) async {
-    await ref.read(databaseProvider).updateClaimFull(
-          claimId,
-          values.copyWith(
-            updatedAt: Value(DateTime.now()),
-            syncPending: const Value(true),
-          ),
-        );
-    ref.read(syncServiceProvider).syncNow();
+    await ref.read(databaseProvider).ubahClaim(claimId, values);
   }
 
   Future<void> _editText(
@@ -363,7 +347,7 @@ class ClaimDetailPage extends ConsumerWidget {
     Claim claim, {
     required String label,
     required String initial,
-    required ClaimsCompanion Function(String?) build,
+    required Map<String, dynamic> Function(String?) build,
     bool required = false,
     bool multiline = false,
     bool scannable = false,
@@ -404,16 +388,12 @@ class ClaimDetailPage extends ConsumerWidget {
     );
     if (result == null) return;
 
-    await ref.read(databaseProvider).upsertPartLocal(
-          ClaimPartsCompanion.insert(
-            id: part?.id ?? _uuid.v4(),
-            claimId: claimId,
-            partTypeId: result.typeId,
-            snBadPart: Value(result.sn),
-            syncPending: const Value(true),
-          ),
-        );
-    ref.read(syncServiceProvider).syncNow();
+    await ref.read(databaseProvider).simpanPart({
+      'id': part?.id ?? _uuid.v4(),
+      'claim_id': claimId,
+      'part_type_id': result.typeId,
+      'sn_bad_part': result.sn,
+    });
   }
 
   Future<void> _deletePart(
@@ -444,8 +424,7 @@ class ClaimDetailPage extends ConsumerWidget {
     );
     if (ok != true) return;
 
-    await ref.read(databaseProvider).markPartDeleted(part.id);
-    ref.read(syncServiceProvider).syncNow();
+    await ref.read(databaseProvider).hapusPart(part.id);
   }
 
   Future<void> _pickTechnician(
@@ -466,8 +445,7 @@ class ClaimDetailPage extends ConsumerWidget {
 
     if (picked == null || picked == claim.teknisiId) return;
 
-    await ref.read(databaseProvider).reassignTechnician(claim.id, picked);
-    ref.read(syncServiceProvider).syncNow();
+    await ref.read(databaseProvider).gantiTeknisi(claim.id, picked);
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -497,8 +475,7 @@ class ClaimDetailPage extends ConsumerWidget {
     );
 
     if (picked == null || picked == claim.status) return;
-    await ref.read(databaseProvider).updateStatus(claim.id, picked);
-    ref.read(syncServiceProvider).syncNow();
+    await ref.read(databaseProvider).gantiStatus(claim.id, picked);
   }
 
   static Future<String?> _pick(

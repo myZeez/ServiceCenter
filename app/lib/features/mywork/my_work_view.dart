@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/local/database.dart';
+import '../../core/data/models.dart';
 import '../../core/providers.dart';
 import '../../core/revenue/revenue_providers.dart';
 import '../../core/status.dart';
@@ -11,18 +11,25 @@ import '../../core/widgets/bento.dart';
 
 /// Klaim milik pengguna yang sedang login pada periode terpilih.
 ///
-/// Dihitung dari data di perangkat, jadi teknisi tetap bisa melihat hasil
-/// kerjanya sendiri saat tidak ada sinyal. Tidak ada angka rupiah di sini:
-/// fee brand memang tidak pernah sampai ke perangkat teknisi.
-final _klaimSayaProvider = StreamProvider.autoDispose<List<Claim>>((ref) {
+/// Tidak ada angka rupiah di sini: aturan akses di server menahan fee brand
+/// supaya tidak pernah sampai ke perangkat teknisi.
+final _klaimSayaProvider = Provider.autoDispose<AsyncValue<List<Claim>>>((ref) {
   final p = ref.watch(periodeProvider);
   final id = ref.watch(currentUserProvider)?.id;
-  if (id == null) return Stream.value(const []);
+  if (id == null) return const AsyncValue.data([]);
 
   return ref
-      .watch(databaseProvider)
-      .watchClaimsBetween(p.dari, p.sampai)
-      .map((list) => list.where((c) => c.teknisiId == id).toList());
+      .watch(allClaimsProvider)
+      .whenData(
+        (list) => list
+            .where(
+              (c) =>
+                  c.teknisiId == id &&
+                  !c.tanggal.isBefore(p.dari) &&
+                  !c.tanggal.isAfter(p.sampai),
+            )
+            .toList(),
+      );
 });
 
 class MyWorkView extends ConsumerWidget {
@@ -32,7 +39,7 @@ class MyWorkView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final periode = ref.watch(periodeProvider);
     final klaim = ref.watch(_klaimSayaProvider).valueOrNull;
-    final profile = ref.watch(currentProfileProvider).valueOrNull;
+    final profile = ref.watch(currentProfileProvider);
     final brands = {
       for (final b
           in ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[])

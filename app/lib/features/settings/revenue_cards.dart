@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/local/database.dart';
+import '../../core/data/models.dart';
 import '../../core/providers.dart';
 import '../../core/revenue/revenue_providers.dart';
 import '../../core/theme.dart';
@@ -26,7 +26,7 @@ Future<void> _simpan(
 ) async {
   try {
     await aksi();
-    await ref.read(syncServiceProvider).syncNow();
+
   } on PostgrestException catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)

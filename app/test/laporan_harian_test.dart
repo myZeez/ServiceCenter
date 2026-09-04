@@ -12,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:sc_management/core/export/excel_export.dart';
-import 'package:sc_management/core/local/database.dart';
+import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/theme.dart';
 import 'package:sc_management/features/service/service_reports_view.dart';
 import 'package:sc_management/features/service/service_view.dart'

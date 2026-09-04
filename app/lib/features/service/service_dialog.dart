@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../core/local/database.dart';
+import '../../core/data/models.dart';
 import '../../core/print/nota_template.dart';
 import '../../core/print/raw_printer.dart';
 import '../../core/providers.dart';
@@ -181,27 +180,21 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         // tersimpan; dengan id yang sama, percobaan berikutnya menyunting
         // klaim yang itu juga alih-alih menerbitkan klaim kembar.
         claimId = _claimBaru ??= _uuid.v4();
-        final now = DateTime.now();
 
-        await ref.read(databaseProvider).upsertClaimLocal(
-              ClaimsCompanion.insert(
-                id: claimId,
-                tanggal: now,
-                brandId: _brandId!,
-                namaPelanggan: _nama.text.trim(),
-                telp: Value(_kosongNull(_telp)),
-                sn: _sn.text.trim(),
-                teknisiId: Value(_teknisiId),
-                keluhan: Value(_kosongNull(_keluhan)),
-                status: const Value('open'),
-                createdBy: user!.id,
-                createdAt: now,
-                updatedAt: now,
-                syncPending: const Value(true),
-              ),
-            );
-        // Klaimnya harus sudah ada di server sebelum nota menunjuk padanya.
-        await ref.read(syncServiceProvider).syncNow();
+        // Klaimnya disimpan lebih dulu: notanya menunjuk ke baris ini, dan
+        // server menolak tautan ke baris yang belum ada.
+        await ref.read(databaseProvider).simpanClaim({
+          'id': claimId,
+          'tanggal': DateTime.now().toUtc().toIso8601String(),
+          'brand_id': _brandId!,
+          'nama_pelanggan': _nama.text.trim(),
+          'telp': _kosongNull(_telp),
+          'sn': _sn.text.trim(),
+          'teknisi_id': _teknisiId,
+          'keluhan': _kosongNull(_keluhan),
+          'status': 'open',
+          'created_by': user!.id,
+        });
       }
 
       final data = {
@@ -237,7 +230,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             .eq('id', widget.nota!.id);
       }
 
-      await ref.read(syncServiceProvider).syncNow();
+
 
       if (!mounted) return;
       Navigator.of(context).pop();

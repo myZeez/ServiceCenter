@@ -1,10 +1,9 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../core/local/database.dart';
+import '../../core/data/models.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
@@ -150,76 +149,45 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
     setState(() => _busy = true);
 
     final db = ref.read(databaseProvider);
-    final now = DateTime.now();
     final claimId = widget.claim?.id ?? _uuid.v4();
 
     String? nullIfEmpty(TextEditingController c) =>
         c.text.trim().isEmpty ? null : c.text.trim();
 
+    final isi = {
+      // Jam lokal saat diinput, bukan saat baris ini sampai di server.
+      'tanggal': _tanggal.toUtc().toIso8601String(),
+      'brand_id': _brandId!,
+      'nama_pelanggan': _nama.text.trim(),
+      'telp': nullIfEmpty(_telp),
+      'sn': _sn.text.trim(),
+      'teknisi_id': _teknisiId,
+      'keluhan': nullIfEmpty(_keluhan),
+      'no_perbaikan': nullIfEmpty(_noPerbaikan),
+      'status': _status,
+      'catatan': nullIfEmpty(_catatan),
+    };
+
     if (widget.isEdit) {
-      await db.updateClaimFull(
-        claimId,
-        ClaimsCompanion(
-          tanggal: Value(_tanggal),
-          brandId: Value(_brandId!),
-          namaPelanggan: Value(_nama.text.trim()),
-          telp: Value(nullIfEmpty(_telp)),
-          sn: Value(_sn.text.trim()),
-          teknisiId: Value(_teknisiId),
-          keluhan: Value(nullIfEmpty(_keluhan)),
-          noPerbaikan: Value(nullIfEmpty(_noPerbaikan)),
-          status: Value(_status),
-          catatan: Value(nullIfEmpty(_catatan)),
-          updatedAt: Value(now),
-          syncPending: const Value(true),
-        ),
-      );
+      await db.ubahClaim(claimId, isi);
     } else {
-      await db.upsertClaimLocal(
-        ClaimsCompanion.insert(
-          id: claimId,
-          // Jam lokal saat diinput, bukan saat tersinkron ke server.
-          tanggal: _tanggal,
-          brandId: _brandId!,
-          namaPelanggan: _nama.text.trim(),
-          telp: Value(nullIfEmpty(_telp)),
-          sn: _sn.text.trim(),
-          teknisiId: Value(_teknisiId),
-          keluhan: Value(nullIfEmpty(_keluhan)),
-          noPerbaikan: Value(nullIfEmpty(_noPerbaikan)),
-          status: Value(_status),
-          catatan: Value(nullIfEmpty(_catatan)),
-          createdBy: user.id,
-          createdAt: now,
-          updatedAt: now,
-          syncPending: const Value(true),
-        ),
-      );
+      await db.simpanClaim({...isi, 'id': claimId, 'created_by': user.id});
     }
 
     for (final id in _removedPartIds) {
-      await db.markPartDeleted(id);
+      await db.hapusPart(id);
     }
 
     for (final p in _parts.where((e) => e.partTypeId != null)) {
-      await db.upsertPartLocal(
-        ClaimPartsCompanion.insert(
-          id: p.existingId ?? _uuid.v4(),
-          claimId: claimId,
-          partTypeId: p.partTypeId!,
-          snBadPart: Value(
-            p.snController.text.trim().isEmpty
-                ? null
-                : p.snController.text.trim(),
-          ),
-          syncPending: const Value(true),
-        ),
-      );
+      await db.simpanPart({
+        'id': p.existingId ?? _uuid.v4(),
+        'claim_id': claimId,
+        'part_type_id': p.partTypeId!,
+        'sn_bad_part': p.snController.text.trim().isEmpty
+            ? null
+            : p.snController.text.trim(),
+      });
     }
-
-    // Tidak menunggu hasil sinkron: data sudah aman di perangkat, dan
-    // pengiriman ke server berjalan di latar belakang.
-    ref.read(syncServiceProvider).syncNow();
 
     if (!mounted) return;
     Navigator.of(context).pop();

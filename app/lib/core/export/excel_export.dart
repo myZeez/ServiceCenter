@@ -4,7 +4,7 @@ import 'package:excel/excel.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:intl/intl.dart';
 
-import '../local/database.dart';
+import '../data/models.dart';
 
 final _tgl = DateFormat('dd/MM/yyyy');
 

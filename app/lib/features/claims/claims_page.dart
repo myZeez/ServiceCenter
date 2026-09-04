@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/local/database.dart';
+import '../../core/data/models.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
-import '../../core/sync/sync_service.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/koneksi.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import '../mywork/my_work_page.dart';
 import '../reports/reports_page.dart';
@@ -25,7 +25,7 @@ class ClaimsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final claims = ref.watch(claimsProvider);
     final isAdmin = ref.watch(isAdminProvider);
-    final profile = ref.watch(currentProfileProvider).valueOrNull;
+    final profile = ref.watch(currentProfileProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -48,7 +48,7 @@ class ClaimsPage extends ConsumerWidget {
           ],
         ),
         actions: [
-          const _SyncIndicator(),
+          const IndikatorKoneksi(),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, size: 20),
             position: PopupMenuPosition.under,
@@ -129,65 +129,6 @@ class ClaimsPage extends ConsumerWidget {
   }
 }
 
-class _SyncIndicator extends ConsumerWidget {
-  const _SyncIndicator();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final pending = ref.watch(pendingCountProvider).valueOrNull ?? 0;
-    final status = ref.watch(syncStatusProvider).valueOrNull;
-    final state = status?.state ?? SyncState.idle;
-
-    final (icon, color) = switch (state) {
-      SyncState.syncing => (Icons.sync, AppColors.blue),
-      SyncState.offline => (Icons.cloud_off_outlined, AppColors.red),
-      SyncState.error => (Icons.error_outline, AppColors.red),
-      SyncState.idle => (Icons.cloud_done_outlined, AppColors.grey),
-    };
-
-    return Tooltip(
-      message: switch (state) {
-        SyncState.offline => 'Offline — $pending menunggu dikirim',
-        SyncState.error => 'Sinkron gagal: ${status?.message ?? ''}',
-        SyncState.syncing => 'Menyinkronkan',
-        SyncState.idle =>
-          pending > 0 ? '$pending menunggu dikirim' : 'Semua tersinkron',
-      },
-      child: InkWell(
-        onTap: () => ref.read(syncServiceProvider).syncNow(),
-        borderRadius: BorderRadius.circular(AppRadius.small),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18, color: color),
-              if (pending > 0) ...[
-                const SizedBox(width: 5),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: AppColors.red,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text(
-                    '$pending',
-                    style: const TextStyle(
-                      color: AppColors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _FilterBar extends ConsumerStatefulWidget {
   const _FilterBar();
@@ -437,12 +378,6 @@ class _ClaimCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  if (claim.syncPending)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 6),
-                      child:
-                          Icon(Icons.schedule, size: 13, color: AppColors.red),
-                    ),
                   StatusChip(claim.status, compact: true),
                 ],
               ),

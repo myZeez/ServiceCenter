@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../local/database.dart';
+import '../data/models.dart';
 import '../providers.dart';
 import 'revenue_calculator.dart';
 
@@ -34,9 +34,24 @@ class Periode {
 
 final periodeProvider = StateProvider<Periode>((ref) => Periode.daftar().first);
 
-final _closedClaimsProvider = StreamProvider.autoDispose<List<Claim>>((ref) {
+/// Klaim yang ikut dihitung: hanya yang berstatus selesai, karena fee
+/// dibayarkan brand setelah perbaikan tuntas.
+final _closedClaimsProvider = Provider.autoDispose<AsyncValue<List<Claim>>>((
+  ref,
+) {
   final p = ref.watch(periodeProvider);
-  return ref.watch(databaseProvider).watchClosedClaims(p.dari, p.sampai);
+  return ref
+      .watch(allClaimsProvider)
+      .whenData(
+        (l) => l
+            .where(
+              (c) =>
+                  c.status == 'close' &&
+                  !c.tanggal.isBefore(p.dari) &&
+                  !c.tanggal.isAfter(p.sampai),
+            )
+            .toList(),
+      );
 });
 
 final _feesProvider = StreamProvider.autoDispose<List<BrandFeeEntry>>(

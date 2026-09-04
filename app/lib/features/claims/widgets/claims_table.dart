@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/local/database.dart';
+import '../../../core/data/models.dart';
 import '../../../core/status.dart';
 import '../../../core/theme.dart';
 
@@ -199,11 +199,6 @@ class _DataRowState extends State<_DataRow> {
     return switch (id) {
       _ColId.tanggal => Row(
           children: [
-            if (c.syncPending)
-              const Padding(
-                padding: EdgeInsets.only(right: 4),
-                child: Icon(Icons.schedule, size: 11, color: AppColors.red),
-              ),
             Flexible(
               child: Text(
                 widget.compact

@@ -53,7 +53,7 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', 1);
 
-      await ref.read(syncServiceProvider).syncNow();
+
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

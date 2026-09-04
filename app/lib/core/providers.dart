@@ -104,10 +104,16 @@ final partTypesProvider = Provider<AsyncValue<List<PartType>>>(
       .whenData((l) => l.where((p) => p.aktif).toList()),
 );
 
+/// Siapa saja yang bisa ditunjuk sebagai pengerjanya.
+///
+/// Disaring menurut aktif, BUKAN menurut role. Admin di toko ini juga
+/// memegang obeng, dan nota lama pun sudah tercatat atas namanya. Menyaring
+/// role di sini membuat daftarnya kosong, dan dropdown tanpa isi otomatis
+/// mati -- di layar terlihat seperti kolom teknisi yang terkunci.
 final techniciansProvider = Provider<AsyncValue<List<Profile>>>(
-  (ref) => ref.watch(allProfilesProvider).whenData(
-        (l) => l.where((p) => p.aktif && p.role == 'teknisi').toList(),
-      ),
+  (ref) => ref
+      .watch(allProfilesProvider)
+      .whenData((l) => l.where((p) => p.aktif).toList()),
 );
 
 // ---------------------------------------------------------------------

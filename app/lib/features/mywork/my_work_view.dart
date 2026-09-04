@@ -8,11 +8,19 @@ import '../../core/revenue/revenue_providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
+import '../service/teknisi_ringkas.dart';
 
-/// Klaim milik pengguna yang sedang login pada periode terpilih.
+final _rpOmset = NumberFormat.currency(
+  locale: 'id_ID',
+  symbol: 'Rp',
+  decimalDigits: 0,
+);
+
+/// Klaim garansi milik pengguna yang sedang login pada periode terpilih.
 ///
-/// Tidak ada angka rupiah di sini: aturan akses di server menahan fee brand
-/// supaya tidak pernah sampai ke perangkat teknisi.
+/// Tidak ada angka rupiah pada bagian klaim: aturan akses di server menahan
+/// fee brand supaya tidak pernah sampai ke perangkat teknisi. Yang berangka
+/// hanya omset jasa servis, dan itu memang haknya sendiri.
 final _klaimSayaProvider = Provider.autoDispose<AsyncValue<List<Claim>>>((ref) {
   final p = ref.watch(periodeProvider);
   final id = ref.watch(currentUserProvider)?.id;
@@ -110,6 +118,8 @@ class _Isi extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       children: [
+        const _OmsetServis(),
+
         BentoCard(
           title: 'Unit Selesai',
           accent: AppColors.red,
@@ -194,6 +204,78 @@ class _Isi extends StatelessWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// Omset jasa servis milik teknisi yang sedang login, bulan berjalan.
+///
+/// Terpisah dari kartu klaim di bawahnya, dan memang harus terpisah: yang
+/// ini jasa yang dibayar pelanggan, yang itu unit garansi yang fee-nya
+/// datang dari brand. Dua kantong berbeda yang tidak saling memotong.
+class _OmsetServis extends ConsumerWidget {
+  const _OmsetServis();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final r = ref.watch(ringkasSayaProvider);
+    // Admin dan operator tidak punya target; kartunya tidak ditampilkan
+    // sama sekali daripada memperlihatkan nol yang tidak berarti apa-apa.
+    if (r == null) return const SizedBox.shrink();
+
+    final persen = (r.persenTarget / 100).clamp(0.0, 1.0);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      child: BentoCard(
+        title: 'Omset Servis Bulan Ini',
+        accent: AppColors.blue,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _rpOmset.format(r.omset),
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -1.2,
+                height: 1.1,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${r.notaSelesai} NOTA SELESAI  ·  '
+              '${r.unitBerjalan} UNIT DIKERJAKAN',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+            const SizedBox(height: AppSpacing.s),
+
+            // Batangnya memakai tinggi penuh, bukan garis tipis: ini angka
+            // yang dicari orang begitu membuka halaman, dan harus terbaca
+            // sekilas tanpa mendekatkan layar.
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: persen,
+                minHeight: 8,
+                backgroundColor: AppColors.lightGrey,
+                valueColor: AlwaysStoppedAnimation(
+                  persen >= 1 ? AppColors.blue : AppColors.black,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              r.kurang <= 0
+                  ? 'Target ${_rpOmset.format(r.target)} sudah tercapai'
+                  : 'Kurang ${_rpOmset.format(r.kurang)} dari target '
+                        '${_rpOmset.format(r.target)}',
+              style: const TextStyle(fontSize: 11.5, color: AppColors.grey),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

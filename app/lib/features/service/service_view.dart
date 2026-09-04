@@ -11,6 +11,7 @@ import '../../core/widgets/swiss_widgets.dart';
 import '../scan/scan_page.dart';
 import 'service_dialog.dart';
 import 'service_status.dart';
+import 'teknisi_ringkas.dart';
 
 final _rp = NumberFormat.currency(
   locale: 'id_ID',
@@ -175,6 +176,8 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
               ),
               const SizedBox(height: AppSpacing.s),
 
+              const _BarisTeknisi(),
+
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
@@ -203,6 +206,114 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Beban dan hasil tiap teknisi bulan ini.
+///
+/// Ditaruh di halaman servis, bukan di laporan: yang dijawabnya adalah
+/// pertanyaan harian -- siapa yang sedang penuh, siapa yang bisa diberi
+/// unit berikutnya -- dan itu diputuskan di meja depan, bukan saat tutup
+/// buku.
+class _BarisTeknisi extends ConsumerWidget {
+  const _BarisTeknisi();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final daftar = ref.watch(ringkasTeknisiProvider);
+    if (daftar.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      child: SizedBox(
+        height: 96,
+        // Digulir mendatar, bukan dibagi rata: jumlah teknisi bisa bertambah,
+        // dan kartu yang menyempit sampai angkanya terpotong lebih buruk
+        // daripada kartu yang harus digeser.
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: daftar.length,
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.xs),
+          itemBuilder: (context, i) => _KartuTeknisi(daftar[i]),
+        ),
+      ),
+    );
+  }
+}
+
+class _KartuTeknisi extends StatelessWidget {
+  const _KartuTeknisi(this.r);
+
+  final RingkasTeknisi r;
+
+  @override
+  Widget build(BuildContext context) {
+    final penuh = r.unitBerjalan >= 5;
+
+    return Container(
+      width: 228,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.s,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppRadius.base),
+        border: Border.all(color: const Color(0xFFE4E7E7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            r.teknisi.nama.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '${r.unitBerjalan}',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1,
+                  height: 1,
+                  // Merah hanya saat antreannya menumpuk, supaya warnanya
+                  // masih berarti sesuatu ketika muncul.
+                  color: penuh ? AppColors.red : AppColors.black,
+                ),
+              ),
+              const SizedBox(width: 5),
+              // Flexible, bukan Text telanjang: anak sebuah Row tidak punya
+              // batas lebar, jadi label yang sedikit lebih panjang -- atau
+              // ukuran huruf sistem yang dinaikkan -- akan meluber keluar
+              // kartu alih-alih dipotong.
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    'unit dikerjakan',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Text(
+            '${_rp.format(r.omset)}  ·  ${r.notaSelesai} selesai',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }

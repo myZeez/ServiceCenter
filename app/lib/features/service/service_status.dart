@@ -20,6 +20,15 @@ class ServiceStatus {
     batal,
   ];
 
+  /// Unit yang masih ada di meja: sudah diterima, belum tuntas.
+  ///
+  /// 'selesai' sengaja tidak termasuk -- pekerjaannya sudah rampung, yang
+  /// tersisa hanya menunggu pelanggan datang mengambil, dan itu bukan lagi
+  /// beban teknisi.
+  static const berjalan = [masuk, dikerjakan, tungguPart];
+
+  static bool sedangDikerjakan(String status) => berjalan.contains(status);
+
   static const _labels = {
     masuk: 'Masuk',
     dikerjakan: 'Dikerjakan',

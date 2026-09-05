@@ -10,6 +10,7 @@ import '../../core/widgets/gagal_muat.dart';
 import '../../core/widgets/koneksi.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import '../mywork/my_work_page.dart';
+import '../parts/parts_page.dart';
 import '../service/service_page.dart';
 import '../reports/reports_page.dart';
 import '../scan/scan_page.dart';
@@ -59,6 +60,8 @@ class ClaimsPage extends ConsumerWidget {
               switch (v) {
                 case 'servis':
                   _push(context, const ServicePage());
+                case 'part':
+                  _push(context, const PartsPage());
                 case 'pekerjaanku':
                   _push(context, const MyWorkPage());
                 case 'rekap':
@@ -73,6 +76,7 @@ class ClaimsPage extends ConsumerWidget {
             },
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'servis', child: Text('Servis')),
+              const PopupMenuItem(value: 'part', child: Text('Part')),
               const PopupMenuItem(
                 value: 'pekerjaanku',
                 child: Text('Pekerjaanku'),

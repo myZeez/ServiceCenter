@@ -240,4 +240,97 @@ void main() {
       expect(c.alamat, isNull);
     });
   });
+
+  group('PartOrder', () {
+    test('membaca seluruh kolomnya', () {
+      final p = PartOrder.fromMap({
+        'id': 'po1',
+        'tanggal': '2026-09-04T01:30:00+00:00',
+        'customer_nama': 'Jamal',
+        'customer_telp': '0812',
+        'customer_id': 'plg1',
+        'barang_type': 'ASUS X441',
+        'barang_sn': 'SN123',
+        'part_req': 'KEYBOARD',
+        'keterangan': 'oem',
+        'teknisi_id': 'tek-1',
+        'stok': 'ready',
+        'tahap': 'dipesan',
+        'harga': 120000,
+        'dp': 50000,
+        'sisa': 70000,
+        'tanggal_selesai': null,
+        'service_order_id': null,
+        'catatan': null,
+        'updated_at': '2026-09-04T02:00:00+00:00',
+      });
+
+      expect(p.partReq, 'KEYBOARD');
+      expect(p.harga, 120000);
+      expect(p.sisa, 70000);
+      expect(p.tahap, 'dipesan');
+    });
+
+    test('harga yang belum diisi tetap null, bukan nol', () {
+      // Nol berarti gratis; null berarti partnya masih dicari. Menyamakan
+      // keduanya membuat baris yang belum berharga tampak sudah berharga.
+      final p = PartOrder.fromMap({
+        'id': 'po1',
+        'tanggal': '2026-09-04T01:30:00+00:00',
+        'customer_nama': 'Jamal',
+        'part_req': 'LCD',
+        'tahap': 'tanya',
+        'harga': null,
+        'dp': 0,
+        'sisa': 0,
+        'updated_at': '2026-09-04T02:00:00+00:00',
+      });
+
+      expect(p.harga, isNull);
+      expect(p.dp, 0);
+    });
+  });
+
+  group('PartCost', () {
+    test('membaca modal dan persentasenya', () {
+      final c = PartCost.fromMap({
+        'part_order_id': 'po1',
+        'hpp': 100000,
+        'up_persen': 20,
+      });
+      expect(c.hpp, 100000);
+      expect(c.upPersen, 20);
+    });
+  });
+
+  group('PartSettingsRow', () {
+    test('membaca larik JSON', () {
+      final s = PartSettingsRow.fromMap({
+        'up_toko_pilihan': [10, 15, 20],
+        'up_toko_bawaan': 15,
+      });
+      expect(s.upTokoPilihan, [10, 15, 20]);
+      expect(s.upTokoBawaan, 15);
+    });
+
+    test('membaca literal array Postgres', () {
+      // Bentuk ini muncul di sebagian jalur. Kalau tidak diterima,
+      // akibatnya bukan galat melainkan daftar pilihan yang diam-diam
+      // kosong -- dan pengaturan yang tampak tidak pernah tersimpan.
+      final s = PartSettingsRow.fromMap({
+        'up_toko_pilihan': '{10.00,15.00,20.00}',
+        'up_toko_bawaan': '10.00',
+      });
+      expect(s.upTokoPilihan, [10, 15, 20]);
+      expect(s.upTokoBawaan, 10);
+    });
+
+    test('larik kosong tidak menjatuhkan apa pun', () {
+      final s = PartSettingsRow.fromMap({
+        'up_toko_pilihan': const <dynamic>[],
+        'up_toko_bawaan': 10,
+      });
+      expect(s.upTokoPilihan, isEmpty);
+    });
+  });
 }

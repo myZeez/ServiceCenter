@@ -236,6 +236,59 @@ class Db {
           .map((l) => l..sort((a, b) => a.nama.compareTo(b.nama)));
 
   // ------------------------------------------------------------------
+  // Tanya harga dan pemesanan part
+  // ------------------------------------------------------------------
+
+  Stream<List<PartOrder>> watchPartOrders() =>
+      _semua('part_orders', PartOrder.fromMap)
+          .map((l) => l..sort((a, b) => b.tanggal.compareTo(a.tanggal)));
+
+  /// Modal tiap pesanan. Bagi teknisi aliran ini selalu kosong: barisnya
+  /// disaring aturan akses di server, bukan disembunyikan layar.
+  Stream<List<PartCost>> watchPartCosts() => _semua(
+    'part_order_costs',
+    PartCost.fromMap,
+    kunci: const ['part_order_id'],
+  );
+
+  Stream<PartSettingsRow?> watchPartSettings() =>
+      _semua('part_settings', PartSettingsRow.fromMap).map(_satu);
+
+  /// Upsert dengan alasan yang sama seperti klaim: id dibuat di aplikasi,
+  /// dan percobaan kedua atas penyimpanan yang gagal separuh jalan harus
+  /// melanjutkan baris yang sama, bukan ditolak sebagai kembar.
+  Future<void> simpanPartOrder(Map<String, dynamic> baris) =>
+      _pastikan(_c.from('part_orders').upsert(baris).select('id'), 'pesanan part');
+
+  Future<void> ubahPartOrder(String id, Map<String, dynamic> perubahan) =>
+      _pastikan(
+        _c.from('part_orders').update(perubahan).eq('id', id).select('id'),
+        'pesanan part',
+      );
+
+  Future<void> hapusPartOrder(String id) => _pastikan(
+    _c.from('part_orders').delete().eq('id', id).select('id'),
+    'pesanan part',
+  );
+
+  /// Modal disimpan terpisah dari pesanannya, jadi menyimpan sebuah
+  /// pesanan berarti dua penulisan. Dikunci pada part_order_id supaya
+  /// menyunting harga menimpa catatan modal sebelumnya alih-alih
+  /// menumpuk baris kedua.
+  Future<void> simpanPartCost(Map<String, dynamic> baris) => _pastikan(
+    _c
+        .from('part_order_costs')
+        .upsert(baris, onConflict: 'part_order_id')
+        .select('part_order_id'),
+    'modal part',
+  );
+
+  Future<void> simpanPartSettings(Map<String, dynamic> perubahan) => _pastikan(
+    _c.from('part_settings').update(perubahan).eq('id', 1).select('id'),
+    'pengaturan part',
+  );
+
+  // ------------------------------------------------------------------
   // Pengaturan
   // ------------------------------------------------------------------
 

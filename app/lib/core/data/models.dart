@@ -16,7 +16,36 @@ DateTime _ts(Object? v) => DateTime.parse(v as String).toLocal();
 /// memindahkannya ke hari yang salah.
 DateTime? _tgl(Object? v) => v == null ? null : DateTime.parse(v as String);
 
-double _num(Object? v) => (v as num?)?.toDouble() ?? 0;
+double _num(Object? v) => _numN(v) ?? 0;
+
+/// Angka yang boleh benar-benar tidak ada.
+///
+/// Terpisah dari [_num] karena nol dan "belum diisi" adalah dua keadaan
+/// yang berbeda: harga part yang masih dicari bukan berarti gratis.
+///
+/// Teks ikut diterima. Postgres mengirim numeric sebagai angka JSON, tapi
+/// tidak untuk semua jalur -- dan `as num` yang meleset melempar galat
+/// yang menjatuhkan seluruh aliran data, bukan satu kolom.
+double? _numN(Object? v) => switch (v) {
+  null => null,
+  final num n => n.toDouble(),
+  final String s => double.tryParse(s),
+  _ => null,
+};
+
+/// Kolom bertipe array angka.
+///
+/// Bentuk kirimannya bisa dua rupa: larik JSON, atau literal array
+/// Postgres seperti `{10.00,15.00}`. Keduanya diterima -- kalau salah
+/// satunya tidak, akibatnya bukan galat melainkan daftar pilihan yang
+/// diam-diam kosong, dan pengaturan yang tampak tidak pernah tersimpan.
+List<double> _daftarAngka(Object? v) => switch (v) {
+  final List<dynamic> l => [for (final e in l) ?_numN(e)],
+  final String s => [
+    for (final p in s.replaceAll(RegExp(r'[{}]'), '').split(',')) ?_numN(p.trim()),
+  ],
+  _ => const [],
+};
 
 class Brand {
   const Brand({required this.id, required this.nama, this.aktif = true});
@@ -491,5 +520,131 @@ class StoreSetting {
     alamat: r['alamat'] as String?,
     telepon: r['telepon'] as String?,
     ketentuan: r['ketentuan'] as String?,
+  );
+}
+
+// ---------------------------------------------------------------------
+// Tanya harga dan pemesanan part
+// ---------------------------------------------------------------------
+
+/// Sebuah unit non-garansi yang partnya harus dibeli.
+///
+/// Satu baris ini melintasi dua layar: selama tahapnya masih `tanya` ia
+/// muncul di Tanya Harga, dan begitu pelanggan membayar DP ia pindah ke
+/// Pemesanan Part. Bukan dua catatan -- satu catatan yang berjalan.
+class PartOrder {
+  const PartOrder({
+    required this.id,
+    required this.tanggal,
+    required this.customerNama,
+    this.customerTelp,
+    this.customerId,
+    this.barangType,
+    this.barangSn,
+    required this.partReq,
+    this.keterangan,
+    this.teknisiId,
+    this.stok,
+    required this.tahap,
+    this.harga,
+    this.dp = 0,
+    this.sisa = 0,
+    this.tanggalSelesai,
+    this.serviceOrderId,
+    this.catatan,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final DateTime tanggal;
+
+  final String customerNama;
+  final String? customerTelp;
+  final String? customerId;
+
+  final String? barangType;
+  final String? barangSn;
+
+  final String partReq;
+
+  /// OEM atau ORI. Teks bebas, bukan pilihan tertutup.
+  final String? keterangan;
+
+  final String? teknisiId;
+
+  /// Ready atau kosong. Null berarti belum sempat dicek ke supplier --
+  /// keadaan yang berbeda dari "sudah dicek, ternyata tidak ada".
+  final String? stok;
+
+  final String tahap;
+
+  /// Harga jual. Null selama partnya masih dicari.
+  final double? harga;
+
+  final double dp;
+
+  /// Dihitung Postgres, tidak pernah dikirim aplikasi.
+  final double sisa;
+
+  final DateTime? tanggalSelesai;
+
+  /// Nota servis untuk jasa pasangnya. Uang jasa tidak ada di sini.
+  final String? serviceOrderId;
+
+  final String? catatan;
+  final DateTime updatedAt;
+
+  factory PartOrder.fromMap(Map<String, dynamic> r) => PartOrder(
+    id: r['id'] as String,
+    tanggal: _ts(r['tanggal']),
+    customerNama: r['customer_nama'] as String,
+    customerTelp: r['customer_telp'] as String?,
+    customerId: r['customer_id'] as String?,
+    barangType: r['barang_type'] as String?,
+    barangSn: r['barang_sn'] as String?,
+    partReq: r['part_req'] as String,
+    keterangan: r['keterangan'] as String?,
+    teknisiId: r['teknisi_id'] as String?,
+    stok: r['stok'] as String?,
+    tahap: r['tahap'] as String,
+    harga: _numN(r['harga']),
+    dp: _num(r['dp']),
+    sisa: _num(r['sisa']),
+    tanggalSelesai: _tgl(r['tanggal_selesai']),
+    serviceOrderId: r['service_order_id'] as String?,
+    catatan: r['catatan'] as String?,
+    updatedAt: _ts(r['updated_at']),
+  );
+}
+
+/// Modal dan margin sebuah pesanan, disimpan terpisah karena hanya admin
+/// yang boleh melihatnya.
+///
+/// Bagi teknisi tabel asalnya selalu kosong -- itu aturan akses yang
+/// bekerja, bukan data yang belum diisi.
+class PartCost {
+  const PartCost({required this.partOrderId, this.hpp, this.upPersen});
+
+  final String partOrderId;
+  final double? hpp;
+  final double? upPersen;
+
+  factory PartCost.fromMap(Map<String, dynamic> r) => PartCost(
+    partOrderId: r['part_order_id'] as String,
+    hpp: _numN(r['hpp']),
+    upPersen: _numN(r['up_persen']),
+  );
+}
+
+/// Pilihan persentase yang muncul saat menetapkan harga.
+class PartSettingsRow {
+  const PartSettingsRow({required this.upTokoPilihan, required this.upTokoBawaan});
+
+  final List<double> upTokoPilihan;
+  final double upTokoBawaan;
+
+  factory PartSettingsRow.fromMap(Map<String, dynamic> r) => PartSettingsRow(
+    upTokoPilihan: _daftarAngka(r['up_toko_pilihan']),
+    upTokoBawaan: _num(r['up_toko_bawaan']),
   );
 }

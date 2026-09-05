@@ -268,6 +268,44 @@ final customersProvider = StreamProvider<List<CustomerEntry>>(
   (ref) => ref.watch(databaseProvider).watchCustomers(),
 );
 
+// ---------------------------------------------------------------------
+// Tanya harga dan pemesanan part
+// ---------------------------------------------------------------------
+
+final partOrdersProvider = StreamProvider<List<PartOrder>>(
+  (ref) => ref.watch(databaseProvider).watchPartOrders(),
+);
+
+/// Modal tiap pesanan, dipetakan menurut id pesanannya.
+///
+/// Kosong bagi teknisi -- aturan akses di server yang menyaringnya, dan
+/// layar memperlakukan ketiadaan itu sebagai "tidak berhak melihat".
+final partCostsProvider = StreamProvider<List<PartCost>>(
+  (ref) => ref.watch(databaseProvider).watchPartCosts(),
+);
+
+final partCostProvider = Provider.family<PartCost?, String>((ref, id) {
+  for (final c in ref.watch(partCostsProvider).valueOrNull ?? const <PartCost>[]) {
+    if (c.partOrderId == id) return c;
+  }
+  return null;
+});
+
+final partSettingsProvider = StreamProvider<PartSettingsRow?>(
+  (ref) => ref.watch(databaseProvider).watchPartSettings(),
+);
+
+/// Pilihan persentase yang ditawarkan saat menetapkan harga.
+///
+/// Jatuh ke 10/15/20 bila pengaturannya belum terbaca. Dropdown tanpa satu
+/// pun pilihan tampak seperti kolom yang rusak, dan itu keadaan yang
+/// paling mungkin terjadi justru di detik-detik pertama aplikasi dibuka.
+final upTokoPilihanProvider = Provider<List<double>>((ref) {
+  final s = ref.watch(partSettingsProvider).valueOrNull;
+  final pilihan = s?.upTokoPilihan ?? const <double>[];
+  return pilihan.isEmpty ? const [10, 15, 20] : pilihan;
+});
+
 /// Memasang ulang seluruh langganan data.
 ///
 /// Dipanggil saat aplikasi kembali dibuka. Di Android, sistem memutus
@@ -285,6 +323,9 @@ void segarkanData(WidgetRef ref) {
   ref.invalidate(serviceOrdersProvider);
   ref.invalidate(customersProvider);
   ref.invalidate(storeSettingsProvider);
+  ref.invalidate(partOrdersProvider);
+  ref.invalidate(partCostsProvider);
+  ref.invalidate(partSettingsProvider);
 }
 
 /// Identitas toko untuk kepala dan kaki nota.

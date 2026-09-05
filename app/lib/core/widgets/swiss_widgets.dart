@@ -246,3 +246,86 @@ class InlineAction extends StatelessWidget {
     );
   }
 }
+
+/// Judul kolom tabel: huruf besar kecil dengan tracking longgar.
+///
+/// Sengaja tidak membungkus ke baris kedua. Judul kolom yang tiba-tiba
+/// setinggi dua baris menggeser seluruh kepala tabel dan membuat lebarnya
+/// tampak berubah sendiri saat jendela diperkecil.
+class TableHeader extends StatelessWidget {
+  const TableHeader(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    text.toUpperCase(),
+    overflow: TextOverflow.clip,
+    softWrap: false,
+    style: const TextStyle(
+      fontSize: 9.5,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1,
+      color: AppColors.black,
+    ),
+  );
+}
+
+/// Tombol ekspor yang menahan dirinya selama berkasnya disusun, lalu
+/// menyebutkan di mana ia tersimpan.
+///
+/// Menyebut jalurnya penting: dialog simpan bawaan sistem sering
+/// meninggalkan berkas di folder yang bukan pilihan siapa pun, dan
+/// laporan yang tidak bisa ditemukan sama saja dengan tidak diekspor.
+class TombolExport extends StatefulWidget {
+  const TombolExport({
+    super.key,
+    required this.onExport,
+    this.aktif = true,
+    this.label = 'EXPORT EXCEL',
+  });
+
+  /// Mengembalikan jalur berkasnya, atau null bila pengguna membatalkan.
+  final Future<String?> Function() onExport;
+
+  final bool aktif;
+  final String label;
+
+  @override
+  State<TombolExport> createState() => _TombolExportState();
+}
+
+class _TombolExportState extends State<TombolExport> {
+  bool _sibuk = false;
+
+  Future<void> _jalankan() async {
+    setState(() => _sibuk = true);
+    try {
+      final jalur = await widget.onExport();
+      if (!mounted || jalur == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tersimpan di $jalur'),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan berkas. $e')));
+    } finally {
+      if (mounted) setState(() => _sibuk = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+    onPressed: widget.aktif && !_sibuk ? _jalankan : null,
+    icon: Icon(
+      _sibuk ? Icons.hourglass_empty : Icons.file_download_outlined,
+      size: 17,
+    ),
+    label: Text(widget.label),
+  );
+}

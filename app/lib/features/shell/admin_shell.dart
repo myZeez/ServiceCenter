@@ -6,6 +6,8 @@ import '../../core/theme.dart';
 import '../../core/widgets/koneksi.dart';
 import '../claims/claims_view.dart';
 import '../mywork/my_work_view.dart';
+import '../parts/part_orders_view.dart';
+import '../parts/parts_view.dart';
 import '../reports/reports_view.dart';
 import '../revenue/revenue_view.dart';
 import '../service/service_reports_view.dart';
@@ -42,6 +44,10 @@ class _AdminShellState extends ConsumerState<AdminShell> {
           grup: 'Pelanggan',
         ),
         const _Section('Laporan Servis', Icons.summarize_outlined),
+        // Dua layar atas satu tabel yang sama: yang pertama meja
+        // tanya-jawabnya, yang kedua pesanan yang sudah berjalan.
+        const _Section('Tanya Harga', Icons.request_quote_outlined),
+        const _Section('Pemesanan Part', Icons.local_shipping_outlined),
       ],
       _Section(
         'Klaim',
@@ -85,6 +91,8 @@ class _AdminShellState extends ConsumerState<AdminShell> {
               child: switch (sections[index].label) {
                 'Servis' => const ServiceView(),
                 'Laporan Servis' => const ServiceReportsView(),
+                'Tanya Harga' => const PartsView(),
+                'Pemesanan Part' => const PartOrdersView(),
                 'Pekerjaanku' => const MyWorkView(),
                 'Rekap' => const ReportsView(),
                 'Rekap Brand' => const SettlementView(),

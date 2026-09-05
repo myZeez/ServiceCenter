@@ -606,6 +606,142 @@ class ExcelExport {
   /// Tanggal ditulis sebagai tanggal sungguhan, bukan teks. Yang berbentuk
   /// teks tidak bisa diurutkan menurut waktu -- "01/12/2026" mendahului
   /// "02/01/2027" kalau dibandingkan huruf per huruf.
+  // ------------------------------------------------------------------
+  // Penjualan part
+  //
+  // Sengaja berkas sendiri, tidak digabung ke laporan servis. Yang dijual
+  // di sini barang, yang dijual di sana jasa -- dan margin barang bukan
+  // hasil kerja teknisi. Menyatukannya membuat kedua angka itu tidak bisa
+  // dibaca lagi sebagai apa pun.
+  // ------------------------------------------------------------------
+
+  static Future<String?> part({
+    required List<PartOrder> pesanan,
+    required Map<String, String> teknisi,
+    required Map<String, PartCost> modal,
+    required String periode,
+  }) => simpanBanyak(
+    namaBerkas: 'Penjualan Part ${_aman(periode)}.xlsx',
+    lembar: [
+      lembarPart(
+        pesanan: pesanan,
+        teknisi: teknisi,
+        modal: modal,
+        periode: periode,
+      ),
+    ],
+  );
+
+  static LembarExcel lembarPart({
+    required List<PartOrder> pesanan,
+    required Map<String, String> teknisi,
+    required Map<String, PartCost> modal,
+    required String periode,
+  }) {
+    final urut = [...pesanan]..sort((a, b) => a.tanggal.compareTo(b.tanggal));
+
+    var totalHpp = 0.0;
+    var totalHarga = 0.0;
+    var totalUntung = 0.0;
+    var totalDp = 0.0;
+    var totalSisa = 0.0;
+
+    final baris = <List<CellValue?>>[];
+    for (final p in urut) {
+      final hpp = modal[p.id]?.hpp;
+      final harga = p.harga;
+      // Untung hanya bisa dihitung kalau kedua sisinya diketahui. Nol di
+      // kolom ini akan terbaca sebagai "jualan tanpa untung", bukan
+      // sebagai "modalnya belum diisi".
+      final untung = (hpp != null && harga != null) ? harga - hpp : null;
+
+      totalHpp += hpp ?? 0;
+      totalHarga += harga ?? 0;
+      totalUntung += untung ?? 0;
+      totalDp += p.dp;
+      totalSisa += p.sisa;
+
+      baris.add([
+        _tanggal(p.tanggal),
+        TextCellValue(p.customerNama),
+        TextCellValue(p.barangType ?? ''),
+        TextCellValue(p.barangSn ?? ''),
+        TextCellValue(p.partReq),
+        TextCellValue((p.keterangan ?? '').toUpperCase()),
+        TextCellValue(teknisi[p.teknisiId] ?? ''),
+        TextCellValue(_stokTeks(p.stok)),
+        TextCellValue(_tahapTeks(p.tahap)),
+        hpp == null ? null : DoubleCellValue(hpp),
+        modal[p.id]?.upPersen == null
+            ? null
+            : DoubleCellValue(modal[p.id]!.upPersen!),
+        harga == null ? null : DoubleCellValue(harga),
+        untung == null ? null : DoubleCellValue(untung),
+        p.dp == 0 ? null : DoubleCellValue(p.dp),
+        p.sisa == 0 ? null : DoubleCellValue(p.sisa),
+      ]);
+    }
+
+    return LembarExcel(
+      nama: 'Penjualan Part',
+      tabel: [
+        TabelExcel(
+          judul: 'LAPORAN PENJUALAN PART  ·  ${periode.toUpperCase()}',
+          kolom: const [
+            KolomExcel('TANGGAL', jenis: JenisKolom.tanggal),
+            KolomExcel('NAMA PELANGGAN'),
+            KolomExcel('TIPE'),
+            KolomExcel('SN', jenis: JenisKolom.kode),
+            KolomExcel('PART REQ'),
+            KolomExcel('KET', jenis: JenisKolom.kode),
+            KolomExcel('TEKNISI', jenis: JenisKolom.kode),
+            KolomExcel('STOK', jenis: JenisKolom.kode),
+            KolomExcel('TAHAP', jenis: JenisKolom.kode),
+            KolomExcel('HPP', jenis: JenisKolom.rupiah),
+            KolomExcel('UP %', jenis: JenisKolom.angka),
+            KolomExcel('HARGA JUAL', jenis: JenisKolom.rupiah),
+            KolomExcel('UNTUNG', jenis: JenisKolom.rupiah),
+            KolomExcel('DP USER', jenis: JenisKolom.rupiah),
+            KolomExcel('SISA', jenis: JenisKolom.rupiah),
+          ],
+          baris: baris,
+          penutup: [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            TextCellValue('TOTAL'),
+            DoubleCellValue(totalHpp),
+            null,
+            DoubleCellValue(totalHarga),
+            DoubleCellValue(totalUntung),
+            DoubleCellValue(totalDp),
+            DoubleCellValue(totalSisa),
+          ],
+        ),
+      ],
+    );
+  }
+
+  static String _stokTeks(String? s) => switch (s) {
+    'ready' => 'READY STOK',
+    'kosong' => 'NO STOK',
+    _ => '',
+  };
+
+  static String _tahapTeks(String t) => switch (t) {
+    'tanya' => 'TANYA HARGA',
+    'dipesan' => 'PART DIPESAN',
+    'dipasang' => 'PART DIPASANG',
+    'selesai' => 'SELESAI',
+    'batal' => 'BATAL',
+    _ => t.toUpperCase(),
+  };
+
   static DateCellValue? _tanggal(DateTime? t) => t == null
       ? null
       : DateCellValue(year: t.year, month: t.month, day: t.day);

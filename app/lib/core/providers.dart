@@ -295,6 +295,23 @@ final partSettingsProvider = StreamProvider<PartSettingsRow?>(
   (ref) => ref.watch(databaseProvider).watchPartSettings(),
 );
 
+/// Tanya harga yang lahir dari sebuah nota servis, kalau memang ada.
+///
+/// Dipakai formulir nota untuk memutuskan menawarkan "buat tanya harga"
+/// atau "lihat tanya harga". Tanpa ini, tombolnya akan membuat baris baru
+/// tiap kali ditekan, dan satu unit berakhir punya tiga tanya harga yang
+/// isinya sama.
+final tanyaHargaNotaProvider = Provider.family<PartOrder?, String>((
+  ref,
+  notaId,
+) {
+  for (final p
+      in ref.watch(partOrdersProvider).valueOrNull ?? const <PartOrder>[]) {
+    if (p.serviceOrderId == notaId) return p;
+  }
+  return null;
+});
+
 /// Pilihan persentase yang ditawarkan saat menetapkan harga.
 ///
 /// Jatuh ke 10/15/20 bila pengaturannya belum terbaca. Dropdown tanpa satu

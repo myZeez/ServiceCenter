@@ -14,6 +14,7 @@ import '../../core/data/galat.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
+import '../parts/part_dialog.dart';
 import '../scan/scan_page.dart';
 import 'customer_field.dart';
 import 'service_status.dart';
@@ -73,6 +74,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   final _perbaikan = TextEditingController();
   final _biaya = TextEditingController();
   final _keterangan = TextEditingController();
+  final _partReq = TextEditingController();
 
   final _namaFokus = FocusNode();
 
@@ -83,6 +85,15 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   int? _brandId;
   DateTime? _estimasi;
   bool _garansi = false;
+
+  /// Apakah nota baru ini sekalian membuka tanya harga part.
+  ///
+  /// Selama tidak dicentang, formulir ini bekerja persis seperti sebelum
+  /// ada fitur tanya harga -- tidak ada kolom tambahan yang wajib, dan
+  /// tidak ada baris lain yang ikut dibuat.
+  bool _tanyaHarga = false;
+  String? _partKeterangan;
+  String? _partBaru;
   String? _claimBaru;
   String _status = ServiceStatus.masuk;
   String? _caraBayar;
@@ -128,6 +139,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       _perbaikan,
       _biaya,
       _keterangan,
+      _partReq,
     ]) {
       c.dispose();
     }
@@ -222,22 +234,67 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         'keterangan': _kosongNull(_keterangan),
       };
 
+      String notaId;
       if (widget.isNew) {
-        await client.from('service_orders').insert(data);
-      } else {
-        await client
+        // Idnya diminta kembali karena tanya harga di bawah menunjuk ke
+        // baris ini. Nomor notanya sendiri tetap ditetapkan server.
+        final baru = await client
             .from('service_orders')
-            .update(data)
-            .eq('id', widget.nota!.id);
+            .insert(data)
+            .select('id')
+            .single();
+        notaId = baru['id'] as String;
+      } else {
+        notaId = widget.nota!.id;
+        await client.from('service_orders').update(data).eq('id', notaId);
       }
 
-
+      // Tanya harga lahir SESUDAH notanya: barisnya menunjuk ke nota itu,
+      // dan server menolak tautan ke baris yang belum ada.
+      var tanyaHargaGagal = false;
+      if (widget.isNew && _tanyaHarga) {
+        // Id dibuat sekali lalu dipakai lagi bila penyimpanannya diulang,
+        // sama seperti klaim garansi di atas.
+        final idPart = _partBaru ??= _uuid.v4();
+        try {
+          await ref.read(databaseProvider).simpanPartOrder({
+            'id': idPart,
+            'customer_nama': _nama.text.trim(),
+            'customer_telp': _kosongNull(_telp),
+            'customer_id': customerId,
+            'barang_type': [
+              _barang.text.trim(),
+              _type.text.trim(),
+            ].where((s) => s.isNotEmpty).join(' '),
+            'barang_sn': _kosongNull(_sn),
+            'part_req': _partReq.text.trim(),
+            'keterangan': _partKeterangan,
+            'teknisi_id': _teknisiId,
+            'service_order_id': notaId,
+            'created_by': user!.id,
+          });
+        } catch (_) {
+          // Notanya sudah terlanjur tersimpan. Kalau kegagalan ini
+          // dilaporkan seperti kegagalan biasa, admin akan menekan simpan
+          // sekali lagi dan menerbitkan nota kedua -- membakar satu nomor
+          // nota yang dibaca pusat. Jadi dialognya tetap ditutup, dan yang
+          // dikabarkan persis apa yang terjadi.
+          tanyaHargaGagal = true;
+        }
+      }
 
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(widget.isNew ? 'Nota tersimpan' : 'Nota diperbarui'),
+          content: Text(
+            tanyaHargaGagal
+                ? 'Nota tersimpan, tetapi tanya harganya gagal dibuat. '
+                      'Buat dari halaman Tanya Harga — jangan simpan nota '
+                      'ini lagi.'
+                : (widget.isNew ? 'Nota tersimpan' : 'Nota diperbarui'),
+          ),
+          duration: Duration(seconds: tanyaHargaGagal ? 10 : 4),
         ),
       );
     } on PostgrestException catch (e) {
@@ -623,6 +680,9 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
           ),
         ],
 
+        const SizedBox(height: AppSpacing.xs),
+        _tanyaHargaBagian(context),
+
         const SizedBox(height: AppSpacing.sm),
         const SectionLabel('Penyelesaian'),
         const SizedBox(height: AppSpacing.s),
@@ -736,6 +796,147 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       ],
     );
   }
+
+  /// Jalan pintas ke tanya harga part.
+  ///
+  /// Dua bentuk, karena momennya dua. Saat nota baru dibuat, kebutuhannya
+  /// sudah kelihatan di meja depan -- cukup satu centang, dan barisnya
+  /// ikut lahir bersama notanya. Setelah nota tersimpan, kebutuhan itu
+  /// biasanya baru ketahuan sesudah teknisi membuka unitnya, dan yang
+  /// dibutuhkan adalah formulir tanya harga yang sudah terisi sendiri.
+  ///
+  /// Keduanya membawa data yang sama dan menghasilkan baris yang sama;
+  /// yang berbeda hanya kapan admin sempat memikirkannya.
+  Widget _tanyaHargaBagian(BuildContext context) {
+    if (widget.isNew) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CheckboxListTile(
+            value: _tanyaHarga,
+            onChanged: (v) => setState(() => _tanyaHarga = v ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            title: const Text(
+              'Perlu tanya harga part',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              'Baris tanya harga dibuat otomatis dari data ini. Harga dan '
+              'modalnya diisi belakangan di halaman Tanya Harga.',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ),
+          if (_tanyaHarga) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: LabeledField(
+                    label: 'Part yang Dicari',
+                    required: true,
+                    child: TextFormField(
+                      controller: _partReq,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: const InputDecoration(
+                        hintText: 'LCD 14 SLIM 30 PIN',
+                      ),
+                      // Hanya wajib selama centangnya menyala. Validator
+                      // yang tetap galak setelah centangnya dilepas akan
+                      // memblokir penyimpanan nota biasa.
+                      validator: (v) => _tanyaHarga && (v ?? '').trim().isEmpty
+                          ? 'Sebutkan part yang dicari'
+                          : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s),
+                Expanded(
+                  child: LabeledField(
+                    label: 'Keterangan',
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _partKeterangan,
+                      isExpanded: true,
+                      hint: const Text('—'),
+                      items: const [
+                        DropdownMenuItem(value: 'oem', child: Text('OEM')),
+                        DropdownMenuItem(value: 'ori', child: Text('ORI')),
+                        DropdownMenuItem(value: 'copy', child: Text('Copy')),
+                      ],
+                      onChanged: (v) => setState(() => _partKeterangan = v),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      );
+    }
+
+    // Nota yang sudah tersimpan. Kalau tanya harganya sudah pernah dibuat,
+    // yang ditawarkan membukanya -- bukan membuat yang kedua dengan isi
+    // yang sama persis.
+    final sudahAda = ref.watch(tanyaHargaNotaProvider(widget.nota!.id));
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.s),
+      decoration: BoxDecoration(
+        color: AppColors.lightGrey,
+        borderRadius: BorderRadius.circular(AppRadius.small),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              sudahAda == null
+                  ? 'Ternyata perlu ganti part? Datanya dibawa dari nota '
+                        'ini — tinggal sebut partnya.'
+                  : 'Sudah ada tanya harga untuk nota ini: '
+                        '${sudahAda.partReq}.',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s),
+          OutlinedButton.icon(
+            onPressed: () => showPartDialog(
+              context,
+              pesanan: sudahAda,
+              awal: sudahAda != null ? null : _awalTanyaHarga(),
+            ),
+            icon: const Icon(Icons.request_quote_outlined, size: 17),
+            label: Text(
+              sudahAda == null ? 'TANYA HARGA PART' : 'LIHAT TANYA HARGA',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Isian yang dibawa ke formulir tanya harga.
+  ///
+  /// Diambil dari kolom yang sedang tampil, bukan dari baris yang
+  /// tersimpan: yang dilihat admin di layar itulah yang ia maksud, dan
+  /// koreksi ketik yang belum sempat disimpan tetap ikut.
+  AwalTanyaHarga _awalTanyaHarga() => AwalTanyaHarga(
+    notaId: widget.nota!.id,
+    customerNama: _nama.text.trim(),
+    customerTelp: _kosongNull(_telp),
+    customerId: _pelanggan?.id,
+    // Merek dan tipe digabung: di tanya harga keduanya satu kolom, dan
+    // yang berguna saat mencari part adalah sebutan lengkap unitnya.
+    barangType: [
+      _barang.text.trim(),
+      _type.text.trim(),
+    ].where((s) => s.isNotEmpty).join(' '),
+    barangSn: _kosongNull(_sn),
+    teknisiId: _teknisiId,
+  );
 
   Widget _footer() {
     return Container(

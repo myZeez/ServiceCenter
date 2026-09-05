@@ -26,14 +26,43 @@ final _rp = NumberFormat.currency(
 );
 final _persen = NumberFormat('#,##0.#', 'id_ID');
 
-Future<void> showPartDialog(BuildContext context, {PartOrder? pesanan}) {
+/// Data yang dibawa dari sebuah nota servis ke tanya harga baru.
+///
+/// Sengaja bukan ServiceOrderEntry utuh: yang pindah cuma tujuh kolom, dan
+/// menyebutkannya satu per satu membuat jelas apa yang ikut dan apa yang
+/// tidak. Biaya jasa tidak ikut -- ia tetap tinggal di notanya.
+class AwalTanyaHarga {
+  const AwalTanyaHarga({
+    required this.notaId,
+    required this.customerNama,
+    this.customerTelp,
+    this.customerId,
+    this.barangType,
+    this.barangSn,
+    this.teknisiId,
+  });
+
+  final String notaId;
+  final String customerNama;
+  final String? customerTelp;
+  final String? customerId;
+  final String? barangType;
+  final String? barangSn;
+  final String? teknisiId;
+}
+
+Future<void> showPartDialog(
+  BuildContext context, {
+  PartOrder? pesanan,
+  AwalTanyaHarga? awal,
+}) {
   return showGeneralDialog(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Tutup',
     barrierColor: const Color(0x33000000),
     transitionDuration: const Duration(milliseconds: 220),
-    pageBuilder: (_, _, _) => PartDialog(pesanan: pesanan),
+    pageBuilder: (_, _, _) => PartDialog(pesanan: pesanan, awal: awal),
     transitionBuilder: (context, anim, _, child) {
       final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
       return BackdropFilter(
@@ -54,9 +83,13 @@ Future<void> showPartDialog(BuildContext context, {PartOrder? pesanan}) {
 }
 
 class PartDialog extends ConsumerStatefulWidget {
-  const PartDialog({super.key, this.pesanan});
+  const PartDialog({super.key, this.pesanan, this.awal});
 
   final PartOrder? pesanan;
+
+  /// Isian awal yang dibawa dari nota servis. Hanya dipakai untuk baris
+  /// baru; pesanan yang sudah ada membawa datanya sendiri.
+  final AwalTanyaHarga? awal;
 
   bool get isNew => pesanan == null;
 
@@ -111,7 +144,23 @@ class _PartDialogState extends ConsumerState<PartDialog> {
     _harga.addListener(_hargaBerubah);
 
     final p = widget.pesanan;
-    if (p == null) return;
+    if (p == null) {
+      // Datang dari sebuah nota servis: yang sudah diketik di meja depan
+      // tidak diketik ulang. Part yang dicari sengaja dibiarkan kosong --
+      // itu satu-satunya hal yang memang belum diketahui, dan menebaknya
+      // dari keluhan ("LCD PECAH") menghasilkan nama part yang salah
+      // tetapi terlihat sudah terisi.
+      final a = widget.awal;
+      if (a != null) {
+        _nama.text = a.customerNama;
+        _telp.text = a.customerTelp ?? '';
+        _type.text = a.barangType ?? '';
+        _sn.text = a.barangSn ?? '';
+        _teknisiId = a.teknisiId;
+        _notaId = a.notaId;
+      }
+      return;
+    }
 
     _nama.text = p.customerNama;
     _telp.text = p.customerTelp ?? '';
@@ -282,7 +331,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
 
     // Tautan pelanggan dan modal sama-sama datang belakangan dari server;
     // keduanya diambil sekali saja, saat daftarnya sudah ada.
-    final idTertaut = widget.pesanan?.customerId;
+    final idTertaut = widget.pesanan?.customerId ?? widget.awal?.customerId;
     if (_pelanggan == null && idTertaut != null) {
       for (final c in ref.watch(customersProvider).valueOrNull ??
           const <CustomerEntry>[]) {
@@ -668,10 +717,16 @@ class _PartDialogState extends ConsumerState<PartDialog> {
 
     // Nota servis milik pelanggan ini saja. Daftar seluruh nota toko tidak
     // bisa dipakai memilih apa pun begitu jumlahnya lewat seratus.
+    //
+    // Yang sudah tertaut selalu ikut, walau pelanggannya tidak cocok lagi
+    // -- tautan yang tersimpan tetapi tidak muncul di dropdown terbaca
+    // seperti tautan yang hilang, padahal ia masih ada di server.
     final notaPelanggan = [
       for (final n in ref.watch(serviceOrdersProvider).valueOrNull ??
           const <ServiceOrderEntry>[])
-        if (n.customerId != null && n.customerId == _pelanggan?.id) n,
+        if (n.id == _notaId ||
+            (n.customerId != null && n.customerId == _pelanggan?.id))
+          n,
     ];
 
     return Column(

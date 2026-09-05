@@ -12,6 +12,7 @@ import '../../core/status.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import '../scan/scan_page.dart';
+import 'widgets/pilihan_part.dart';
 
 const _uuid = Uuid();
 final _dateFmt = DateFormat('dd MMM yyyy');
@@ -253,12 +254,18 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(isAdminProvider);
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
-    final techs = ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
+    final techs = ref.watch(pengerjaUntukProvider(_teknisiId));
     final types = ref.watch(partTypesProvider).valueOrNull ?? const <PartType>[];
     final allBrands =
         ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[];
 
-    if (widget.isNew) _teknisiId ??= ref.read(currentUserProvider)?.id;
+    // Bawaannya diri sendiri, karena umumnya dialah yang menerima unit di
+    // meja -- tetapi hanya kalau dirinya memang bisa ditunjuk. Admin tidak,
+    // dan memaksakannya justru membuat kolom ini terisi nama yang salah.
+    if (widget.isNew) {
+      final aku = ref.read(currentUserProvider)?.id;
+      if (aku != null && techs.any((p) => p.id == aku)) _teknisiId ??= aku;
+    }
 
     final brandName = {for (final b in allBrands) b.id: b.nama}[_brandId];
     final size = MediaQuery.sizeOf(context);
@@ -525,6 +532,9 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                 // Selalu bisa diubah, apa pun perannya. Ini kolom yang
                 // memindahkan pekerjaan dari satu teknisi ke teknisi lain.
                 label: 'Teknisi',
+                hint: techs.isEmpty
+                    ? 'Belum ada teknisi. Tambahkan di Pengaturan → Pengguna.'
+                    : null,
                 child: DropdownButtonFormField<String>(
                   initialValue: _teknisiId,
                   isExpanded: true,
@@ -595,7 +605,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
             child: Row(
               children: [
                 SizedBox(
-                  width: 128,
+                  width: 150,
                   child: DropdownButtonFormField<int>(
                     initialValue: _parts[i].typeId,
                     isExpanded: true,
@@ -603,9 +613,25 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                     onChanged: editable
                         ? (v) => setState(() => _parts[i].typeId = v)
                         : null,
+                    // Namanya yang dibaca, kodenya yang dicocokkan. Kode
+                    // saja tidak cukup untuk memilih -- ADPT baru berarti
+                    // sesuatu setelah dibaca sebagai Adaptor -- jadi nama
+                    // naik jadi baris utama dan kodenya turun jadi
+                    // keterangan kecil.
+                    selectedItemBuilder: (context) => [
+                      for (final t in types)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            t.nama,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
                     items: [
                       for (final t in types)
-                        DropdownMenuItem(value: t.id, child: Text(t.kode)),
+                        DropdownMenuItem(value: t.id, child: PilihanPart(t)),
                     ],
                   ),
                 ),

@@ -40,7 +40,14 @@ Future<void> _simpan(
 }
 
 // =====================================================================
-// Fee dan aturan per brand
+// Fee awal dan aturan per brand
+//
+// Angka di sini bukan angka akhir. Brand membayar berbeda-beda tiap unit
+// tergantung part dan pekerjaannya, dan besarannya baru diketahui saat
+// rekap bulanan mereka datang. Yang diatur di kartu ini adalah nilai yang
+// dipakai lebih dulu, supaya admin tidak perlu mengetik ulang angka yang
+// biasanya sama -- yang berbeda dikoreksi satu per satu di halaman Rekap
+// Brand.
 // =====================================================================
 
 class BrandFeesCard extends ConsumerWidget {
@@ -53,24 +60,47 @@ class BrandFeesCard extends ConsumerWidget {
     final rules = ref.watch(brandRulesProvider);
 
     return BentoCard(
-      title: 'Fee & Aturan per Brand',
+      title: 'Fee Awal & Aturan per Brand',
       padding: EdgeInsets.zero,
       child: brands.isEmpty
           ? const _CardMessage('Belum ada brand.')
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              itemCount: brands.length,
-              separatorBuilder: (_, _) => const Divider(),
-              itemBuilder: (context, i) {
-                final b = brands[i];
-                return _BrandMoneyRow(
-                  brand: b,
-                  fee: fees[b.id],
-                  rule: rules[b.id],
-                  onEditFee: () => _editFee(context, ref, b, fees[b.id]),
-                  onEditRule: () => _editRule(context, ref, b, rules[b.id]),
-                );
-              },
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.sm,
+                    AppSpacing.xs,
+                    AppSpacing.sm,
+                    AppSpacing.xs,
+                  ),
+                  child: Text(
+                    'Nilai awal tiap unit. Angka sebenarnya dari rekap '
+                    'bulanan brand dikoreksi di halaman Rekap Brand.',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ),
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
+                    itemCount: brands.length,
+                    separatorBuilder: (_, _) => const Divider(),
+                    itemBuilder: (context, i) {
+                      final b = brands[i];
+                      return _BrandMoneyRow(
+                        brand: b,
+                        fee: fees[b.id],
+                        rule: rules[b.id],
+                        onEditFee: () => _editFee(context, ref, b, fees[b.id]),
+                        onEditRule: () =>
+                            _editRule(context, ref, b, rules[b.id]),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
     );
   }
@@ -247,7 +277,7 @@ class _FeeDialogState extends State<_FeeDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Fee ${widget.brand}'),
+      title: Text('Fee awal ${widget.brand}'),
       content: SizedBox(
         width: 380,
         child: Form(
@@ -259,7 +289,8 @@ class _FeeDialogState extends State<_FeeDialog> {
               LabeledField(
                 label: 'Fee per Unit',
                 required: true,
-                hint: 'Nilai yang dibayar brand untuk satu unit selesai.',
+                hint: 'Nilai awal untuk satu unit selesai, sebelum rekap '
+                    'bulanan brand mengoreksinya.',
                 child: TextFormField(
                   controller: _fee,
                   autofocus: true,

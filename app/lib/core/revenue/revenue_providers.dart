@@ -54,9 +54,24 @@ final _closedClaimsProvider = Provider.autoDispose<AsyncValue<List<Claim>>>((
       );
 });
 
-final _feesProvider = StreamProvider.autoDispose<List<BrandFeeEntry>>(
+/// Fee brand berikut riwayat tanggal berlakunya. Dipakai sebagai nilai
+/// awal sebuah unit, sebelum rekap dari brand mengoreksinya.
+final brandFeesProvider = StreamProvider.autoDispose<List<BrandFeeEntry>>(
   (ref) => ref.watch(databaseProvider).watchBrandFees(),
 );
+
+/// Hasil pencocokan dengan rekap bulanan brand, satu baris per unit.
+final settlementsProvider = StreamProvider.autoDispose<List<ClaimSettlement>>(
+  (ref) => ref.watch(databaseProvider).watchClaimSettlements(),
+);
+
+/// claimId -> hasil pencocokannya.
+final settlementByClaimProvider =
+    Provider.autoDispose<Map<String, ClaimSettlement>>((ref) => {
+      for (final s in ref.watch(settlementsProvider).valueOrNull ??
+          const <ClaimSettlement>[])
+        s.claimId: s,
+    });
 
 final revenueConfigProvider = StreamProvider.autoDispose<RevenueConfig?>(
   (ref) => ref.watch(databaseProvider).watchRevenueConfig(),
@@ -77,11 +92,19 @@ final _rulesProvider = StreamProvider.autoDispose<List<BrandRuleEntry>>(
 /// tempat data itu berasal, bukan syarat untuk melihatnya.
 final revenueResultProvider = Provider.autoDispose<RevenueResult?>((ref) {
   final claims = ref.watch(_closedClaimsProvider).valueOrNull;
-  final fees = ref.watch(_feesProvider).valueOrNull;
+  final fees = ref.watch(brandFeesProvider).valueOrNull;
   final config = ref.watch(revenueConfigProvider).valueOrNull;
   final rules = ref.watch(_rulesProvider).valueOrNull ?? const [];
 
-  if (claims == null || fees == null) return null;
+  // Pencocokan ikut ditunggu, bukan dianggap kosong dulu. Tanpa itu
+  // layarnya sempat memperlihatkan angka nilai awal, lalu berubah sendiri
+  // begitu rekap brand sampai -- dan yang terlanjur dibaca orang adalah
+  // angka yang pertama.
+  final settlements = ref.watch(settlementsProvider).valueOrNull;
+
+  if (claims == null || fees == null || settlements == null) return null;
+
+  final fixPerKlaim = {for (final s in settlements) s.claimId: s.fee};
 
   // Aturan bawaan dipakai bila baris pengaturannya belum terbaca, supaya
   // layarnya tetap bisa dibaca alih-alih kosong tanpa penjelasan.
@@ -111,6 +134,7 @@ final revenueResultProvider = Provider.autoDispose<RevenueResult?>((ref) {
           brandId: c.brandId,
           tanggal: c.tanggal,
           teknisiId: c.teknisiId,
+          fee: fixPerKlaim[c.id],
         ),
     ],
     fees: [
@@ -142,7 +166,7 @@ final brandRulesProvider = Provider.autoDispose<Map<int, BrandRuleEntry>>(
 
 /// Fee yang berlaku saat ini untuk tiap brand, untuk halaman pengaturan.
 final currentFeesProvider = Provider.autoDispose<Map<int, BrandFeeEntry>>((ref) {
-  final fees = ref.watch(_feesProvider).valueOrNull ?? const [];
+  final fees = ref.watch(brandFeesProvider).valueOrNull ?? const [];
   final out = <int, BrandFeeEntry>{};
   for (final f in fees) {
     final ada = out[f.brandId];

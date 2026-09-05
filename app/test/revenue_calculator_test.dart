@@ -285,7 +285,71 @@ void main() {
     });
   });
 
+  group('Nilai dari rekap bulanan brand', () {
+    test('angka dari surat brand mengalahkan fee brand', () {
+      final hasil = hitungPendapatan(
+        claims: [
+          RevenueClaim(
+            brandId: asusId,
+            tanggal: DateTime(2026, 2, 10),
+            teknisiId: budi,
+            fee: 175000,
+          ),
+        ],
+        fees: [asus],
+        settings: const RevenueSettings(),
+      );
+
+      expect(hasil.totalNilai, 175000);
+      expect(hasil.bagianTeknisi, 105000);
+    });
+
+    test('unit yang belum dicocokkan memakai fee brand', () {
+      final hasil = hitungPendapatan(
+        claims: [
+          RevenueClaim(
+            brandId: asusId,
+            tanggal: DateTime(2026, 2, 10),
+            teknisiId: budi,
+            fee: 175000,
+          ),
+          ...klaim(1, asusId, budi),
+        ],
+        fees: [asus],
+        settings: const RevenueSettings(),
+      );
+
+      // 175.000 dari surat brand, 100.000 dari nilai awal.
+      expect(hasil.totalNilai, 275000);
+      expect(hasil.unitTanpaFee, 0);
+    });
+
+    test('brand yang menolak sebuah unit dicatat sebagai nol, bukan diabaikan',
+        () {
+      final hasil = hitungPendapatan(
+        claims: [
+          RevenueClaim(
+            brandId: asusId,
+            tanggal: DateTime(2026, 2, 10),
+            teknisiId: budi,
+            fee: 0,
+          ),
+          ...klaim(1, asusId, budi),
+        ],
+        fees: [asus],
+        settings: const RevenueSettings(),
+      );
+
+      // Unitnya tetap terhitung sebagai pekerjaan yang dilakukan; yang nol
+      // hanya nilainya.
+      expect(hasil.totalUnit, 2);
+      expect(hasil.totalNilai, 100000);
+      expect(hasil.unitTanpaFee, 1);
+    });
+  });
+
   group('Data yang belum lengkap', () {
+
     test('brand tanpa fee dilaporkan tersendiri, bukan dihitung diam-diam', () {
       final hasil = hitungPendapatan(
         claims: [...klaim(10, asusId, budi), ...klaim(5, 99, budi)],

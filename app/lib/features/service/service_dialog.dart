@@ -296,7 +296,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final techs = ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
+    final techs = ref.watch(pengerjaUntukProvider(_teknisiId));
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
     final size = MediaQuery.sizeOf(context);
 
@@ -535,6 +535,9 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             Expanded(
               child: LabeledField(
                 label: 'Teknisi',
+                hint: techs.isEmpty
+                    ? 'Belum ada teknisi. Tambahkan di Pengaturan → Pengguna.'
+                    : null,
                 child: DropdownButtonFormField<String>(
                   initialValue: _teknisiId,
                   isExpanded: true,

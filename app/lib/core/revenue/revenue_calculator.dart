@@ -8,6 +8,12 @@
 /// membayar fee berbeda dan bisa punya susunan tim berbeda, jadi bagian
 /// toko, admin, dan teknisi dihitung dari nilai brand masing-masing --
 /// bukan dari satu angka gabungan.
+///
+/// Nilai sebuah unit punya dua lapis. Angka yang dikirim brand di rekap
+/// bulanannya dipakai lebih dulu; kalau unit itu belum dicocokkan, yang
+/// dipakai adalah fee brand yang berlaku pada tanggalnya. Brand membayar
+/// berbeda-beda per unit tergantung part dan pekerjaannya, jadi satu angka
+/// per brand hanya bisa menjadi perkiraan awal.
 library;
 
 enum MetodeTeknisi {
@@ -80,11 +86,19 @@ class RevenueClaim {
     required this.brandId,
     required this.tanggal,
     required this.teknisiId,
+    this.fee,
   });
 
   final int brandId;
   final DateTime tanggal;
   final String? teknisiId;
+
+  /// Angka sebenarnya dari rekap bulanan brand, kalau unit ini sudah
+  /// dicocokkan. Kosong berarti memakai fee brand sebagai nilai awal.
+  ///
+  /// Nol bukan kosong: brand kadang tidak membayar sebuah unit, dan itu
+  /// keterangan yang berbeda dari 'belum ada kabar'.
+  final double? fee;
 }
 
 class TechnicianEarning {
@@ -232,7 +246,7 @@ RevenueResult hitungPendapatan({
   var tanpaTeknisi = 0;
 
   for (final c in claims) {
-    final nilai = feeUntuk(fees, c.brandId, c.tanggal);
+    final nilai = c.fee ?? feeUntuk(fees, c.brandId, c.tanggal);
     if (nilai == 0) tanpaFee++;
     totalNilai += nilai;
 

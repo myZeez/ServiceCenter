@@ -11,6 +11,7 @@ import '../revenue/revenue_view.dart';
 import '../service/service_reports_view.dart';
 import '../service/service_view.dart';
 import '../settings/settings_view.dart';
+import '../settlement/settlement_view.dart';
 
 /// Kerangka untuk layar lebar: navigasi tetap di kiri, isi berganti di kanan.
 ///
@@ -49,6 +50,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
       ),
       if (isAdmin) ...[
         const _Section('Rekap', Icons.insights_outlined),
+        const _Section('Rekap Brand', Icons.fact_check_outlined),
         const _Section('Pendapatan', Icons.payments_outlined),
       ],
       // Terbuka untuk semua peran: tiap orang berhak melihat hasil kerjanya
@@ -85,6 +87,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                 'Laporan Servis' => const ServiceReportsView(),
                 'Pekerjaanku' => const MyWorkView(),
                 'Rekap' => const ReportsView(),
+                'Rekap Brand' => const SettlementView(),
                 'Pendapatan' => const RevenueView(),
                 'Pengaturan' => const SettingsView(),
                 _ => const ClaimsView(),

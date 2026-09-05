@@ -104,17 +104,54 @@ final partTypesProvider = Provider<AsyncValue<List<PartType>>>(
       .whenData((l) => l.where((p) => p.aktif).toList()),
 );
 
-/// Siapa saja yang bisa ditunjuk sebagai pengerjanya.
+/// Untuk MEMBACA nama pengerja, bukan untuk memilihnya.
 ///
-/// Disaring menurut aktif, BUKAN menurut role. Admin di toko ini juga
-/// memegang obeng, dan nota lama pun sudah tercatat atas namanya. Menyaring
-/// role di sini membuat daftarnya kosong, dan dropdown tanpa isi otomatis
-/// mati -- di layar terlihat seperti kolom teknisi yang terkunci.
+/// Sengaja tidak disaring menurut role. Nota dan klaim lama tercatat atas
+/// nama siapa pun yang mengerjakannya saat itu, admin termasuk, dan daftar
+/// yang membuang mereka membuat nama itu berubah jadi tanda hubung di
+/// laporan yang sudah terlanjur dibaca orang.
+///
+/// Untuk dropdown pemilihan, pakai [pengerjaUntukProvider].
 final techniciansProvider = Provider<AsyncValue<List<Profile>>>(
   (ref) => ref
       .watch(allProfilesProvider)
       .whenData((l) => l.where((p) => p.aktif).toList()),
 );
+
+/// Siapa saja yang boleh ditunjuk mengerjakan sebuah unit.
+///
+/// Admin tidak termasuk: yang memegang obeng adalah teknisi, dan bagi hasil
+/// dihitung atas nama merekalah. Daftar ini bisa kosong kalau belum ada
+/// teknisi terdaftar -- layar yang memakainya menjelaskan keadaan itu alih-
+/// alih menampilkan dropdown yang tampak terkunci.
+final pengerjaProvider = Provider<List<Profile>>(
+  (ref) => [
+    for (final p
+        in ref.watch(allProfilesProvider).valueOrNull ?? const <Profile>[])
+      if (p.aktif && p.role != 'admin') p,
+  ],
+);
+
+/// Pilihan pengerja untuk satu unit, beserta orang yang sudah tercatat
+/// mengerjakannya.
+///
+/// Yang sudah tercatat selalu ikut walau ia admin atau sudah dinonaktifkan.
+/// Dua sebabnya sama-sama keras: dropdown yang nilainya tidak ada di antara
+/// pilihannya melempar galat, dan nama yang menghilang dari kolomnya
+/// terbaca seperti pekerjaannya ikut terhapus.
+final pengerjaUntukProvider = Provider.family<List<Profile>, String?>((
+  ref,
+  terpilih,
+) {
+  final daftar = ref.watch(pengerjaProvider);
+  if (terpilih == null || daftar.any((p) => p.id == terpilih)) return daftar;
+
+  for (final p
+      in ref.watch(allProfilesProvider).valueOrNull ?? const <Profile>[]) {
+    if (p.id == terpilih) return [...daftar, p];
+  }
+  return daftar;
+});
 
 // ---------------------------------------------------------------------
 // Klaim
@@ -191,6 +228,24 @@ final partsOfClaimProvider =
       .watch(allPartsProvider)
       .whenData((l) => l.where((p) => p.claimId == claimId).toList()),
 );
+
+/// Nota servis yang menaungi sebuah klaim, kalau memang ada.
+///
+/// Status keduanya disinkronkan di server ke dua arah, jadi layar klaim
+/// perlu bisa menyebutkan nota mana yang ikut berubah. Perubahan yang
+/// diam-diam merembet ke tempat lain adalah perubahan yang tidak bisa
+/// dijelaskan kepada yang menemukannya.
+final notaOfClaimProvider = Provider.family<ServiceOrderEntry?, String>((
+  ref,
+  claimId,
+) {
+  for (final n
+      in ref.watch(serviceOrdersProvider).valueOrNull ??
+          const <ServiceOrderEntry>[]) {
+    if (n.claimId == claimId) return n;
+  }
+  return null;
+});
 
 final claimByIdProvider = Provider.family<AsyncValue<Claim?>, String>(
   (ref, id) => ref.watch(allClaimsProvider).whenData((l) {

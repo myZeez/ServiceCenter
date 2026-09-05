@@ -251,7 +251,37 @@ class Db {
   Stream<List<BrandFeeEntry>> watchBrandFees() =>
       _semua('brand_fees', BrandFeeEntry.fromMap);
 
+  /// Hasil pencocokan dengan rekap bulanan brand, satu baris per unit.
+  Stream<List<ClaimSettlement>> watchClaimSettlements() => _semua(
+    'claim_settlements',
+    ClaimSettlement.fromMap,
+    kunci: const ['claim_id'],
+  );
+
+  /// Mencatat hasil pencocokan satu unit dengan rekap brand. Baris dikunci
+  /// pada claim_id, jadi mencocokkan ulang unit yang sama menimpa catatan
+  /// sebelumnya alih-alih menumpuk baris kedua.
+  Future<void> simpanSettlement(Map<String, dynamic> baris) => _pastikan(
+    _c
+        .from('claim_settlements')
+        .upsert(baris, onConflict: 'claim_id')
+        .select('claim_id'),
+    'hasil pencocokan',
+  );
+
+  /// Dipakai saat centang cocok dilepas dan tidak ada lagi yang perlu
+  /// disimpan: barisnya dibuang, bukan ditinggal kosong.
+  Future<void> hapusSettlement(String claimId) => _pastikan(
+    _c
+        .from('claim_settlements')
+        .delete()
+        .eq('claim_id', claimId)
+        .select('claim_id'),
+    'hasil pencocokan',
+  );
+
   Stream<List<BrandShareEntry>> watchBrandShares() => _semua(
+
     'brand_technician_shares',
     BrandShareEntry.fromMap,
     kunci: const ['brand_id', 'profile_id'],

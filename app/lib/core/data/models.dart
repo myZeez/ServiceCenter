@@ -86,6 +86,7 @@ class Claim {
     this.keluhan,
     this.noPerbaikan,
     required this.status,
+    this.tanggalClose,
     this.catatan,
     required this.createdBy,
     required this.createdAt,
@@ -102,6 +103,12 @@ class Claim {
   final String? keluhan;
   final String? noPerbaikan;
   final String status;
+
+  /// Kapan klaimnya dinyatakan selesai. Inilah yang menentukan sebuah
+  /// unit masuk rekap bulan yang mana -- bukan tanggal unitnya datang,
+  /// karena unit yang masuk akhir Maret sering baru tuntas di April.
+  final DateTime? tanggalClose;
+
   final String? catatan;
   final String createdBy;
   final DateTime createdAt;
@@ -118,6 +125,7 @@ class Claim {
     keluhan: r['keluhan'] as String?,
     noPerbaikan: r['no_perbaikan'] as String?,
     status: r['status'] as String,
+    tanggalClose: _tgl(r['tanggal_close']),
     catatan: r['catatan'] as String?,
     createdBy: r['created_by'] as String,
     createdAt: _ts(r['created_at']),
@@ -164,6 +172,41 @@ class BrandFeeEntry {
     brandId: r['brand_id'] as int,
     fee: _num(r['fee']),
     berlakuDari: _tgl(r['berlaku_dari'])!,
+  );
+}
+
+/// Hasil pencocokan satu unit dengan rekap bulanan yang dikirim brand.
+///
+/// Barisnya hanya ada untuk unit yang memang perlu dicatat: yang angkanya
+/// berbeda dari fee brand, atau yang sudah ditandai cocok.
+class ClaimSettlement {
+  const ClaimSettlement({
+    required this.claimId,
+    this.fee,
+    this.cocok = false,
+    this.catatan,
+    required this.updatedAt,
+  });
+
+  final String claimId;
+
+  /// Angka sebenarnya dari surat brand. Kosong berarti memakai fee brand
+  /// sebagai nilai awal -- berbeda dari nol, yang berarti brand memang
+  /// tidak membayar unit ini.
+  final double? fee;
+
+  /// Sudah ditemukan di surat brand dan angkanya sama.
+  final bool cocok;
+
+  final String? catatan;
+  final DateTime updatedAt;
+
+  factory ClaimSettlement.fromMap(Map<String, dynamic> r) => ClaimSettlement(
+    claimId: r['claim_id'] as String,
+    fee: (r['fee'] as num?)?.toDouble(),
+    cocok: r['cocok'] as bool? ?? false,
+    catatan: r['catatan'] as String?,
+    updatedAt: _ts(r['updated_at']),
   );
 }
 

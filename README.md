@@ -46,6 +46,7 @@ dilewati walaupun seseorang memanggil API-nya langsung tanpa aplikasi.
 | Ubah kolom lain | ✅ | ❌ |
 | Hapus klaim | ✅ | ❌ |
 | Lihat rekap | ✅ | ❌ |
+| Cocokkan rekap brand | ✅ | ❌ |
 | Kelola pengguna | ✅ | ❌ |
 
 Pengguna yang dinonaktifkan masih bisa login, tetapi tidak melihat data apa
@@ -61,11 +62,10 @@ penyelesaian kalau ada perselisihan.
 ## Menyiapkan database
 
 1. Buat project di [supabase.com](https://supabase.com), region **Southeast Asia (Singapore)**.
-2. **SQL Editor** → jalankan migrasi berurutan:
-   - `supabase/migrations/0001_init.sql`
-   - `supabase/migrations/0002_active_user_guard.sql`
-   - `supabase/migrations/0003_bagi_hasil.sql`
-   - `supabase/migrations/0004_bagi_hasil_per_brand.sql`
+2. **SQL Editor** → jalankan seluruh berkas di `supabase/migrations/`
+   berurutan menurut nomornya, dari `0001_init.sql` sampai yang terakhir.
+   Semuanya aman dijalankan ulang, jadi menjalankan yang sudah pernah
+   dijalankan tidak merusak apa pun.
 3. **Authentication → Users → Add user**, centang *Auto Confirm User*.
 4. Jadikan user itu admin (ganti email dan namanya):
 
@@ -138,13 +138,86 @@ Salah nama kolom tidak ketahuan saat `flutter analyze`. Penjaganya ada di
 ## Belum dikerjakan
 
 - Impor data lama dari 8 tab spreadsheet
-- Fee berbeda per tipe produk (Zenbook, Vivobook) dan per jenis part
 - Ganti password sendiri dari dalam aplikasi
 - Ekspor rekap ke Excel/PDF
+- Membaca berkas rekap brand langsung, tanpa mengetik angkanya satu per satu
+
+## Satu unit, dua catatan
+
+Unit bergaransi menghasilkan dua baris sekaligus: **nota** untuk pelanggan
+dan **klaim** untuk brand. Lawan bicaranya berbeda, tetapi barangnya satu,
+jadi statusnya berjalan bersama — diubah dari nota, klaimnya ikut; diubah
+dari klaim, notanya ikut.
+
+| Nota servis | Klaim garansi |
+|---|---|
+| Masuk | Baru Masuk |
+| Dikerjakan | Dikerjakan |
+| Tunggu Part | Tunggu Part |
+| Selesai | **Selesai** |
+| Sudah Diambil | **Selesai** |
+| Batal | Batal |
+
+Dua baris terakhir yang tidak sebangun. Bagi brand, pekerjaannya sudah
+tuntas begitu unitnya diperbaiki; menunggu pelanggan datang mengambil adalah
+urusan meja depan. Karena itu arah baliknya tidak pernah menarik mundur nota
+yang sudah **Sudah Diambil** menjadi **Selesai** — klaim tidak pernah tahu
+kabar itu.
+
+Padanannya ditulis sekali saja sebagai fungsi di
+`0016_status_nota_klaim.sql`, bukan disalin ke Dart. Sebelum ada migrasi itu
+keduanya jalan sendiri-sendiri, dan akibatnya bukan cuma membingungkan:
+klaim yang tertinggal di "Baru Masuk" tidak pernah masuk rekap bulanan, jadi
+tidak pernah ditagihkan ke brand dan tidak pernah ikut dibagi hasilnya.
+
+Teknisi tetap tidak bisa menyentuh status klaim langsung. Yang dibuka hanya
+satu jalan: perubahan yang datang dari nota servis, yang memang sudah jadi
+haknya sejak `0014_teknisi_kerjakan_servis.sql`.
+
+## Rekap bulanan dari brand
+
+Tiap bulan brand mengirim daftar unit yang sudah tuntas beserta biaya yang
+mereka bayar. Besarannya **berbeda-beda tiap unit** — tergantung part dan
+pekerjaannya, bukan tergantung mereknya saja — jadi satu angka per brand
+tidak pernah bisa jadi angka akhir. Pencocokannya memakai nomor perbaikan
+(RMA).
+
+Karena itu nilai sebuah unit punya dua lapis:
+
+| | Dari mana | Kapan dipakai |
+|---|---|---|
+| Nilai awal | Fee brand di **Pengaturan** | Selama surat brand belum datang |
+| Nilai sebenarnya | **Rekap Brand**, per unit | Begitu unitnya dicocokkan |
+
+Lapis pertama sengaja dipertahankan. Tanpanya, tiap unit harus diketik
+angkanya walau sebagian besar nilainya sama — dan seluruh klaim yang
+terlanjur dibayarkan kehilangan nilainya, membuat rekap kuartal yang sudah
+lewat berubah jadi nol.
+
+Halaman **Rekap Brand** memuat unit yang klaimnya sudah Selesai, dikelompokkan
+menurut bulan klaim itu ditutup dan bisa disaring per brand. Bulannya diambil
+dari `claims.tanggal_close`, bukan dari tanggal unitnya datang: unit yang
+masuk akhir Maret sering baru tuntas di April, dan brand membayarnya di rekap
+April.
+
+Tanggal itu diisi sekali saja, saat klaimnya pertama kali dinyatakan selesai.
+Membuka kembali klaim lama tidak menggesernya — kalau tidak, unit yang
+sudah dibayar bulan lalu akan pindah ke rekap bulan berjalan.
+
+Kalau brand ternyata memasukkan sebuah unit ke surat bulan lain, tanggalnya
+bisa diubah dari kotak koreksi nilai di halaman itu juga. Klaim yang sudah
+selesai sebelum fitur ini ada diisi tanggalnya dari waktu perubahan
+terakhirnya — perkiraan, dan justru itu sebabnya harus bisa dibetulkan
+tanpa membuka SQL.
+
+Unit tanpa nomor perbaikan ditandai merah di daftar, karena unit semacam itu
+tidak bisa dicari di surat brand sama sekali. Nilai nol pun bisa dicatat
+apa adanya: brand kadang menolak sebuah unit, dan itu keterangan yang
+berbeda dari belum ada kabar.
 
 ## Bagi hasil
 
-Fee dicatat **per brand dengan tanggal berlaku**, bukan satu angka yang
+Fee awal dicatat **per brand dengan tanggal berlaku**, bukan satu angka yang
 ditimpa. Kalau fee lama ditimpa, rekap kuartal yang sudah lewat ikut berubah
 angkanya — dan pembagian yang terlanjur dibayarkan tidak lagi cocok dengan
 laporannya.
@@ -171,7 +244,7 @@ satu unit pun** — begitulah pekerjaan pendukung seperti input klaim dan
 permintaan part memperoleh bagian.
 
 Rumusnya ada di `lib/core/revenue/revenue_calculator.dart` sebagai fungsi
-murni, dan dijaga 20 tes. Sengaja tidak ada salinan versi SQL: dua
+murni, dan dijaga 23 tes. Sengaja tidak ada salinan versi SQL: dua
 implementasi rumus yang sama pasti berbeda suatu saat, dan selisihnya baru
 ketahuan setelah dibayarkan.
 

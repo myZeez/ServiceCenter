@@ -10,6 +10,7 @@ import '../../core/status.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import '../scan/scan_page.dart';
+import 'widgets/pilihan_part.dart';
 
 const _uuid = Uuid();
 final _dateFmt = DateFormat('dd MMMM yyyy');
@@ -225,13 +226,18 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
   @override
   Widget build(BuildContext context) {
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
-    final techs = ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
+    final techs = ref.watch(pengerjaUntukProvider(_teknisiId));
     final partTypes =
         ref.watch(partTypesProvider).valueOrNull ?? const <PartType>[];
 
     // Default teknisi = yang sedang login, karena umumnya dialah yang
-    // menerima unit di meja.
-    if (!widget.isEdit) _teknisiId ??= ref.read(currentUserProvider)?.id;
+    // menerima unit di meja -- tetapi hanya kalau dirinya memang bisa
+    // ditunjuk. Admin tidak, dan memaksakannya justru membuat kolom ini
+    // terisi nama yang salah.
+    if (!widget.isEdit) {
+      final aku = ref.read(currentUserProvider)?.id;
+      if (aku != null && techs.any((p) => p.id == aku)) _teknisiId ??= aku;
+    }
 
     if (!_partsLoaded) {
       return const Scaffold(
@@ -396,11 +402,28 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                                   initialValue: _parts[i].partTypeId,
                                   isExpanded: true,
                                   hint: const Text('—'),
+                                  // Namanya yang dibaca, kodenya yang
+                                  // dicocokkan. Kode saja tidak cukup untuk
+                                  // memilih -- ADPT baru berarti sesuatu
+                                  // setelah dibaca sebagai Adaptor -- jadi
+                                  // nama naik jadi baris utama dan kodenya
+                                  // turun jadi keterangan kecil.
+                                  selectedItemBuilder: (context) => [
+                                    for (final p in partTypes)
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          p.nama,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                  ],
                                   items: [
                                     for (final p in partTypes)
                                       DropdownMenuItem(
                                         value: p.id,
-                                        child: Text(p.kode),
+                                        child: PilihanPart(p),
                                       ),
                                   ],
                                   onChanged: (v) =>
@@ -444,6 +467,10 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
 
                     LabeledField(
                       label: 'Teknisi',
+                      hint: techs.isEmpty
+                          ? 'Belum ada teknisi. Tambahkan di Pengaturan → '
+                                'Pengguna.'
+                          : null,
                       child: DropdownButtonFormField<String>(
                         initialValue: _teknisiId,
                         isExpanded: true,

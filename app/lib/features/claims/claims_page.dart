@@ -14,6 +14,7 @@ import '../service/service_page.dart';
 import '../reports/reports_page.dart';
 import '../scan/scan_page.dart';
 import '../settings/settings_page.dart';
+import '../settlement/settlement_page.dart';
 import 'claim_detail_page.dart';
 import 'claim_form_page.dart';
 
@@ -62,6 +63,8 @@ class ClaimsPage extends ConsumerWidget {
                   _push(context, const MyWorkPage());
                 case 'rekap':
                   _push(context, const ReportsPage());
+                case 'rekap_brand':
+                  _push(context, const SettlementPage());
                 case 'pengaturan':
                   _push(context, const SettingsPage());
                 case 'keluar':
@@ -76,6 +79,10 @@ class ClaimsPage extends ConsumerWidget {
               ),
               if (isAdmin) ...[
                 const PopupMenuItem(value: 'rekap', child: Text('Rekap')),
+                const PopupMenuItem(
+                  value: 'rekap_brand',
+                  child: Text('Rekap Brand'),
+                ),
                 const PopupMenuItem(
                   value: 'pengaturan',
                   child: Text('Pengaturan'),

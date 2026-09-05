@@ -56,6 +56,12 @@ class ClaimDetailPage extends ConsumerWidget {
     final parts =
         ref.watch(partsOfClaimProvider(claimId)).valueOrNull ?? const [];
 
+    // Nota servisnya, kalau unit ini masuk lewat meja depan. Statusnya
+    // berjalan bersama status klaim ini, dan itu harus disebutkan --
+    // perubahan yang diam-diam merembet ke layar lain adalah perubahan
+    // yang tidak bisa dijelaskan kepada yang menemukannya.
+    final nota = ref.watch(notaOfClaimProvider(claimId));
+
     return Scaffold(
       appBar: AppBar(
         titleSpacing: AppSpacing.sm,
@@ -296,6 +302,10 @@ class ClaimDetailPage extends ConsumerWidget {
                     value: ClaimStatus.label(claim.status),
                     editable: isAdmin,
                     onEdit: () => _pickStatus(context, ref, claim),
+                    hint: nota == null
+                        ? null
+                        : 'Sejalan dengan nota ${nota.noNota} — mengubahnya '
+                              'di sini ikut mengubah notanya, dan sebaliknya',
                   ),
                   _Editable(
                     label: 'Catatan',
@@ -565,6 +575,7 @@ class _Editable extends StatelessWidget {
     required this.editable,
     required this.onEdit,
     this.emphasis = false,
+    this.hint,
   });
 
   final String label;
@@ -573,19 +584,32 @@ class _Editable extends StatelessWidget {
   final VoidCallback onEdit;
   final bool emphasis;
 
+  /// Keterangan kecil di bawah nilainya. Dipakai untuk kolom yang
+  /// perubahannya ikut terasa di tempat lain.
+  final String? hint;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.s),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(child: FieldValue(label, value, emphasis: emphasis)),
-          if (editable)
-            Padding(
-              padding: const EdgeInsets.only(left: AppSpacing.xs),
-              child: InlineAction(label: 'Ubah', onTap: onEdit),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(child: FieldValue(label, value, emphasis: emphasis)),
+              if (editable)
+                Padding(
+                  padding: const EdgeInsets.only(left: AppSpacing.xs),
+                  child: InlineAction(label: 'Ubah', onTap: onEdit),
+                ),
+            ],
+          ),
+          if (hint != null) ...[
+            const SizedBox(height: 3),
+            Text(hint!, style: Theme.of(context).textTheme.labelSmall),
+          ],
         ],
       ),
     );

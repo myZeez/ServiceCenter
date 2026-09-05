@@ -26,8 +26,8 @@ ProviderContainer _wadah(List<Profile> profil) {
 }
 
 void main() {
-  group('Daftar teknisi', () {
-    test('memuat admin juga, bukan hanya yang ber-role teknisi', () async {
+  group('Daftar untuk membaca nama', () {
+    test('memuat admin juga, karena nota lama tercatat atas namanya', () async {
       final c = _wadah([
         _orang('1', 'Budi', 'admin'),
         _orang('2', 'Andi', 'teknisi'),
@@ -38,9 +38,10 @@ void main() {
       expect(daftar.map((p) => p.nama), ['Budi', 'Andi']);
     });
 
-    test('toko yang semua akunnya admin tetap punya pilihan', () async {
-      // Keadaan yang bikin kolomnya mati: saringan role menyisakan nol
-      // orang, padahal di halaman Setting orangnya jelas terlihat ada.
+    test('toko yang semua akunnya admin tetap terbaca namanya', () async {
+      // Daftar ini tidak boleh ikut menyaring role: yang dibacanya adalah
+      // nama pada nota yang sudah terlanjur tercatat, bukan siapa yang
+      // boleh ditunjuk berikutnya.
       final c = _wadah([
         _orang('1', 'Budi', 'admin'),
         _orang('2', 'Sari', 'admin'),
@@ -50,7 +51,7 @@ void main() {
       expect(c.read(techniciansProvider).valueOrNull, isNotEmpty);
     });
 
-    test('yang sudah dinonaktifkan tidak bisa ditunjuk lagi', () async {
+    test('yang sudah dinonaktifkan tidak ikut', () async {
       final c = _wadah([
         _orang('1', 'Budi', 'admin'),
         _orang('2', 'Mantan', 'teknisi', aktif: false),
@@ -69,6 +70,79 @@ void main() {
 
       final semua = await c.read(allProfilesProvider.future);
       expect(semua.length, 2);
+    });
+  });
+
+  group('Pilihan pengerja', () {
+    test('admin tidak bisa ditunjuk mengerjakan', () async {
+      final c = _wadah([
+        _orang('1', 'Budi', 'admin'),
+        _orang('2', 'Andi', 'teknisi'),
+      ]);
+      await c.read(allProfilesProvider.future);
+
+      expect(c.read(pengerjaProvider).map((p) => p.nama), ['Andi']);
+    });
+
+    test('toko yang belum punya teknisi menghasilkan daftar kosong', () async {
+      // Sengaja tidak dijatuhkan kembali ke daftar admin. Yang benar adalah
+      // menambahkan teknisinya dulu, dan formulirnya mengatakan itu -- bukan
+      // menawarkan nama yang tidak boleh dipilih.
+      final c = _wadah([
+        _orang('1', 'Budi', 'admin'),
+        _orang('2', 'Sari', 'admin'),
+      ]);
+      await c.read(allProfilesProvider.future);
+
+      expect(c.read(pengerjaProvider), isEmpty);
+    });
+
+    test('yang sudah tercatat tetap ikut walau ia admin', () async {
+      // Dua sebabnya sama-sama keras: dropdown yang nilainya tidak ada di
+      // antara pilihannya melempar galat, dan nama yang menghilang dari
+      // kolomnya terbaca seperti pekerjaannya ikut terhapus.
+      final c = _wadah([
+        _orang('1', 'Budi', 'admin'),
+        _orang('2', 'Andi', 'teknisi'),
+      ]);
+      await c.read(allProfilesProvider.future);
+
+      final daftar = c.read(pengerjaUntukProvider('1'));
+      expect(daftar.map((p) => p.nama), ['Andi', 'Budi']);
+    });
+
+    test('yang sudah tercatat tetap ikut walau sudah dinonaktifkan', () async {
+      final c = _wadah([
+        _orang('1', 'Budi', 'admin'),
+        _orang('2', 'Andi', 'teknisi'),
+        _orang('3', 'Mantan', 'teknisi', aktif: false),
+      ]);
+      await c.read(allProfilesProvider.future);
+
+      expect(
+        c.read(pengerjaUntukProvider('3')).map((p) => p.nama),
+        ['Andi', 'Mantan'],
+      );
+    });
+
+    test('tidak menggandakan orang yang memang sudah ada di daftar', () async {
+      final c = _wadah([
+        _orang('1', 'Budi', 'admin'),
+        _orang('2', 'Andi', 'teknisi'),
+      ]);
+      await c.read(allProfilesProvider.future);
+
+      expect(c.read(pengerjaUntukProvider('2')).map((p) => p.nama), ['Andi']);
+    });
+
+    test('tanpa siapa pun terpilih, daftarnya apa adanya', () async {
+      final c = _wadah([
+        _orang('1', 'Budi', 'admin'),
+        _orang('2', 'Andi', 'teknisi'),
+      ]);
+      await c.read(allProfilesProvider.future);
+
+      expect(c.read(pengerjaUntukProvider(null)).map((p) => p.nama), ['Andi']);
     });
   });
 

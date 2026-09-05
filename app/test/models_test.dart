@@ -63,6 +63,31 @@ void main() {
       expect(c.telp, isNull);
       expect(c.teknisiId, isNull);
       expect(c.noPerbaikan, isNull);
+      expect(c.tanggalClose, isNull);
+    });
+
+    test('tanggal tutup dibaca sebagai tanggal kalender', () {
+      final c = Claim.fromMap({
+        'id': 'abc',
+        'tanggal': '2026-03-28T23:00:00+00:00',
+        'brand_id': 1,
+        'nama_pelanggan': 'Budi',
+        'telp': null,
+        'sn': 'SN',
+        'teknisi_id': null,
+        'keluhan': null,
+        'no_perbaikan': 'IDD7R20024',
+        'status': 'close',
+        'tanggal_close': '2026-04-02',
+        'catatan': null,
+        'created_by': 'adm',
+        'created_at': '2026-03-28T23:00:00+00:00',
+        'updated_at': '2026-04-02T09:00:00+00:00',
+      });
+
+      // Bukan titik waktu: menggesernya menurut zona waktu memindahkan unit
+      // ini ke bulan rekap yang salah.
+      expect(c.tanggalClose, DateTime(2026, 4, 2));
     });
   });
 
@@ -149,6 +174,35 @@ void main() {
       });
       expect(f.fee, 75000.0);
       expect(f.berlakuDari, DateTime(2026, 1, 1));
+    });
+
+    test('hasil pencocokan tanpa fee berarti memakai nilai awal', () {
+      final s = ClaimSettlement.fromMap({
+        'claim_id': 'k1',
+        'fee': null,
+        'cocok': true,
+        'catatan': null,
+        'updated_at': '2026-09-04T02:00:00+00:00',
+      });
+
+      // Kosong bukan nol. Nol berarti brand memang tidak membayar unit ini,
+      // dan keduanya harus bisa dibedakan.
+      expect(s.fee, isNull);
+      expect(s.cocok, isTrue);
+    });
+
+    test('hasil pencocokan membawa angka dari surat brand', () {
+      final s = ClaimSettlement.fromMap({
+        'claim_id': 'k1',
+        'fee': 125000,
+        'cocok': true,
+        'catatan': 'selisih 25rb dari nilai awal',
+        'updated_at': '2026-09-04T02:00:00+00:00',
+      });
+
+      expect(s.claimId, 'k1');
+      expect(s.fee, 125000.0);
+      expect(s.catatan, 'selisih 25rb dari nilai awal');
     });
 
     test('porsi per brand dibaca dengan kunci gabungannya', () {

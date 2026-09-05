@@ -1,3 +1,8 @@
 
 # Hasil installer, dibangun ulang dari kode
 installer/output/
+
+# Ekspor CSV mentah dari Excel -- berisi nama & telepon pelanggan, dan
+# datanya sudah masuk Supabase lewat supabase/scripts/import_klaim_2026.sql.
+# Tidak perlu terduplikasi selamanya di git history.
+SERVICE CLAIM GARANSI CELLCOM PLK - *.csv

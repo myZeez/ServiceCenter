@@ -28,8 +28,9 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
     super.dispose();
   }
 
-  void _setQuery(String v) =>
-      ref.read(claimFilterProvider.notifier).update((s) => s.copyWith(query: v));
+  void _setQuery(String v) => ref
+      .read(claimFilterProvider.notifier)
+      .update((s) => s.copyWith(query: v));
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +40,8 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
     final allBrands =
         ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[];
-    final techs = ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
+    final techs =
+        ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
 
     final total = counts.values.fold(0, (a, b) => a + b);
 

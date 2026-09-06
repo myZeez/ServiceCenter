@@ -280,6 +280,25 @@ class Db {
     'nota servis',
   );
 
+  /// Menandai sebuah nota bergaransi dan menghubungkannya ke klaimnya.
+  ///
+  /// Sengaja bukan update biasa. Penjaga kolom di server menutup garansi
+  /// dan claim_id bagi siapa pun selain admin, sementara yang menemukan
+  /// sebuah unit ternyata masih bergaransi justru teknisi yang
+  /// membongkarnya. Fungsi di server membuka satu jalan sempit untuk dua
+  /// kolom itu saja, dan menolak menimpa tautan ke klaim yang lain.
+  ///
+  /// Mengembalikan nomor nota yang ikut berubah, supaya layar bisa
+  /// menyebutkan nota mana yang terpengaruh alih-alih mengubahnya diam-
+  /// diam.
+  Future<String> tautkanNotaKeKlaim(String notaId, String claimId) async {
+    final hasil = await _c.rpc<dynamic>(
+      'tautkan_nota_ke_klaim',
+      params: {'p_nota': notaId, 'p_klaim': claimId},
+    );
+    return hasil as String;
+  }
+
   Stream<List<ShipmentEntry>> watchShipments() =>
       _semua('shipments', ShipmentEntry.fromMap)
           .map((l) => l..sort((a, b) => b.tanggalKirim.compareTo(a.tanggalKirim)));

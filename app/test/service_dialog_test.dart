@@ -3,30 +3,39 @@
 // Yang paling penting diuji di sini bukan jalan pintasnya, melainkan
 // bahwa ia tidak mengganggu apa pun selama tidak dipakai: menambah nota
 // servis biasa harus tetap persis seperti sebelum fitur ini ada.
+//
+// Tanya harga sedang disimpan, jadi hampir seluruh berkas ini menyalakan
+// fiturTanyaHargaProvider lewat override. Itu disengaja: fitur yang
+// disembunyikan dengan cara membiarkan tesnya mati akan kembali dalam
+// keadaan rusak, dan yang menemukannya adalah orang yang memakainya.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sc_management/core/data/models.dart';
+import 'package:sc_management/core/fitur.dart';
 import 'package:sc_management/core/providers.dart';
 import 'package:sc_management/features/service/service_dialog.dart';
 
-ServiceOrderEntry _nota() => ServiceOrderEntry(
-  id: 'nota-1',
-  noNota: 'SRV-05092628222',
-  tanggalMasuk: DateTime(2026, 9, 5),
-  customerNama: 'Irwan',
-  customerTelp: '192837182370',
-  customerId: 'plg4',
-  barangNama: 'Laptop Lenovo',
-  barangType: 'Ideapad',
-  barangSn: 'OSIA0J09U309JOI3',
-  keluhan: 'LCD PECAH',
-  teknisiId: 't1',
-  status: 'masuk',
-  updatedAt: DateTime(2026, 9, 5),
-);
+ServiceOrderEntry _nota({String? claimId, bool garansi = false}) =>
+    ServiceOrderEntry(
+      id: 'nota-1',
+      garansi: garansi || claimId != null,
+      claimId: claimId,
+      noNota: 'SRV-05092628222',
+      tanggalMasuk: DateTime(2026, 9, 5),
+      customerNama: 'Irwan',
+      customerTelp: '192837182370',
+      customerId: 'plg4',
+      barangNama: 'Laptop Lenovo',
+      barangType: 'Ideapad',
+      barangSn: 'OSIA0J09U309JOI3',
+      keluhan: 'LCD PECAH',
+      teknisiId: 't1',
+      status: 'masuk',
+      updatedAt: DateTime(2026, 9, 5),
+    );
 
 PartOrder _pesanan({String part = 'LCD 14 SLIM'}) => PartOrder(
   id: 'po-1',
@@ -42,6 +51,7 @@ Future<void> _lukis(
   WidgetTester tester, {
   ServiceOrderEntry? nota,
   List<PartOrder> pesanan = const [],
+  bool adaTanyaHarga = true,
 }) async {
   await tester.binding.setSurfaceSize(const Size(1400, 1400));
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -49,6 +59,7 @@ Future<void> _lukis(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        fiturTanyaHargaProvider.overrideWithValue(adaTanyaHarga),
         customersProvider.overrideWith((ref) => Stream.value(const [])),
         serviceOrdersProvider.overrideWith((ref) => Stream.value(const [])),
         partOrdersProvider.overrideWith((ref) => Stream.value(pesanan)),
@@ -76,9 +87,7 @@ Future<void> _ketuk(WidgetTester tester, Finder sasaran) async {
 
 void main() {
   group('nota baru', () {
-    testWidgets('centang tanya harga ada, dan mati sejak awal', (
-      tester,
-    ) async {
+    testWidgets('centang tanya harga ada, dan mati sejak awal', (tester) async {
       await _lukis(tester);
 
       expect(tester.takeException(), isNull);
@@ -189,6 +198,96 @@ void main() {
       );
 
       expect(find.text('TANYA HARGA PART'), findsOneWidget);
+    });
+  });
+
+  // -------------------------------------------------------------------
+  // Tanya harga sedang disimpan. Yang ditutup hanya pintu masuknya, dan
+  // yang diuji di sini adalah bahwa penutupannya rapi -- tidak ada
+  // potongan kalimat yang tertinggal, dan alur nota biasa tidak ikut
+  // terganggu.
+  // -------------------------------------------------------------------
+  group('tanya harga yang sedang disimpan', () {
+    testWidgets('tidak menyisakan jejak di formulir nota baru', (tester) async {
+      await _lukis(tester, adaTanyaHarga: false);
+
+      expect(find.text('Perlu tanya harga part'), findsNothing);
+      expect(find.text('PART YANG DICARI'), findsNothing);
+    });
+
+    testWidgets('tidak menyisakan jejak di nota yang sudah ada', (
+      tester,
+    ) async {
+      await _lukis(tester, nota: _nota(), adaTanyaHarga: false);
+
+      expect(find.text('TANYA HARGA PART'), findsNothing);
+      expect(find.text('LIHAT TANYA HARGA'), findsNothing);
+      // Sisa formulirnya utuh: yang disembunyikan cuma satu bagian.
+      expect(find.text('Irwan'), findsWidgets);
+    });
+
+    testWidgets('nota biasa tidak ikut terkunci', (tester) async {
+      await _lukis(tester, adaTanyaHarga: false);
+      await _ketuk(tester, find.widgetWithText(FilledButton, 'SIMPAN NOTA'));
+
+      expect(find.text('Nama wajib diisi'), findsOneWidget);
+      expect(find.text('Sebutkan part yang dicari'), findsNothing);
+    });
+  });
+
+  // -------------------------------------------------------------------
+  // Urutan kerja yang sebenarnya: unit masuk sebagai servis biasa, lalu
+  // dibongkar, dan baru di situ ketahuan masih bergaransi.
+  // -------------------------------------------------------------------
+  group('unit yang ternyata bergaransi', () {
+    CheckboxListTile centang(WidgetTester tester) =>
+        tester.widget(find.widgetWithText(CheckboxListTile, 'Unit bergaransi'));
+
+    testWidgets('centangnya tetap hidup pada nota yang sudah tersimpan', (
+      tester,
+    ) async {
+      await _lukis(tester, nota: _nota());
+
+      // Dulu mati begitu notanya tersimpan, dengan asumsi status garansi
+      // sudah diketahui saat unit diterima. Asumsi itu keliru.
+      expect(centang(tester).onChanged, isNotNull);
+      expect(
+        find.textContaining('Ternyata garansi setelah dicek'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('mencentangnya menuntut brand klaimnya', (tester) async {
+      await _lukis(tester, nota: _nota());
+      await _ketuk(tester, find.text('Unit bergaransi'));
+
+      expect(find.text('BRAND UNTUK KLAIM'), findsOneWidget);
+    });
+
+    testWidgets('nota yang klaimnya sudah ada dikunci', (tester) async {
+      await _lukis(tester, nota: _nota(claimId: 'klaim-1'));
+
+      // Melepasnya akan meninggalkan klaim yatim di halaman Klaim.
+      expect(centang(tester).onChanged, isNull);
+      expect(centang(tester).value, isTrue);
+      expect(find.textContaining('Klaimnya sudah dibuat'), findsOneWidget);
+      expect(find.text('BRAND UNTUK KLAIM'), findsNothing);
+    });
+
+    testWidgets('nota arsip yang sudah bertanda garansi dibiarkan apa adanya', (
+      tester,
+    ) async {
+      // Bentuk nota bergaransi di arsip 2026: bertanda garansi, tanpa
+      // claim_id, karena klaim ke brand punya arsipnya sendiri. Kalau
+      // centangnya dibiarkan terbuka di sini, sekadar membuka lalu
+      // menyimpan nota lama akan menerbitkan klaim baru yang tidak
+      // diminta siapa pun.
+      await _lukis(tester, nota: _nota(garansi: true));
+
+      expect(centang(tester).value, isTrue);
+      expect(centang(tester).onChanged, isNull);
+      expect(find.textContaining('Sudah bertanda garansi'), findsOneWidget);
+      expect(find.text('BRAND UNTUK KLAIM'), findsNothing);
     });
   });
 }

@@ -10,6 +10,8 @@ import '../../core/status.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import '../scan/scan_page.dart';
+import 'cari_nota.dart';
+import 'widgets/kolom_nota.dart';
 import 'widgets/pilihan_part.dart';
 
 const _uuid = Uuid();
@@ -18,7 +20,7 @@ final _dateFmt = DateFormat('dd MMMM yyyy');
 /// Satu baris part yang diklaim, beserta SN part rusaknya.
 class _PartEntry {
   _PartEntry({this.existingId, this.partTypeId, String? sn})
-      : snController = TextEditingController(text: sn ?? '');
+    : snController = TextEditingController(text: sn ?? '');
 
   /// Terisi bila baris ini sudah tersimpan sebelumnya.
   final String? existingId;
@@ -51,10 +53,24 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
   final _noPerbaikan = TextEditingController();
   final _catatan = TextEditingController();
 
+  final _namaFokus = FocusNode();
+
   int? _brandId;
   String? _teknisiId;
   String _status = ClaimStatus.open;
   late DateTime _tanggal;
+
+  /// Nota servis yang akan ditandai bergaransi begitu klaim ini tersimpan.
+  ///
+  /// Terisi ketika unit ini sudah lebih dulu masuk sebagai servis biasa --
+  /// keadaan yang justru paling sering: yang menemukan unitnya bergaransi
+  /// adalah teknisi yang sudah membongkarnya, bukan meja depan.
+  ServiceOrderEntry? _nota;
+
+  /// Id klaim baru, dibuat sekali. Kalau dibuat ulang tiap kali tombol
+  /// simpan ditekan, percobaan kedua atas penyimpanan yang gagal separuh
+  /// jalan akan menerbitkan klaim kembar alih-alih melanjutkan yang tadi.
+  String? _idBaru;
 
   List<_PartEntry> _parts = [];
 
@@ -116,11 +132,42 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
     _keluhan.dispose();
     _noPerbaikan.dispose();
     _catatan.dispose();
+    _namaFokus.dispose();
     for (final p in _parts) {
       p.dispose();
     }
     super.dispose();
   }
+
+  /// Mengambil alih isi formulir dari sebuah nota servis.
+  ///
+  /// Yang sudah diketik tidak ditimpa begitu saja pada kolom yang sifatnya
+  /// pengamatan teknisi -- keluhan bisa saja sudah dilengkapi setelah
+  /// unitnya dibongkar, dan itu lebih akurat daripada yang tercatat di
+  /// meja depan. Identitas unitnya sendiri diambil dari nota, karena di
+  /// situlah kebenarannya.
+  void _pilihNota(ServiceOrderEntry n) {
+    final brands = ref.read(brandsProvider).valueOrNull ?? const <Brand>[];
+
+    setState(() {
+      _nota = n;
+      _nama.text = n.customerNama;
+      _telp.text = n.customerTelp ?? '';
+      _sn.text = n.barangSn ?? '';
+      if (_keluhan.text.trim().isEmpty) _keluhan.text = n.keluhan ?? '';
+      _teknisiId = n.teknisiId ?? _teknisiId;
+      // Tanggal masuk unitnya, bukan hari orang menyadarinya bergaransi.
+      _tanggal = n.tanggalMasuk;
+      _brandId ??= tebakBrand(
+        brands,
+        [n.barangNama, ?n.barangType].join(' '),
+      )?.id;
+    });
+  }
+
+  /// Melepas tautannya tanpa mengosongkan kolom. Yang dibatalkan adalah
+  /// hubungannya ke nota itu, bukan data yang sudah terlanjur benar.
+  void _lepasNota() => setState(() => _nota = null);
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -151,7 +198,7 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
     setState(() => _busy = true);
 
     final db = ref.read(databaseProvider);
-    final claimId = widget.claim?.id ?? _uuid.v4();
+    final claimId = widget.claim?.id ?? (_idBaru ??= _uuid.v4());
 
     String? nullIfEmpty(TextEditingController c) =>
         c.text.trim().isEmpty ? null : c.text.trim();
@@ -191,6 +238,16 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
               : p.snController.text.trim(),
         });
       }
+
+      // Notanya ditandai bergaransi dari sini, lewat satu fungsi khusus
+      // di server: penjaga kolom menutup garansi dan claim_id bagi update
+      // biasa dari teknisi, dan justru teknisilah yang berdiri di sini.
+      //
+      // Dijalankan paling akhir supaya klaimnya sudah pasti ada -- server
+      // menolak tautan ke baris yang belum ada.
+      if (_nota != null && !widget.isEdit) {
+        await db.tautkanNotaKeKlaim(_nota!.id, claimId);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -208,8 +265,14 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          widget.isEdit ? 'Perubahan tersimpan' : 'Klaim tersimpan',
+          widget.isEdit
+              ? 'Perubahan tersimpan'
+              : _nota == null
+              ? 'Klaim tersimpan'
+              : 'Klaim tersimpan. Nota ${_nota!.noNota} sekarang '
+                    'bertanda garansi.',
         ),
+        duration: Duration(seconds: _nota == null ? 4 : 7),
       ),
     );
   }
@@ -251,6 +314,48 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
       );
     }
 
+    final semuaNota =
+        ref.watch(serviceOrdersProvider).valueOrNull ??
+        const <ServiceOrderEntry>[];
+
+    // Dirakit sebagai daftar tersendiri karena letaknya berpindah: pada
+    // klaim baru bagian ini naik ke paling atas, sebab dari namanyalah
+    // notanya dicari. Pada klaim yang sedang disunting ia tetap di
+    // tempatnya semula -- di sana tidak ada yang perlu dicari lagi.
+    final bagianPelanggan = <Widget>[
+      const SectionLabel('Pelanggan'),
+      const SizedBox(height: AppSpacing.s),
+      if (widget.isEdit)
+        LabeledField(
+          label: 'Nama',
+          required: true,
+          child: TextFormField(
+            controller: _nama,
+            textCapitalization: TextCapitalization.characters,
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Nama wajib diisi' : null,
+          ),
+        )
+      else
+        KolomNota(
+          controller: _nama,
+          focusNode: _namaFokus,
+          nota: semuaNota,
+          terpilih: _nota,
+          onPilih: _pilihNota,
+          onLepas: _lepasNota,
+        ),
+      const SizedBox(height: AppSpacing.s),
+      LabeledField(
+        label: 'Telepon',
+        child: TextFormField(
+          controller: _telp,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(hintText: '0812-3456-7890'),
+        ),
+      ),
+    ];
+
     return Scaffold(
       appBar: AppBar(
         titleSpacing: AppSpacing.sm,
@@ -272,6 +377,11 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (!widget.isEdit) ...[
+                      ...bagianPelanggan,
+                      const SizedBox(height: AppSpacing.md),
+                    ],
+
                     const SectionLabel('Unit'),
                     const SizedBox(height: AppSpacing.s),
 
@@ -315,7 +425,8 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                             DropdownMenuItem(value: b.id, child: Text(b.nama)),
                         ],
                         onChanged: (v) => setState(() => _brandId = v),
-                        validator: (v) => v == null ? 'Brand wajib dipilih' : null,
+                        validator: (v) =>
+                            v == null ? 'Brand wajib dipilih' : null,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.s),
@@ -351,32 +462,10 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                       ),
                     ),
 
-                    const SizedBox(height: AppSpacing.md),
-                    const SectionLabel('Pelanggan'),
-                    const SizedBox(height: AppSpacing.s),
-
-                    LabeledField(
-                      label: 'Nama',
-                      required: true,
-                      child: TextFormField(
-                        controller: _nama,
-                        textCapitalization: TextCapitalization.characters,
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Nama wajib diisi'
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.s),
-                    LabeledField(
-                      label: 'Telepon',
-                      child: TextFormField(
-                        controller: _telp,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          hintText: '0812-3456-7890',
-                        ),
-                      ),
-                    ),
+                    if (widget.isEdit) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      ...bagianPelanggan,
+                    ],
 
                     const SizedBox(height: AppSpacing.md),
                     SectionLabel(
@@ -525,9 +614,9 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                     Text(
                       widget.isEdit
                           ? 'Perubahan langsung tersimpan ke server dan '
-                              'terlihat di perangkat lain.'
+                                'terlihat di perangkat lain.'
                           : 'Tanggal terisi otomatis. Data langsung tersimpan '
-                              'ke server dan terlihat di perangkat lain.',
+                                'ke server dan terlihat di perangkat lain.',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ],

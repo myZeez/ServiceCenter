@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/data/models.dart';
+import '../../core/fitur.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
@@ -29,6 +30,7 @@ class ClaimsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final claims = ref.watch(claimsProvider);
     final isAdmin = ref.watch(isAdminProvider);
+    final adaPart = ref.watch(fiturTanyaHargaProvider);
     final profile = ref.watch(currentProfileProvider);
 
     return Scaffold(
@@ -76,7 +78,9 @@ class ClaimsPage extends ConsumerWidget {
             },
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'servis', child: Text('Servis')),
-              const PopupMenuItem(value: 'part', child: Text('Part')),
+              // Sedang disimpan -- lihat fiturTanyaHargaProvider.
+              if (adaPart)
+                const PopupMenuItem(value: 'part', child: Text('Part')),
               const PopupMenuItem(
                 value: 'pekerjaanku',
                 child: Text('Pekerjaanku'),
@@ -165,7 +169,6 @@ class ClaimsPage extends ConsumerWidget {
   }
 }
 
-
 class _FilterBar extends ConsumerStatefulWidget {
   const _FilterBar();
 
@@ -182,8 +185,9 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
     super.dispose();
   }
 
-  void _setQuery(String v) =>
-      ref.read(claimFilterProvider.notifier).update((s) => s.copyWith(query: v));
+  void _setQuery(String v) => ref
+      .read(claimFilterProvider.notifier)
+      .update((s) => s.copyWith(query: v));
 
   @override
   Widget build(BuildContext context) {
@@ -207,8 +211,11 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
             controller: _search,
             decoration: InputDecoration(
               hintText: 'Cari nama, SN, RMA, telp',
-              prefixIcon:
-                  const Icon(Icons.search, size: 18, color: AppColors.grey),
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 18,
+                color: AppColors.grey,
+              ),
               prefixIconConstraints: const BoxConstraints(minWidth: 38),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -244,10 +251,10 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
                 child: _FilterDropdown<int?>(
                   value: filter.brandId,
                   placeholder: 'SEMUA BRAND',
-                  items: [
-                    for (final b in brands) (b.id, b.nama.toUpperCase()),
-                  ],
-                  onChanged: (v) => ref.read(claimFilterProvider.notifier).update(
+                  items: [for (final b in brands) (b.id, b.nama.toUpperCase())],
+                  onChanged: (v) => ref
+                      .read(claimFilterProvider.notifier)
+                      .update(
                         (s) => v == null
                             ? s.copyWith(clearBrand: true)
                             : s.copyWith(brandId: v),
@@ -261,9 +268,14 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
                   placeholder: 'SEMUA STATUS',
                   items: [
                     for (final s in ClaimStatus.all)
-                      (s, '${ClaimStatus.label(s).toUpperCase()}  ${counts[s] ?? 0}'),
+                      (
+                        s,
+                        '${ClaimStatus.label(s).toUpperCase()}  ${counts[s] ?? 0}',
+                      ),
                   ],
-                  onChanged: (v) => ref.read(claimFilterProvider.notifier).update(
+                  onChanged: (v) => ref
+                      .read(claimFilterProvider.notifier)
+                      .update(
                         (s) => v == null
                             ? s.copyWith(clearStatus: true)
                             : s.copyWith(status: v),
@@ -385,9 +397,8 @@ class _ClaimCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => ClaimDetailPage(claim.id)),
-        ),
+        onTap: () => Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => ClaimDetailPage(claim.id))),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.s),
           child: Column(

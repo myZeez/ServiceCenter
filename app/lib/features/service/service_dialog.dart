@@ -11,6 +11,7 @@ import '../../core/data/models.dart';
 import '../../core/print/nota_template.dart';
 import '../../core/print/raw_printer.dart';
 import '../../core/data/galat.dart';
+import '../../core/fitur.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
@@ -23,7 +24,10 @@ const _uuid = Uuid();
 final _tglFmt = DateFormat('dd MMM yyyy');
 final _iso = DateFormat('yyyy-MM-dd');
 
-Future<void> showServiceDialog(BuildContext context, {ServiceOrderEntry? nota}) {
+Future<void> showServiceDialog(
+  BuildContext context, {
+  ServiceOrderEntry? nota,
+}) {
   return showGeneralDialog(
     context: context,
     barrierDismissible: true,
@@ -150,9 +154,25 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   String? _kosongNull(TextEditingController c) =>
       c.text.trim().isEmpty ? null : c.text.trim();
 
+  /// Apakah tanda garansi pada nota ini masih boleh dinyalakan.
+  ///
+  /// Dua keadaan menutupnya, dan alasannya berbeda:
+  ///
+  ///   klaimnya sudah ada     melepasnya meninggalkan klaim yatim di
+  ///                          halaman Klaim
+  ///   sudah bertanda garansi tetapi tanpa klaim -- ini bentuk nota
+  ///                          bergaransi di arsip 2026, yang klaimnya
+  ///                          memang dicatat terpisah. Membiarkannya
+  ///                          terbuka membuat sekadar membuka lalu
+  ///                          menyimpan nota lama menerbitkan klaim baru
+  ///                          yang tidak diminta siapa pun.
+  bool get _bolehUbahGaransi =>
+      widget.nota == null ||
+      (!widget.nota!.garansi && widget.nota!.claimId == null);
+
   Future<void> _simpan() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_garansi && _brandId == null && widget.isNew) {
+    if (_garansi && _brandId == null && _bolehUbahGaransi) {
       setState(() => _error = 'Pilih brand untuk klaim garansinya.');
       return;
     }
@@ -174,10 +194,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       if (customerId == null) {
         final baru = await client
             .from('customers')
-            .insert({
-              'nama': _nama.text.trim(),
-              'telp': _kosongNull(_telp),
-            })
+            .insert({'nama': _nama.text.trim(), 'telp': _kosongNull(_telp)})
             .select()
             .single();
         customerId = baru['id'] as String;
@@ -187,32 +204,40 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
 
       // Unit bergaransi menghasilkan dua catatan sekaligus: nota untuk
       // pelanggan, dan klaim untuk brand. Datanya diketik satu kali.
-      if (widget.isNew && _garansi) {
-        // Dibuat sekali lalu dipakai lagi kalau penyimpanannya diulang.
-        // Klaimnya bisa saja sudah sampai server sebelum notanya gagal
-        // tersimpan; dengan id yang sama, percobaan berikutnya menyunting
-        // klaim yang itu juga alih-alih menerbitkan klaim kembar.
-        claimId = _claimBaru ??= _uuid.v4();
+      final perluKlaim = _garansi && claimId == null && _bolehUbahGaransi;
 
-        // Klaimnya disimpan lebih dulu: notanya menunjuk ke baris ini, dan
-        // server menolak tautan ke baris yang belum ada.
-        await ref.read(databaseProvider).simpanClaim({
-          'id': claimId,
-          'tanggal': DateTime.now().toUtc().toIso8601String(),
-          'brand_id': _brandId!,
-          'nama_pelanggan': _nama.text.trim(),
-          'telp': _kosongNull(_telp),
-          'sn': _sn.text.trim(),
-          'teknisi_id': _teknisiId,
-          'keluhan': _kosongNull(_keluhan),
-          'status': 'open',
-          'created_by': user!.id,
-        });
+      // Dibuat sekali lalu dipakai lagi kalau penyimpanannya diulang.
+      // Klaimnya bisa saja sudah sampai server sebelum notanya gagal
+      // tersimpan; dengan id yang sama, percobaan berikutnya menyunting
+      // klaim yang itu juga alih-alih menerbitkan klaim kembar.
+      if (perluKlaim) claimId = _claimBaru ??= _uuid.v4();
+
+      Map<String, dynamic> isiKlaim() => {
+        'id': claimId,
+        // Tanggal masuk unitnya, bukan tanggal orang menyadarinya
+        // bergaransi. Yang dijawab kolom ini adalah kapan unit ini
+        // sampai di meja.
+        'tanggal': (widget.nota?.tanggalMasuk ?? DateTime.now())
+            .toUtc()
+            .toIso8601String(),
+        'brand_id': _brandId!,
+        'nama_pelanggan': _nama.text.trim(),
+        'telp': _kosongNull(_telp),
+        'sn': _sn.text.trim(),
+        'teknisi_id': _teknisiId,
+        'keluhan': _kosongNull(_keluhan),
+        'status': 'open',
+        'created_by': user!.id,
+      };
+
+      // Pada nota baru, klaimnya disimpan lebih dulu: notanya menunjuk ke
+      // baris ini, dan server menolak tautan ke baris yang belum ada.
+      if (perluKlaim && widget.isNew) {
+        await ref.read(databaseProvider).simpanClaim(isiKlaim());
       }
 
       final data = {
-        'estimasi_selesai':
-            _estimasi == null ? null : _iso.format(_estimasi!),
+        'estimasi_selesai': _estimasi == null ? null : _iso.format(_estimasi!),
         'customer_nama': _nama.text.trim(),
         'customer_telp': _kosongNull(_telp),
         'customer_id': customerId,
@@ -224,13 +249,20 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         'keluhan': _kosongNull(_keluhan),
         'teknisi_id': _teknisiId,
         'perbaikan': _kosongNull(_perbaikan),
-        'garansi': _garansi,
-        'claim_id': claimId,
+        // Pada nota yang sudah ada, tanda garansi sengaja TIDAK lewat
+        // sini. Penjaga kolom di server menolak siapa pun selain admin
+        // mengubah dua kolom ini lewat update biasa; yang berhak
+        // mengubahnya hanya tautkan_nota_ke_klaim() di bawah. Dikirim apa
+        // adanya supaya nilainya tidak berbeda dari yang tersimpan --
+        // penjaganya membandingkan nilai, bukan niat.
+        'garansi': widget.isNew ? _garansi : widget.nota!.garansi,
+        'claim_id': widget.isNew ? claimId : widget.nota!.claimId,
         'status': _status,
         'biaya': double.tryParse(_biaya.text) ?? 0,
         'cara_bayar': _caraBayar,
-        'tanggal_lunas':
-            _tanggalLunas == null ? null : _iso.format(_tanggalLunas!),
+        'tanggal_lunas': _tanggalLunas == null
+            ? null
+            : _iso.format(_tanggalLunas!),
         'keterangan': _kosongNull(_keterangan),
       };
 
@@ -247,6 +279,20 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       } else {
         notaId = widget.nota!.id;
         await client.from('service_orders').update(data).eq('id', notaId);
+      }
+
+      // Nota yang ternyata bergaransi. Klaimnya lahir belakangan, lalu
+      // ditautkan lewat fungsi khusus di server -- satu-satunya jalan
+      // yang boleh menyentuh garansi dan claim_id.
+      //
+      // Kalau langkah ini gagal, dialognya tidak ditutup dan galatnya
+      // tampil. Menekan simpan sekali lagi aman: idnya sudah dibuat dan
+      // dipakai ulang, penyimpanan klaimnya berupa upsert, dan penautan
+      // ke klaim yang sama tidak ditolak.
+      if (perluKlaim && !widget.isNew) {
+        final db = ref.read(databaseProvider);
+        await db.simpanClaim(isiKlaim());
+        await db.tautkanNotaKeKlaim(notaId, claimId!);
       }
 
       // Tanya harga lahir SESUDAH notanya: barisnya menunjuk ke nota itu,
@@ -301,7 +347,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       setState(() => _error = pesanGalat(e));
     } catch (_) {
       setState(
-        () => _error = 'Gagal menyimpan. Membuat nota membutuhkan koneksi, '
+        () => _error =
+            'Gagal menyimpan. Membuat nota membutuhkan koneksi, '
             'karena nomornya ditetapkan server agar tidak kembar.',
       );
     } finally {
@@ -320,7 +367,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     final toko = ref.read(storeSettingsProvider).valueOrNull;
 
     final orang = {
-      for (final p in ref.read(techniciansProvider).valueOrNull ?? const <Profile>[])
+      for (final p
+          in ref.read(techniciansProvider).valueOrNull ?? const <Profile>[])
         p.id: p.nama,
     };
     final semuaProfil = await ref.read(databaseProvider).allProfiles();
@@ -478,7 +526,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         CustomerField(
           controller: _nama,
           focusNode: _namaFokus,
-          pelanggan: ref.watch(customersProvider).valueOrNull ??
+          pelanggan:
+              ref.watch(customersProvider).valueOrNull ??
               const <CustomerEntry>[],
           terpilih: _pelanggan,
           onPilih: (c) => setState(() {
@@ -513,9 +562,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                   controller: _barang,
                   textCapitalization: TextCapitalization.characters,
                   decoration: const InputDecoration(hintText: 'LAPTOP ASUS'),
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Wajib diisi'
-                      : null,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
                 ),
               ),
             ),
@@ -618,12 +666,13 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                   onPressed: () async {
                     final p = await showDatePicker(
                       context: context,
-                      initialDate: _estimasi ??
+                      initialDate:
+                          _estimasi ??
                           DateTime.now().add(const Duration(days: 3)),
-                      firstDate: DateTime.now()
-                          .subtract(const Duration(days: 365)),
-                      lastDate:
-                          DateTime.now().add(const Duration(days: 365)),
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 365),
+                      ),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
                     );
                     if (p != null) setState(() => _estimasi = p);
                   },
@@ -646,9 +695,15 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         const SizedBox(height: AppSpacing.s),
 
         // Centang ini menentukan apakah unit juga diklaimkan ke brand.
+        //
+        // Tetap hidup setelah notanya tersimpan, dan itu bukan kelonggaran
+        // melainkan urutan kerja yang sebenarnya: unit masuk sebagai
+        // servis biasa, dibongkar, dan baru di situ ketahuan masih
+        // bergaransi. Yang dikunci hanya nota yang klaimnya sudah ada --
+        // melepasnya berarti meninggalkan klaim yatim di halaman Klaim.
         CheckboxListTile(
           value: _garansi,
-          onChanged: widget.isNew
+          onChanged: _bolehUbahGaransi
               ? (v) => setState(() => _garansi = v ?? false)
               : null,
           controlAffinity: ListTileControlAffinity.leading,
@@ -659,13 +714,20 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
           subtitle: Text(
-            widget.isNew
+            widget.nota?.claimId != null
+                ? 'Klaimnya sudah dibuat. Buka di halaman Klaim untuk '
+                      'mengubahnya.'
+                : !_bolehUbahGaransi
+                ? 'Sudah bertanda garansi. Klaimnya dicatat terpisah di '
+                      'halaman Klaim.'
+                : widget.isNew
                 ? 'Klaim ke brand dibuat otomatis dari data ini.'
-                : 'Tidak bisa diubah setelah nota tersimpan.',
+                : 'Ternyata garansi setelah dicek? Centang saja — klaimnya '
+                      'dibuat saat nota ini disimpan.',
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ),
-        if (_garansi && widget.isNew) ...[
+        if (_garansi && _bolehUbahGaransi) ...[
           const SizedBox(height: AppSpacing.xs),
           LabeledField(
             label: 'Brand untuk Klaim',
@@ -683,8 +745,11 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
           ),
         ],
 
-        const SizedBox(height: AppSpacing.xs),
-        _tanyaHargaBagian(context),
+        // Sedang disimpan -- lihat fiturTanyaHargaProvider.
+        if (ref.watch(fiturTanyaHargaProvider)) ...[
+          const SizedBox(height: AppSpacing.xs),
+          _tanyaHargaBagian(context),
+        ],
 
         const SizedBox(height: AppSpacing.sm),
         const SectionLabel('Penyelesaian'),
@@ -758,8 +823,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                       context: context,
                       initialDate: _tanggalLunas ?? DateTime.now(),
                       firstDate: DateTime(2020),
-                      lastDate:
-                          DateTime.now().add(const Duration(days: 365)),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
                     );
                     if (p != null) setState(() => _tanggalLunas = p);
                   },
@@ -1018,8 +1082,5 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
 final _tombolTanggal = OutlinedButton.styleFrom(
   alignment: Alignment.centerLeft,
   side: const BorderSide(color: Color(0xFFCFD5D4), width: 1),
-  padding: const EdgeInsets.symmetric(
-    horizontal: AppSpacing.s,
-    vertical: 13,
-  ),
+  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s, vertical: 13),
 );

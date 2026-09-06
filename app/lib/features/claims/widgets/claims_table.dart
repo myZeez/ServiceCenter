@@ -8,7 +8,17 @@ import '../../../core/theme.dart';
 final _dateFmt = DateFormat('dd/MM/yyyy');
 final _dateShortFmt = DateFormat('dd/MM/yy');
 
-enum _ColId { tanggal, brand, pelanggan, telp, sn, teknisi, keluhan, rma, status }
+enum _ColId {
+  tanggal,
+  brand,
+  pelanggan,
+  telp,
+  sn,
+  teknisi,
+  keluhan,
+  rma,
+  status,
+}
 
 /// Satu kolom beserta ambang lebar tempat ia mulai ditampilkan.
 ///
@@ -198,63 +208,63 @@ class _DataRowState extends State<_DataRow> {
 
     return switch (id) {
       _ColId.tanggal => Row(
-          children: [
-            Flexible(
-              child: Text(
-                widget.compact
-                    ? _dateShortFmt.format(c.tanggal)
-                    : _dateFmt.format(c.tanggal),
-                style: _cell,
-                overflow: TextOverflow.ellipsis,
-              ),
+        children: [
+          Flexible(
+            child: Text(
+              widget.compact
+                  ? _dateShortFmt.format(c.tanggal)
+                  : _dateFmt.format(c.tanggal),
+              style: _cell,
+              overflow: TextOverflow.ellipsis,
             ),
-          ],
-        ),
-      _ColId.brand => Text(
-          widget.brand.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
           ),
-          overflow: TextOverflow.ellipsis,
+        ],
+      ),
+      _ColId.brand => Text(
+        widget.brand.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
         ),
+        overflow: TextOverflow.ellipsis,
+      ),
       _ColId.pelanggan => Text(
-          c.namaPelanggan,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          overflow: TextOverflow.ellipsis,
-        ),
+        c.namaPelanggan,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        overflow: TextOverflow.ellipsis,
+      ),
       _ColId.telp => Text(
-          c.telp ?? '—',
-          style: _cell,
-          overflow: TextOverflow.ellipsis,
-        ),
+        c.telp ?? '—',
+        style: _cell,
+        overflow: TextOverflow.ellipsis,
+      ),
       _ColId.sn => Text(
-          c.sn,
-          style: _cell.copyWith(letterSpacing: 0.2),
-          overflow: TextOverflow.ellipsis,
-        ),
+        c.sn,
+        style: _cell.copyWith(letterSpacing: 0.2),
+        overflow: TextOverflow.ellipsis,
+      ),
       _ColId.teknisi => Text(
-          widget.technician ?? '—',
-          style: widget.technician == null
-              ? _cell.copyWith(color: AppColors.grey)
-              : _cell,
-          overflow: TextOverflow.ellipsis,
-        ),
+        widget.technician ?? '—',
+        style: widget.technician == null
+            ? _cell.copyWith(color: AppColors.grey)
+            : _cell,
+        overflow: TextOverflow.ellipsis,
+      ),
       _ColId.keluhan => Text(
-          c.keluhan ?? '—',
-          style: _cell,
-          overflow: TextOverflow.ellipsis,
-        ),
+        c.keluhan ?? '—',
+        style: _cell,
+        overflow: TextOverflow.ellipsis,
+      ),
       _ColId.rma => Text(
-          c.noPerbaikan ?? '—',
-          style: _cell.copyWith(color: AppColors.grey),
-          overflow: TextOverflow.ellipsis,
-        ),
+        c.noPerbaikan ?? '—',
+        style: _cell.copyWith(color: AppColors.grey),
+        overflow: TextOverflow.ellipsis,
+      ),
       _ColId.status => Align(
-          alignment: Alignment.centerLeft,
-          child: StatusChip(c.status, compact: true),
-        ),
+        alignment: Alignment.centerLeft,
+        child: StatusChip(c.status, compact: true),
+      ),
     };
   }
 }

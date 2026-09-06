@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/fitur.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/koneksi.dart';
@@ -33,6 +34,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   @override
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(isAdminProvider);
+    final adaPart = ref.watch(fiturTanyaHargaProvider);
 
     // Dikelompokkan supaya dua dunia yang berbeda tidak tercampur: layanan
     // ke pelanggan di satu sisi, pengajuan ke brand di sisi lain. Keduanya
@@ -48,8 +50,11 @@ class _AdminShellState extends ConsumerState<AdminShell> {
         const _Section('Laporan Servis', Icons.summarize_outlined),
         // Dua layar atas satu tabel yang sama: yang pertama meja
         // tanya-jawabnya, yang kedua pesanan yang sudah berjalan.
-        const _Section('Tanya Harga', Icons.request_quote_outlined),
-        const _Section('Pemesanan Part', Icons.local_shipping_outlined),
+        // Keduanya sedang disimpan -- lihat fiturTanyaHargaProvider.
+        if (adaPart) ...[
+          const _Section('Tanya Harga', Icons.request_quote_outlined),
+          const _Section('Pemesanan Part', Icons.local_shipping_outlined),
+        ],
       ],
       _Section(
         'Klaim',

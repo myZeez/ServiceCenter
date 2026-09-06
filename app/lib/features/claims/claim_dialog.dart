@@ -12,6 +12,8 @@ import '../../core/status.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import '../scan/scan_page.dart';
+import 'cari_nota.dart';
+import 'widgets/kolom_nota.dart';
 import 'widgets/pilihan_part.dart';
 
 const _uuid = Uuid();
@@ -63,7 +65,7 @@ class ClaimDialog extends ConsumerStatefulWidget {
 
 class _PartEntry {
   _PartEntry({this.existingId, this.typeId, String? sn})
-      : sn = TextEditingController(text: sn ?? '');
+    : sn = TextEditingController(text: sn ?? '');
 
   final String? existingId;
   int? typeId;
@@ -82,10 +84,21 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
   final _noPerbaikan = TextEditingController();
   final _catatan = TextEditingController();
 
+  final _namaFokus = FocusNode();
+
   int? _brandId;
   String? _teknisiId;
   String _status = ClaimStatus.open;
   late DateTime _tanggal;
+
+  /// Nota servis yang akan ditandai bergaransi begitu klaim ini tersimpan.
+  /// Lihat [KolomNota] untuk kenapa jalannya lewat sini.
+  ServiceOrderEntry? _nota;
+
+  /// Dibuat sekali. Id yang dibuat ulang tiap kali tombol simpan ditekan
+  /// membuat percobaan kedua atas penyimpanan yang gagal separuh jalan
+  /// menerbitkan klaim kembar alih-alih melanjutkan yang tadi.
+  String? _idBaru;
 
   List<_PartEntry> _parts = [];
   final List<String> _removedPartIds = [];
@@ -144,6 +157,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
     _keluhan.dispose();
     _noPerbaikan.dispose();
     _catatan.dispose();
+    _namaFokus.dispose();
     for (final p in _parts) {
       p.dispose();
     }
@@ -152,6 +166,34 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
 
   String? _nullIfEmpty(TextEditingController c) =>
       c.text.trim().isEmpty ? null : c.text.trim();
+
+  /// Mengambil alih isi formulir dari sebuah nota servis.
+  ///
+  /// Keluhan tidak ditimpa kalau sudah diketik: yang ada di layar biasanya
+  /// hasil pengamatan setelah unitnya dibongkar, dan itu lebih akurat
+  /// daripada yang tercatat saat unitnya diterima.
+  void _pilihNota(ServiceOrderEntry n) {
+    final brands = ref.read(brandsProvider).valueOrNull ?? const <Brand>[];
+
+    setState(() {
+      _nota = n;
+      _nama.text = n.customerNama;
+      _telp.text = n.customerTelp ?? '';
+      _snUnit.text = n.barangSn ?? '';
+      if (_keluhan.text.trim().isEmpty) _keluhan.text = n.keluhan ?? '';
+      _teknisiId = n.teknisiId ?? _teknisiId;
+      // Tanggal masuk unitnya, bukan hari orang menyadarinya bergaransi.
+      _tanggal = n.tanggalMasuk;
+      _brandId ??= tebakBrand(
+        brands,
+        [n.barangNama, ?n.barangType].join(' '),
+      )?.id;
+    });
+  }
+
+  /// Melepas tautannya tanpa mengosongkan kolom. Yang dibatalkan adalah
+  /// hubungannya ke nota itu, bukan data yang sudah terlanjur benar.
+  void _lepasNota() => setState(() => _nota = null);
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -162,7 +204,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
     setState(() => _busy = true);
 
     final db = ref.read(databaseProvider);
-    final claimId = widget.claim?.id ?? _uuid.v4();
+    final claimId = widget.claim?.id ?? (_idBaru ??= _uuid.v4());
 
     final isi = {
       'tanggal': _tanggal.toUtc().toIso8601String(),
@@ -195,6 +237,16 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
           'sn_bad_part': p.sn.text.trim().isEmpty ? null : p.sn.text.trim(),
         });
       }
+
+      // Notanya ditandai bergaransi lewat fungsi khusus di server, bukan
+      // update biasa: dua kolom itu tertutup bagi siapa pun selain admin,
+      // dan layar ini juga dipakai teknisi.
+      //
+      // Paling akhir, karena server menolak tautan ke klaim yang belum
+      // ada.
+      if (_nota != null && widget.isNew) {
+        await db.tautkanNotaKeKlaim(_nota!.id, claimId);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -211,7 +263,15 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(widget.isNew ? 'Klaim tersimpan' : 'Perubahan tersimpan'),
+        content: Text(
+          !widget.isNew
+              ? 'Perubahan tersimpan'
+              : _nota == null
+              ? 'Klaim tersimpan'
+              : 'Klaim tersimpan. Nota ${_nota!.noNota} sekarang '
+                    'bertanda garansi.',
+        ),
+        duration: Duration(seconds: _nota == null ? 4 : 7),
       ),
     );
   }
@@ -255,7 +315,8 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
     final isAdmin = ref.watch(isAdminProvider);
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
     final techs = ref.watch(pengerjaUntukProvider(_teknisiId));
-    final types = ref.watch(partTypesProvider).valueOrNull ?? const <PartType>[];
+    final types =
+        ref.watch(partTypesProvider).valueOrNull ?? const <PartType>[];
     final allBrands =
         ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[];
 
@@ -380,7 +441,11 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
               padding: EdgeInsets.only(right: AppSpacing.xs),
               child: Tooltip(
                 message: 'Hanya kolom teknisi yang bisa kamu ubah',
-                child: Icon(Icons.lock_outline, size: 15, color: AppColors.grey),
+                child: Icon(
+                  Icons.lock_outline,
+                  size: 15,
+                  color: AppColors.grey,
+                ),
               ),
             ),
           IconButton(
@@ -397,9 +462,59 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
   Widget _leftColumn(List<Brand> brands, bool isAdmin) {
     final editable = isAdmin || widget.isNew;
 
+    final semuaNota =
+        ref.watch(serviceOrdersProvider).valueOrNull ??
+        const <ServiceOrderEntry>[];
+
+    // Pada klaim baru bagian ini naik ke paling atas: dari nama
+    // pelanggannya notanya dicari, dan begitu notanya terpilih kolom unit
+    // di bawahnya ikut terisi sendiri. Pada klaim yang sudah ada ia tetap
+    // di tempat semula -- tidak ada lagi yang perlu dicari di sana.
+    final bagianPelanggan = <Widget>[
+      const SectionLabel('Pelanggan'),
+      const SizedBox(height: AppSpacing.s),
+      if (widget.isNew)
+        KolomNota(
+          controller: _nama,
+          focusNode: _namaFokus,
+          nota: semuaNota,
+          terpilih: _nota,
+          onPilih: _pilihNota,
+          onLepas: _lepasNota,
+        )
+      else
+        LabeledField(
+          label: 'Nama',
+          required: true,
+          child: TextFormField(
+            controller: _nama,
+            readOnly: !editable,
+            textCapitalization: TextCapitalization.characters,
+            onChanged: (_) => setState(() {}),
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Nama wajib diisi' : null,
+          ),
+        ),
+      const SizedBox(height: AppSpacing.s),
+      LabeledField(
+        label: 'Telepon',
+        child: TextFormField(
+          controller: _telp,
+          readOnly: !editable,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(hintText: '0812-3456-7890'),
+        ),
+      ),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (widget.isNew) ...[
+          ...bagianPelanggan,
+          const SizedBox(height: AppSpacing.sm),
+        ],
+
         const SectionLabel('Unit'),
         const SizedBox(height: AppSpacing.s),
         Row(
@@ -413,8 +528,9 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                   initialValue: _brandId,
                   isExpanded: true,
                   hint: const Text('Pilih'),
-                  onChanged:
-                      editable ? (v) => setState(() => _brandId = v) : null,
+                  onChanged: editable
+                      ? (v) => setState(() => _brandId = v)
+                      : null,
                   items: [
                     for (final b in brands)
                       DropdownMenuItem(value: b.id, child: Text(b.nama)),
@@ -483,40 +599,15 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
           ),
         ),
 
-        const SizedBox(height: AppSpacing.sm),
-        const SectionLabel('Pelanggan'),
-        const SizedBox(height: AppSpacing.s),
-        LabeledField(
-          label: 'Nama',
-          required: true,
-          child: TextFormField(
-            controller: _nama,
-            readOnly: !editable,
-            textCapitalization: TextCapitalization.characters,
-            onChanged: (_) => setState(() {}),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Nama wajib diisi' : null,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.s),
-        LabeledField(
-          label: 'Telepon',
-          child: TextFormField(
-            controller: _telp,
-            readOnly: !editable,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(hintText: '0812-3456-7890'),
-          ),
-        ),
+        if (!widget.isNew) ...[
+          const SizedBox(height: AppSpacing.sm),
+          ...bagianPelanggan,
+        ],
       ],
     );
   }
 
-  Widget _rightColumn(
-    List<Profile> techs,
-    List<PartType> types,
-    bool isAdmin,
-  ) {
+  Widget _rightColumn(List<Profile> techs, List<PartType> types, bool isAdmin) {
     final editable = isAdmin || widget.isNew;
 
     return Column(
@@ -553,8 +644,9 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                 child: DropdownButtonFormField<String>(
                   initialValue: _status,
                   isExpanded: true,
-                  onChanged:
-                      editable ? (v) => setState(() => _status = v!) : null,
+                  onChanged: editable
+                      ? (v) => setState(() => _status = v!)
+                      : null,
                   items: [
                     for (final s in ClaimStatus.all)
                       DropdownMenuItem(
@@ -698,9 +790,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
           ),
           const SizedBox(width: AppSpacing.xs),
           FilledButton(
-            onPressed: _busy
-                ? null
-                : (editable ? _save : _saveTechnicianOnly),
+            onPressed: _busy ? null : (editable ? _save : _saveTechnicianOnly),
             child: _busy
                 ? const SizedBox(
                     height: 14,

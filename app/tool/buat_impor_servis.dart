@@ -187,11 +187,22 @@ void main() {
     );
   }
 
-  // ---- Sumber 3: laporan harian, untuk cara bayarnya -----------------
+  // ---- Sumber 3: laporan harian -------------------------------------
   //
-  // Hanya lima hari yang diekspor, jadi cakupannya kecil -- tetapi ini
-  // satu-satunya tempat cara bayar tercatat sama sekali.
+  // Dua hal diambil dari sini, dari dua bagian yang berbeda:
+  //
+  //   bagian NOTA KELUAR  -> cara bayarnya. Satu-satunya tempat cara
+  //                          bayar tercatat sama sekali.
+  //   bagian NOTA MASUK   -> nota September. Sheet Penerimaan yang
+  //                          diekspor berhenti di 31 Agustus, jadi tanpa
+  //                          bagian ini seluruh September hilang.
+  //
+  // Cakupannya lima hari saja -- 1, 2, 3, 4, dan 6 September. Tanggal 5
+  // memang tidak ada berkasnya.
   final bayar = <String, String>{};
+  final masukHarian = <String, List<String>>{};
+  final tanggalMasukHarian = <String, DateTime>{};
+
   for (final berkas in [
     '$dir/SVS SEPTEMBER 2026 DATA 1.csv',
     '$dir/SVS SEPTEMBER 2026 DATA 2.csv',
@@ -201,13 +212,45 @@ void main() {
   ]) {
     final f = File(berkas);
     if (!f.existsSync()) continue;
+
+    DateTime? hariLaporan;
+    var bagianMasuk = false;
+
     for (final b in baca(f.readAsStringSync(), pemisah: ';')) {
+      final gabung = b.join(' ').toUpperCase();
+
+      final judul = RegExp(
+        r'LAPORAN PERHARI TGL\s+(\d{1,2}/\d{1,2}/\d{4})',
+      ).firstMatch(gabung);
+      if (judul != null) hariLaporan = tanggal(judul.group(1)!);
+
+      // Kedua bagian memakai susunan kolom yang berbeda, dan barisnya
+      // dibedakan dari kepala tabelnya: yang bawah punya kolom NO HP.
+      if (gabung.contains('NO HP')) {
+        bagianMasuk = true;
+        continue;
+      }
+      if (gabung.contains('TANGGAL MASUK')) {
+        bagianMasuk = false;
+        continue;
+      }
+
       final no = g(b, 2).replaceAll(RegExp(r'[^0-9]'), '');
-      // Bagian nota keluar dikenali dari adanya angka biaya; bagian nota
-      // masuk di bawahnya memakai susunan kolom yang lain.
-      if (no.isEmpty || uang(g(b, 5)) == null) continue;
-      final cara = caraBayarDari(g(b, 7));
-      if (cara != null) bayar[no] = cara;
+      if (no.isEmpty) continue;
+
+      if (!bagianMasuk) {
+        if (uang(g(b, 5)) == null) continue;
+        final cara = caraBayarDari(g(b, 7));
+        if (cara != null) bayar[no] = cara;
+        continue;
+      }
+
+      // Bagian nota masuk. Nama kosong berarti baris nomor yang sudah
+      // disiapkan tetapi belum dipakai -- bukan nota.
+      final nama = g(b, 1);
+      if (nama.isEmpty || hariLaporan == null) continue;
+      masukHarian.putIfAbsent(no, () => [nama, g(b, 3), g(b, 4), g(b, 5)]);
+      tanggalMasukHarian.putIfAbsent(no, () => hariLaporan!);
     }
   }
 
@@ -322,6 +365,63 @@ void main() {
       ),
     );
   }
+  // ---- Nota September, dari bagian nota masuk laporan harian --------
+  //
+  // Sheet Penerimaan berhenti di 31 Agustus, jadi tanpa bagian ini
+  // seluruh September kosong -- dan itu justru bulan yang sedang
+  // berjalan, yang paling dibutuhkan di layar.
+  //
+  // Nomor notanya di laporan harian ditulis telanjang ("28168"). Bentuk
+  // lengkapnya dirakit dengan aturan yang sama seperti di sheet
+  // Penerimaan: SVR + tanggal masuk + urut.
+  final sudahAda = {for (final n in nota) n.noNota};
+  var dariHarian = 0;
+
+  for (final e in masukHarian.entries) {
+    final urut = e.key;
+    final tgl = tanggalMasukHarian[urut];
+    if (tgl == null) continue;
+    if (tgl.isBefore(mulai) || !tgl.isBefore(sampai)) continue;
+
+    final hari =
+        '${tgl.day.toString().padLeft(2, '0')}'
+        '${tgl.month.toString().padLeft(2, '0')}'
+        '${(tgl.year % 100).toString().padLeft(2, '0')}';
+    final noNota = 'SVR-$hari$urut';
+    if (sudahAda.contains(noNota)) continue;
+
+    final tuntas = selesai[urut];
+    final biaya = tuntas?.biaya ?? 0;
+
+    perStatus.update(
+      tuntas == null ? 'masuk' : 'diambil',
+      (v) => v + 1,
+      ifAbsent: () => 1,
+    );
+    if (tuntas != null) dariPelunasan++;
+    dariHarian++;
+
+    nota.add(
+      Nota(
+        noNota: noNota,
+        tanggalMasuk: tgl,
+        nama: e.value[0],
+        telp: e.value[1],
+        barang: e.value[2],
+        keluhan: e.value[3],
+        teknisi: tuntas?.teknisi,
+        perbaikan: tuntas?.perbaikan,
+        garansi: false,
+        status: tuntas == null ? 'masuk' : 'diambil',
+        biaya: biaya,
+        caraBayar: biaya > 0 ? (bayar[urut] ?? 'cash') : null,
+        tanggalSelesai: tuntas?.tanggal,
+        tanggalLunas: tuntas?.tanggal,
+        keterangan: null,
+      ),
+    );
+  }
+
   nota.sort((a, b) => a.tanggalMasuk.compareTo(b.tanggalMasuk));
 
   // ---- Kirim antar cabang -------------------------------------------
@@ -370,6 +470,16 @@ void main() {
   stderr.writeln('  status dari kolom STATUS    : $dariSheetStatus');
   stderr.writeln('  benar-benar belum ada kabar : $sisaMasuk');
   stderr.writeln('  cara bayar dari laporan harian: ${bayar.length} nota');
+  stderr.writeln('  nota Sept dari laporan harian : $dariHarian');
+  final perBulan = <String, int>{};
+  for (final n in nota) {
+    perBulan.update(
+      '${n.tanggalMasuk.year}-${n.tanggalMasuk.month.toString().padLeft(2, '0')}',
+      (v) => v + 1,
+      ifAbsent: () => 1,
+    );
+  }
+  stderr.writeln('  per bulan       : $perBulan');
   stderr.writeln('kirim             : ${kirim.length}');
 }
 
@@ -387,6 +497,18 @@ String _kepala(
       .map((e) => '--       ${e.key.padRight(10)} ${e.value}')
       .join('\n');
   final berbiaya = nota.where((n) => n.biaya > 0).length;
+  final perBulan = <String, int>{};
+  for (final n in nota) {
+    perBulan.update(
+      '${n.tanggalMasuk.year}-'
+          '${n.tanggalMasuk.month.toString().padLeft(2, '0')}',
+      (v) => v + 1,
+      ifAbsent: () => 1,
+    );
+  }
+  final bulan = (perBulan.entries.toList()..sort((a, b) => a.key.compareTo(b.key)))
+      .map((e) => '--       ${e.key}  ${e.value}')
+      .join('\n');
   final nilai = nota
       .fold<int>(0, (a, n) => a + n.biaya)
       .toString()
@@ -420,7 +542,20 @@ String _kepala(
 --                         pelanggan, barang, keluhan
 --    Pelunasan Service    kabar bahwa nota sudah tuntas: tanggal,
 --                         teknisi, biaya, jenis perbaikan
---    Laporan harian SVS   cara bayarnya ("QR BTN" dan sejenisnya)
+--    Laporan harian SVS   cara bayarnya ("QR BTN" dan sejenisnya), DAN
+--                         seluruh nota September
+--
+--  Bagian terakhir itu perlu disebut khusus. Sheet Penerimaan yang
+--  diekspor berhenti di SVR-31082628151 -- 31 Agustus. September belum
+--  masuk ke sana sama sekali, padahal itu bulan yang sedang berjalan dan
+--  paling dibutuhkan di layar. Notanya diambil dari bagian "nota masuk"
+--  di laporan harian, yang nomornya ditulis telanjang ("28168") dan
+--  dirakit di sini jadi bentuk lengkapnya: SVR + tanggal + urut, aturan
+--  yang sama dengan sheet Penerimaan.
+--
+--  Cakupan laporan harian hanya lima hari: 1, 2, 3, 4, dan 6 September.
+--  TANGGAL 5 SEPTEMBER TIDAK ADA BERKASNYA, jadi nota yang masuk hari itu
+--  tidak ikut. Begitu pula seluruh September sesudah tanggal 6.
 --
 --  ---------------------------------------------------------------------
 --  YANG MASUK
@@ -428,6 +563,10 @@ String _kepala(
 --    service_orders  ${nota.length} nota (1 Juli - 30 September 2026)
 $rincian
 --       berbiaya      $berbiaya nota, jumlah jasanya Rp $nilai
+--
+--    Per bulan:
+$bulan
+--
 --    shipments       $kirim baris
 --
 --    Asal status:

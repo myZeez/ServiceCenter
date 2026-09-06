@@ -21,6 +21,11 @@ import 'customer_field.dart';
 import 'service_status.dart';
 
 const _uuid = Uuid();
+final _rp = NumberFormat.currency(
+  locale: 'id_ID',
+  symbol: 'Rp',
+  decimalDigits: 0,
+);
 final _tglFmt = DateFormat('dd MMM yyyy');
 final _tglJamFmt = DateFormat('dd MMM yyyy · HH:mm');
 final _iso = DateFormat('yyyy-MM-dd');
@@ -54,6 +59,26 @@ Future<void> showServiceDialog(
     },
   );
 }
+
+/// Apakah biaya pada sebuah nota bergaransi perlu ditanyakan lebih dulu.
+///
+/// Aturan di toko: unit bergaransi tidak dikenakan biaya sama sekali --
+/// perbaikannya ditanggung brand. Yang berbayar hanya layanan tambahan di
+/// luar garansi, dan itu jarang. Jadi angka yang muncul pada nota
+/// bergaransi hampir selalu salah ketik, bukan keputusan.
+///
+/// Bertanya, bukan menolak. Layanan tambahan memang ada, dan aturan yang
+/// mengunci akan memaksa admin mencatatnya di tempat lain -- yang berarti
+/// uang yang benar-benar masuk tidak terbaca di laporan mana pun.
+///
+/// Hanya saat angkanya berubah. Ditanyakan tiap kali nota yang sama
+/// disimpan, pertanyaan ini berubah jadi tombol yang ditekan tanpa dibaca,
+/// dan sesudah itu ia tidak menjaga apa-apa lagi.
+bool perluKonfirmasiBiayaGaransi({
+  required bool garansi,
+  required double biaya,
+  required double biayaLama,
+}) => garansi && biaya > 0 && biaya != biayaLama;
 
 class ServiceDialog extends ConsumerStatefulWidget {
   const ServiceDialog({super.key, this.nota});
@@ -171,12 +196,51 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       widget.nota == null ||
       (!widget.nota!.garansi && widget.nota!.claimId == null);
 
+  Future<bool> _biayaGaransiDisengaja(double biaya) async {
+    if (!perluKonfirmasiBiayaGaransi(
+      garansi: _garansi,
+      biaya: biaya,
+      biayaLama: widget.nota?.biaya ?? 0,
+    )) {
+      return true;
+    }
+
+    final lanjut = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('Unit bergaransi, tetapi ada biaya'),
+        content: Text(
+          'Nota bergaransi biasanya tidak dikenakan biaya — perbaikannya '
+          'ditanggung brand.\n\n'
+          '${_rp.format(biaya)} ini hanya benar kalau memang ada layanan '
+          'tambahan di luar garansi.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(d).pop(false),
+            child: const Text('PERIKSA LAGI'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(d).pop(true),
+            child: const Text('ADA LAYANAN TAMBAHAN'),
+          ),
+        ],
+      ),
+    );
+
+    return lanjut ?? false;
+  }
+
   Future<void> _simpan() async {
     if (!_formKey.currentState!.validate()) return;
     if (_garansi && _brandId == null && _bolehUbahGaransi) {
       setState(() => _error = 'Pilih brand untuk klaim garansinya.');
       return;
     }
+    if (!await _biayaGaransiDisengaja(double.tryParse(_biaya.text) ?? 0)) {
+      return;
+    }
+    if (!mounted) return;
 
     setState(() {
       _busy = true;
@@ -782,10 +846,21 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             Expanded(
               child: LabeledField(
                 label: 'Biaya',
+                // Disebut di kolomnya, bukan cuma ditanyakan saat
+                // menyimpan: yang paling murah adalah salah ketik yang
+                // tidak jadi diketik.
+                hint: _garansi
+                    ? 'Unit bergaransi ditanggung brand — biasanya Rp0. '
+                          'Isi hanya kalau ada layanan tambahan di luar '
+                          'garansi.'
+                    : null,
                 child: TextFormField(
                   controller: _biaya,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  // Dibaca ulang supaya keterangan dan pertanyaan di atas
+                  // ikut menyala begitu angkanya diketik.
+                  onChanged: (_) => setState(() {}),
                   decoration: const InputDecoration(prefixText: 'Rp '),
                 ),
               ),

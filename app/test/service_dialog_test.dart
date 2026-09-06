@@ -290,4 +290,106 @@ void main() {
       expect(find.text('BRAND UNTUK KLAIM'), findsNothing);
     });
   });
+
+  // -------------------------------------------------------------------
+  // Unit bergaransi ditanggung brand: notanya tidak dikenakan biaya sama
+  // sekali, kecuali memang ada layanan tambahan di luar garansi. Jadi
+  // angka yang muncul di sana hampir selalu salah ketik.
+  // -------------------------------------------------------------------
+  group('Biaya pada nota bergaransi', () {
+    test('ditanyakan saat angkanya baru muncul', () {
+      expect(
+        perluKonfirmasiBiayaGaransi(garansi: true, biaya: 150000, biayaLama: 0),
+        isTrue,
+      );
+    });
+
+    test('nota tanpa garansi tidak pernah ditanyakan', () {
+      expect(
+        perluKonfirmasiBiayaGaransi(
+          garansi: false,
+          biaya: 150000,
+          biayaLama: 0,
+        ),
+        isFalse,
+      );
+    });
+
+    test('garansi tanpa biaya adalah keadaan yang normal', () {
+      expect(
+        perluKonfirmasiBiayaGaransi(garansi: true, biaya: 0, biayaLama: 0),
+        isFalse,
+      );
+      // Termasuk saat biayanya justru dihapus jadi nol.
+      expect(
+        perluKonfirmasiBiayaGaransi(garansi: true, biaya: 0, biayaLama: 150000),
+        isFalse,
+      );
+    });
+
+    test('angka yang tidak berubah tidak ditanyakan lagi', () {
+      // Layanan tambahannya sudah dikonfirmasi sekali. Menanyakannya tiap
+      // kali nota itu dibuka dan disimpan lagi hanya melatih orang
+      // menekan tombolnya tanpa membaca.
+      expect(
+        perluKonfirmasiBiayaGaransi(
+          garansi: true,
+          biaya: 150000,
+          biayaLama: 150000,
+        ),
+        isFalse,
+      );
+    });
+
+    test('angka yang diubah ditanyakan ulang', () {
+      expect(
+        perluKonfirmasiBiayaGaransi(
+          garansi: true,
+          biaya: 200000,
+          biayaLama: 150000,
+        ),
+        isTrue,
+      );
+    });
+
+    testWidgets('kolom biayanya menyebutkan aturannya lebih dulu', (
+      tester,
+    ) async {
+      await _lukis(tester, nota: _nota(claimId: 'klaim-1'));
+
+      // Yang paling murah adalah salah ketik yang tidak jadi diketik.
+      expect(
+        find.textContaining('Unit bergaransi ditanggung brand'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('menyimpan dengan biaya memunculkan pertanyaannya', (
+      tester,
+    ) async {
+      await _lukis(tester, nota: _nota(claimId: 'klaim-1'));
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Rp ').first,
+        '150000',
+      );
+      await tester.pumpAndSettle();
+      await _ketuk(
+        tester,
+        find.widgetWithText(FilledButton, 'SIMPAN PERUBAHAN'),
+      );
+
+      expect(find.text('Unit bergaransi, tetapi ada biaya'), findsOneWidget);
+      expect(find.textContaining('Rp150.000'), findsOneWidget);
+
+      // "Periksa lagi" mengembalikan ke formulirnya tanpa menyimpan apa
+      // pun -- termasuk tanpa menyentuh server.
+      await tester.tap(find.text('PERIKSA LAGI'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Unit bergaransi, tetapi ada biaya'), findsNothing);
+      expect(find.text('150000'), findsWidgets);
+    });
+  });
 }

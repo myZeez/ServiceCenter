@@ -337,6 +337,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         toko: toko,
         namaTeknisi: orang[n.teknisiId],
         namaOperator: operator,
+        namaCaraBayar: ref.read(namaMetodeBayar(n.caraBayar)),
         lebar: lebar,
       ),
     );
@@ -572,6 +573,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   }
 
   Widget _kanan(List<Profile> techs, List<Brand> brands) {
+    final metode = ref.watch(metodeBayarProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -728,12 +731,18 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
               child: LabeledField(
                 label: 'Cara Bayar',
                 child: DropdownButtonFormField<String>(
-                  initialValue: _caraBayar,
+                  // Cara bayar nota lama selalu ikut, walau metodenya
+                  // sudah dinonaktifkan: dropdown yang nilainya tidak ada
+                  // di antara pilihannya melempar galat, dan nota yang
+                  // sudah tercetak harus tetap menyebut yang di kertasnya.
+                  initialValue: metode.any((m) => m.kode == _caraBayar)
+                      ? _caraBayar
+                      : null,
                   isExpanded: true,
-                  hint: const Text('—'),
-                  items: const [
-                    DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                    DropdownMenuItem(value: 'piutang', child: Text('Piutang')),
+                  hint: Text(_caraBayar ?? '—'),
+                  items: [
+                    for (final m in metode)
+                      DropdownMenuItem(value: m.kode, child: Text(m.nama)),
                   ],
                   onChanged: (v) => setState(() => _caraBayar = v),
                 ),

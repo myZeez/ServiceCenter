@@ -121,6 +121,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
   String? _keterangan;
   String? _teknisiId;
   String? _notaId;
+  String? _caraBayar;
   String _tahap = PartTahap.foto;
 
   DateTime? _tanggalDp;
@@ -180,6 +181,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
     _teknisiId = p.teknisiId;
     _tahap = p.tahap;
     _notaId = p.serviceOrderId;
+    _caraBayar = p.caraBayar;
     _tanggalDp = p.tanggalDp;
     _tanggalOrder = p.tanggalOrder;
   }
@@ -307,6 +309,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
         'tanggal_order': _tanggalOrder == null
             ? null
             : _iso.format(_tanggalOrder!),
+        'cara_bayar': _caraBayar,
         'no_po': _kosongNull(_noPo),
         'service_order_id': _notaId,
         'catatan': _kosongNull(_catatan),
@@ -711,6 +714,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
   }
 
   Widget _pesanannya(BuildContext context) {
+    final metode = ref.watch(metodeBayarProvider);
     final harga = _angka(_harga);
     final dp = _angka(_dp) ?? 0;
     final belumAdaHarga = harga == null;
@@ -846,6 +850,25 @@ class _PartDialogState extends ConsumerState<PartDialog> {
                     nilai: _tanggalDp,
                     kosong: 'Otomatis',
                     onPilih: (d) => setState(() => _tanggalDp = d),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(
+                child: LabeledField(
+                  label: 'Cara Bayar',
+                  hint: 'Lewat mana DP-nya diterima.',
+                  child: DropdownButtonFormField<String>(
+                    initialValue: metode.any((m) => m.kode == _caraBayar)
+                        ? _caraBayar
+                        : null,
+                    isExpanded: true,
+                    hint: Text(_caraBayar ?? '—'),
+                    items: [
+                      for (final m in metode)
+                        DropdownMenuItem(value: m.kode, child: Text(m.nama)),
+                    ],
+                    onChanged: (v) => setState(() => _caraBayar = v),
                   ),
                 ),
               ),

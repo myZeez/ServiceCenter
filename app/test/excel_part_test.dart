@@ -83,6 +83,7 @@ void main() {
       'UNTUNG',
       'DP USER',
       'SISA',
+      'CARA BAYAR',
       'NO PO',
       'KETERANGAN',
       'CATATAN',
@@ -150,11 +151,66 @@ void main() {
     ]).tabel.single.baris.single;
 
     expect((baris[7] as DateCellValue).day, 8);
-    expect((baris[15] as TextCellValue).value.toString(), 'IDD7510006');
-    expect((baris[16] as TextCellValue).value.toString(), 'ASUS ID');
+    expect((baris[16] as TextCellValue).value.toString(), 'IDD7510006');
+    expect((baris[17] as TextCellValue).value.toString(), 'ASUS ID');
     expect(
-      (baris[17] as TextCellValue).value.toString(),
+      (baris[18] as TextCellValue).value.toString(),
       'ORI KB MODULE 3-6 WEEK',
+    );
+  });
+
+  test('cara bayar ditulis namanya, bukan kodenya', () {
+    // Kode tersimpan sebagai 'transfer_bri'; yang membaca laporan tidak
+    // seharusnya melihat garis bawah dan huruf kecil.
+    final l = ExcelExport.lembarPart(
+      pesanan: [
+        PartOrder(
+          id: '1',
+          tanggal: DateTime(2026, 9, 4),
+          customerNama: 'Jamal',
+          partReq: 'KEYBOARD',
+          tahap: 'selesai',
+          harga: 120000,
+          caraBayar: 'transfer_bri',
+          updatedAt: DateTime(2026, 9, 4),
+        ),
+      ],
+      teknisi: const {},
+      modal: const {},
+      periode: 'September 2026',
+      caraBayar: const {'transfer_bri': 'Transfer BRI'},
+    );
+
+    expect(
+      (l.tabel.single.baris.single[15] as TextCellValue).value.toString(),
+      'Transfer BRI',
+    );
+  });
+
+  test('cara bayar yang tidak dikenal tetap dicetak apa adanya', () {
+    // Metode yang sudah dihapus dari daftar tidak boleh membuat kolomnya
+    // kosong: nota lama tetap harus bisa menyebutkan lewat mana ia dibayar.
+    final l = ExcelExport.lembarPart(
+      pesanan: [
+        PartOrder(
+          id: '1',
+          tanggal: DateTime(2026, 9, 4),
+          customerNama: 'Jamal',
+          partReq: 'KEYBOARD',
+          tahap: 'selesai',
+          harga: 120000,
+          caraBayar: 'dompet_lama',
+          updatedAt: DateTime(2026, 9, 4),
+        ),
+      ],
+      teknisi: const {},
+      modal: const {},
+      periode: 'September 2026',
+    );
+
+    expect(
+      (l.tabel.single.baris.single[15] as TextCellValue).value.toString(),
+      'dompet_lama',
     );
   });
 
@@ -225,6 +281,6 @@ void main() {
 
     // Judul, kepala kolom, satu baris data, satu baris penutup.
     expect(sheet.maxRows, 4);
-    expect(sheet.maxColumns, 18);
+    expect(sheet.maxColumns, 19);
   });
 }

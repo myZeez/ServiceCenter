@@ -547,6 +547,7 @@ class PartOrder {
     required this.tahap,
     this.harga,
     this.dp = 0,
+    this.caraBayar,
     this.sisa = 0,
     this.tanggalDp,
     this.tanggalOrder,
@@ -581,6 +582,9 @@ class PartOrder {
   final double? harga;
 
   final double dp;
+
+  /// Lewat mana uangnya diterima. Kodenya dari tabel metode_bayar.
+  final String? caraBayar;
 
   /// Dihitung Postgres, tidak pernah dikirim aplikasi.
   final double sisa;
@@ -619,6 +623,7 @@ class PartOrder {
     tahap: r['tahap'] as String,
     harga: _numN(r['harga']),
     dp: _num(r['dp']),
+    caraBayar: r['cara_bayar'] as String?,
     sisa: _num(r['sisa']),
     tanggalDp: _tgl(r['tanggal_dp']),
     tanggalOrder: _tgl(r['tanggal_order']),
@@ -659,5 +664,44 @@ class PartSettingsRow {
   factory PartSettingsRow.fromMap(Map<String, dynamic> r) => PartSettingsRow(
     upTokoPilihan: _daftarAngka(r['up_toko_pilihan']),
     upTokoBawaan: _num(r['up_toko_bawaan']),
+  );
+}
+
+/// Cara pelanggan membayar. Daftarnya diatur dari Pengaturan, bukan
+/// dikunci di kode: rekening dan dompet digital baru muncul lebih sering
+/// daripada aplikasi ini dibangun ulang.
+class MetodeBayar {
+  const MetodeBayar({
+    required this.id,
+    required this.kode,
+    required this.nama,
+    this.piutang = false,
+    this.urutan = 0,
+    this.aktif = true,
+  });
+
+  final int id;
+
+  /// Yang tersimpan di nota. Tidak boleh berubah ejaannya: nota lama
+  /// menyimpan kode ini apa adanya.
+  final String kode;
+
+  final String nama;
+
+  /// Uangnya belum diterima saat nota ditutup. Hanya ini yang membuat
+  /// sebuah nota jadi piutang -- tunai, transfer, dan QRIS sama saja bagi
+  /// kas toko.
+  final bool piutang;
+
+  final int urutan;
+  final bool aktif;
+
+  factory MetodeBayar.fromMap(Map<String, dynamic> r) => MetodeBayar(
+    id: r['id'] as int,
+    kode: r['kode'] as String,
+    nama: r['nama'] as String,
+    piutang: r['piutang'] as bool? ?? false,
+    urutan: (r['urutan'] as num?)?.toInt() ?? 0,
+    aktif: r['aktif'] as bool? ?? true,
   );
 }

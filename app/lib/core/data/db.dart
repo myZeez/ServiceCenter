@@ -135,6 +135,15 @@ class Db {
       _semua('part_types', PartType.fromMap)
           .map((l) => l..sort((a, b) => a.nama.compareTo(b.nama)));
 
+  Stream<List<MetodeBayar>> watchMetodeBayar() =>
+      _semua('metode_bayar', MetodeBayar.fromMap)
+          .map((l) => l..sort((a, b) => a.urutan.compareTo(b.urutan)));
+
+  Future<void> simpanMetodeBayar(Map<String, dynamic> baris) => _pastikan(
+    _c.from('metode_bayar').upsert(baris, onConflict: 'kode').select('id'),
+    'metode bayar',
+  );
+
   Stream<List<Profile>> watchAllProfiles() =>
       _semua('profiles', Profile.fromMap)
           .map((l) => l..sort((a, b) => a.nama.compareTo(b.nama)));

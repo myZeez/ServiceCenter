@@ -620,6 +620,7 @@ class ExcelExport {
     required Map<String, String> teknisi,
     required Map<String, PartCost> modal,
     required String periode,
+    Map<String, String> caraBayar = const {},
   }) => simpanBanyak(
     namaBerkas: 'Penjualan Part ${_aman(periode)}.xlsx',
     lembar: [
@@ -628,6 +629,7 @@ class ExcelExport {
         teknisi: teknisi,
         modal: modal,
         periode: periode,
+        caraBayar: caraBayar,
       ),
     ],
   );
@@ -637,6 +639,7 @@ class ExcelExport {
     required Map<String, String> teknisi,
     required Map<String, PartCost> modal,
     required String periode,
+    Map<String, String> caraBayar = const {},
   }) {
     final urut = [...pesanan]..sort((a, b) => a.tanggal.compareTo(b.tanggal));
 
@@ -682,6 +685,7 @@ class ExcelExport {
         untung == null ? null : DoubleCellValue(untung),
         p.dp == 0 ? null : DoubleCellValue(p.dp),
         p.sisa == 0 ? null : DoubleCellValue(p.sisa),
+        TextCellValue(caraBayar[p.caraBayar] ?? p.caraBayar ?? ''),
         TextCellValue(p.noPo ?? ''),
         TextCellValue((p.keterangan ?? '').toUpperCase()),
         TextCellValue(p.catatan ?? ''),
@@ -711,6 +715,7 @@ class ExcelExport {
             KolomExcel('UNTUNG', jenis: JenisKolom.rupiah),
             KolomExcel('DP USER', jenis: JenisKolom.rupiah),
             KolomExcel('SISA', jenis: JenisKolom.rupiah),
+            KolomExcel('CARA BAYAR', jenis: JenisKolom.kode),
             KolomExcel('NO PO', jenis: JenisKolom.kode),
             KolomExcel('KETERANGAN', jenis: JenisKolom.kode),
             KolomExcel('CATATAN'),
@@ -732,6 +737,7 @@ class ExcelExport {
             DoubleCellValue(totalUntung),
             DoubleCellValue(totalDp),
             DoubleCellValue(totalSisa),
+            null,
             null,
             null,
             null,

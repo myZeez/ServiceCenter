@@ -748,6 +748,12 @@ class _Keseluruhan extends ConsumerWidget {
 
     final nota = semua.where((n) => bulan.memuat(n.tanggalMasuk)).toList();
 
+    final kodePiutang = {
+      for (final m in ref.watch(allMetodeBayarProvider).valueOrNull ??
+          const <MetodeBayar>[])
+        if (m.piutang) m.kode,
+    };
+
     final tunai = nota
         .where((n) => n.tanggalLunas != null)
         .fold<double>(0, (a, n) => a + n.biaya);
@@ -792,7 +798,7 @@ class _Keseluruhan extends ConsumerWidget {
               ),
               (0.0, n.keluhan ?? '—', false),
               (92.0, teknisi[n.teknisiId] ?? '—', false),
-              (116.0, _bayar(n), false),
+              (116.0, _bayar(n, kodePiutang), false),
               (0.0, n.keterangan ?? '—', false),
             ],
             akhiran: Row(
@@ -812,11 +818,15 @@ class _Keseluruhan extends ConsumerWidget {
     );
   }
 
-  static String _bayar(ServiceOrderEntry n) {
+  /// Daftar kode piutang datang dari pengaturan, bukan dari kata
+  /// 'piutang' yang dulu dipatok di sini: cara bayar sekarang bisa
+  /// ditambah sendiri, dan yang menandai sebuah nota belum dibayar adalah
+  /// centang di daftarnya — bukan namanya.
+  static String _bayar(ServiceOrderEntry n, Set<String> kodePiutang) {
     if (n.biaya == 0) return '—';
     final nilai = _rp.format(n.biaya);
     if (n.tanggalLunas != null) return '$nilai LUNAS';
-    if (n.caraBayar == 'piutang') return '$nilai PIUTANG';
+    if (kodePiutang.contains(n.caraBayar)) return '$nilai PIUTANG';
     return nilai;
   }
 }

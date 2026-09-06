@@ -92,6 +92,58 @@ final allProfilesProvider = StreamProvider<List<Profile>>(
   (ref) => ref.watch(databaseProvider).watchAllProfiles(),
 );
 
+// ---------------------------------------------------------------------
+// Cara bayar
+// ---------------------------------------------------------------------
+
+final allMetodeBayarProvider = StreamProvider<List<MetodeBayar>>(
+  (ref) => ref.watch(databaseProvider).watchMetodeBayar(),
+);
+
+/// Pilihan yang ditawarkan saat mencatat pembayaran.
+///
+/// Yang dinonaktifkan tidak ikut. Untuk MEMBACA cara bayar nota lama,
+/// pakai [namaMetodeBayar] -- rekening yang sudah ditutup tetap harus
+/// bisa disebut namanya di nota yang terlanjur memakainya.
+final metodeBayarProvider = Provider<List<MetodeBayar>>(
+  (ref) => [
+    for (final m
+        in ref.watch(allMetodeBayarProvider).valueOrNull ??
+            const <MetodeBayar>[])
+      if (m.aktif) m,
+  ],
+);
+
+/// Nama yang enak dibaca untuk sebuah kode cara bayar.
+///
+/// Kode yang tidak ada di daftar dikembalikan apa adanya, bukan diganti
+/// tanda hubung: nota lama menyimpan kodenya sendiri, dan menyembunyikan
+/// yang tidak dikenali membuat nota itu tampak tidak punya cara bayar.
+final namaMetodeBayar = Provider.family<String, String?>((ref, kode) {
+  if (kode == null) return '';
+  for (final m
+      in ref.watch(allMetodeBayarProvider).valueOrNull ??
+          const <MetodeBayar>[]) {
+    if (m.kode == kode) return m.nama;
+  }
+  return kode.replaceAll('_', ' ').toUpperCase();
+});
+
+/// Apakah cara bayar ini berarti uangnya belum diterima.
+///
+/// Yang tidak dikenal dianggap LUNAS, sama seperti trigger di server.
+/// Itu sisi yang lebih aman untuk salah: piutang palsu akan menagih
+/// pelanggan yang sudah membayar.
+final metodePiutang = Provider.family<bool, String?>((ref, kode) {
+  if (kode == null) return false;
+  for (final m
+      in ref.watch(allMetodeBayarProvider).valueOrNull ??
+          const <MetodeBayar>[]) {
+    if (m.kode == kode) return m.piutang;
+  }
+  return false;
+});
+
 /// Hanya yang aktif -- dipakai untuk pilihan saat input klaim.
 final brandsProvider = Provider<AsyncValue<List<Brand>>>(
   (ref) => ref
@@ -360,6 +412,7 @@ void segarkanData(WidgetRef ref) {
   ref.invalidate(partOrdersProvider);
   ref.invalidate(partCostsProvider);
   ref.invalidate(partSettingsProvider);
+  ref.invalidate(allMetodeBayarProvider);
 }
 
 /// Identitas toko untuk kepala dan kaki nota.

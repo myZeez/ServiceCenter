@@ -13,6 +13,7 @@ import 'nomor_nota_card.dart';
 import 'omset_card.dart';
 import 'print_cards.dart';
 import 'revenue_cards.dart';
+import 'metode_bayar_card.dart';
 import 'up_toko_card.dart';
 
 /// Semua pengaturan dalam satu layar.
@@ -180,6 +181,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         rowSpan: 8,
                         child: UpTokoCard(),
                       ),
+                      GridArea(
+                        id: 'metode_bayar',
+                        colSpan: 6,
+                        rowSpan: 8,
+                        child: MetodeBayarCard(),
+                      ),
                     ],
                   );
                 }
@@ -204,6 +211,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     SizedBox(height: 470, child: NomorNotaCard()),
                     SizedBox(height: AppSpacing.s),
                     SizedBox(height: 450, child: UpTokoCard()),
+                    SizedBox(height: AppSpacing.s),
+                    SizedBox(height: 440, child: MetodeBayarCard()),
                     SizedBox(height: AppSpacing.sm),
                   ],
                 );

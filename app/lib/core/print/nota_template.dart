@@ -26,6 +26,12 @@ List<int> susunNota({
   StoreSetting? toko,
   String? namaTeknisi,
   String? namaOperator,
+
+  /// Nama cara bayar yang enak dibaca. Kalau kosong, kodenya yang
+  /// dicetak -- lebih baik "TRANSFER_BRI" muncul di kertas daripada
+  /// baris cara bayar hilang sama sekali dari nota pelanggan.
+  String? namaCaraBayar,
+
   int lebar = 32,
   int salinan = 1,
 }) {
@@ -40,6 +46,7 @@ List<int> susunNota({
       toko: toko,
       namaTeknisi: namaTeknisi,
       namaOperator: namaOperator,
+      namaCaraBayar: namaCaraBayar,
     );
     // Jarak antar salinan agar mudah disobek.
     p.kosong(4);
@@ -56,6 +63,7 @@ void _satuNota(
   StoreSetting? toko,
   String? namaTeknisi,
   String? namaOperator,
+  String? namaCaraBayar,
 }) {
   // --- kepala ----------------------------------------------------------
   final namaToko = toko?.nama ?? 'SERVICE CENTER';
@@ -114,7 +122,10 @@ void _satuNota(
     p.pasangan('BIAYA', _rp.format(nota.biaya));
     p.tebal(false);
     if (nota.caraBayar != null) {
-      p.pasangan('Cara bayar', nota.caraBayar!.toUpperCase());
+      p.pasangan(
+        'Cara bayar',
+        (namaCaraBayar ?? nota.caraBayar!).toUpperCase(),
+      );
     }
     p.pasangan(
       'Status bayar',

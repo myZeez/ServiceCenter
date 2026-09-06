@@ -118,6 +118,12 @@ class _PartOrdersViewState extends ConsumerState<PartOrdersView> {
                             const <PartCost>[])
                       m.partOrderId: m,
                   },
+                  caraBayar: {
+                    for (final m
+                        in ref.read(allMetodeBayarProvider).valueOrNull ??
+                            const <MetodeBayar>[])
+                      m.kode: m.nama,
+                  },
                   periode: filter.tahap == null
                       ? 'Semua Pesanan'
                       : PartTahap.label(filter.tahap!),

@@ -23,9 +23,8 @@ import 'telaah_lib.dart';
 // ---------------------------------------------------------------------
 
 DateTime? tanggal(String teks) {
-  final m = RegExp(
-    r'^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$',
-  ).firstMatch(teks.trim());
+  final m = RegExp(r'^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$')
+      .firstMatch(teks.trim());
   if (m == null) return null;
   var th = int.parse(m.group(3)!);
   if (th < 100) th += 2000;
@@ -139,12 +138,7 @@ class Nota {
 
 /// Apa yang diketahui sheet Pelunasan tentang sebuah nota.
 class Selesai {
-  Selesai({
-    required this.tanggal,
-    this.perbaikan,
-    this.teknisi,
-    this.biaya,
-  });
+  Selesai({required this.tanggal, this.perbaikan, this.teknisi, this.biaya});
 
   final DateTime tanggal;
   final String? perbaikan;
@@ -152,10 +146,12 @@ class Selesai {
   final int? biaya;
 }
 
-// Juli sampai September 2026. Dibatasi atas permintaan: tiga bulan
-// terakhir cukup untuk dipakai bekerja, dan cukup kecil untuk diperiksa
-// baris per baris sebelum dijalankan.
-final mulai = DateTime(2026, 7, 1);
+// Januari sampai September 2026. Semula dibatasi tiga bulan supaya
+// berkasnya bisa diperiksa baris per baris; jendelanya dilebarkan agar
+// sejajar dengan arsip klaim garansi, yang memang diimpor sejak Januari.
+// Nota dan klaim yang seharusnya berpasangan tidak bisa dipertemukan
+// kalau salah satu sisinya berhenti di bulan Juli.
+final mulai = DateTime(2026, 1, 1);
 final sampai = DateTime(2026, 10, 1);
 
 void main() {
@@ -219,9 +215,8 @@ void main() {
     for (final b in baca(f.readAsStringSync(), pemisah: ';')) {
       final gabung = b.join(' ').toUpperCase();
 
-      final judul = RegExp(
-        r'LAPORAN PERHARI TGL\s+(\d{1,2}/\d{1,2}/\d{4})',
-      ).firstMatch(gabung);
+      final judul = RegExp(r'LAPORAN PERHARI TGL\s+(\d{1,2}/\d{1,2}/\d{4})')
+          .firstMatch(gabung);
       if (judul != null) hariLaporan = tanggal(judul.group(1)!);
 
       // Kedua bagian memakai susunan kolom yang berbeda, dan barisnya
@@ -340,7 +335,8 @@ void main() {
     // 16.484 nota berbiaya di seluruh arsip memang tunai.
     String? caraBayar;
     if (biaya > 0) {
-      caraBayar = bayar[asal.urut] ??
+      caraBayar =
+          bayar[asal.urut] ??
           (uang(g(b, 8)) != null && uang(g(b, 7)) == null ? 'piutang' : 'cash');
     }
 
@@ -455,16 +451,25 @@ void main() {
 
   final s = StringBuffer()
     ..writeln(
-      _kepala(nota, perStatus, dariPelunasan, dariSheetStatus, sisaMasuk,
-          bayar.length, kirim.length),
+      _kepala(
+        nota,
+        perStatus,
+        dariPelunasan,
+        dariSheetStatus,
+        sisaMasuk,
+        bayar.length,
+        kirim.length,
+      ),
     )
     ..writeln(_bagianNota(nota))
+    ..writeln(_bagianTeknisi(nota))
     ..writeln(_bagianKirim(kirim));
-  File(
-    '../supabase/scripts/import_servis_2026.sql',
-  ).writeAsStringSync(s.toString());
+  File('../supabase/scripts/import_servis_2026.sql')
+      .writeAsStringSync(s.toString());
 
-  stderr.writeln('nota Jul-Sep 2026 : ${nota.length}  (di luar rentang: $lewat)');
+  stderr.writeln(
+    'nota Jan-Sep 2026 : ${nota.length}  (di luar rentang: $lewat)',
+  );
   stderr.writeln('  per status      : $perStatus');
   stderr.writeln('  status dari sheet Pelunasan : $dariPelunasan');
   stderr.writeln('  status dari kolom STATUS    : $dariSheetStatus');
@@ -492,23 +497,24 @@ String _kepala(
   int adaCaraBayar,
   int kirim,
 ) {
-  final rincian = (perStatus.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value)))
-      .map((e) => '--       ${e.key.padRight(10)} ${e.value}')
-      .join('\n');
+  final rincian =
+      (perStatus.entries.toList()..sort((a, b) => b.value.compareTo(a.value)))
+          .map((e) => '--       ${e.key.padRight(10)} ${e.value}')
+          .join('\n');
   final berbiaya = nota.where((n) => n.biaya > 0).length;
   final perBulan = <String, int>{};
   for (final n in nota) {
     perBulan.update(
       '${n.tanggalMasuk.year}-'
-          '${n.tanggalMasuk.month.toString().padLeft(2, '0')}',
+      '${n.tanggalMasuk.month.toString().padLeft(2, '0')}',
       (v) => v + 1,
       ifAbsent: () => 1,
     );
   }
-  final bulan = (perBulan.entries.toList()..sort((a, b) => a.key.compareTo(b.key)))
-      .map((e) => '--       ${e.key}  ${e.value}')
-      .join('\n');
+  final bulan =
+      (perBulan.entries.toList()..sort((a, b) => a.key.compareTo(b.key)))
+          .map((e) => '--       ${e.key}  ${e.value}')
+          .join('\n');
   final nilai = nota
       .fold<int>(0, (a, n) => a + n.biaya)
       .toString()
@@ -516,7 +522,7 @@ String _kepala(
 
   return '''
 -- =====================================================================
---  Impor arsip servis -- Juli, Agustus, September 2026
+--  Impor arsip servis -- Januari - September 2026
 --
 --  MENGGANTIKAN versi sebelumnya, yang hasilnya salah. Kosongkan dulu
 --  isinya dengan supabase/scripts/kosongkan_servis.sql, baru jalankan
@@ -560,7 +566,7 @@ String _kepala(
 --  ---------------------------------------------------------------------
 --  YANG MASUK
 --  ---------------------------------------------------------------------
---    service_orders  ${nota.length} nota (1 Juli - 30 September 2026)
+--    service_orders  ${nota.length} nota (1 Januari - 30 September 2026)
 $rincian
 --       berbiaya      $berbiaya nota, jumlah jasanya Rp $nilai
 --
@@ -618,7 +624,8 @@ $bulan
 ''';
 }
 
-String _bagianNota(List<Nota> nota) => '''
+String _bagianNota(List<Nota> nota) =>
+    '''
 
 -- ---------------------------------------------------------------------
 --  LANGKAH 1 -- nota servis
@@ -660,10 +667,75 @@ where not exists (
 );
 ''';
 
-String _bagianKirim(List<String> kirim) => '''
+/// Menempelkan teknisi yang akunnya baru dibuat sesudah impor berjalan.
+///
+/// Nota disisipkan dengan `left join profiles`: nama yang tidak punya akun
+/// menghasilkan teknisi_id kosong, tanpa galat dan tanpa kabar. Setelah
+/// itu namanya hilang -- tidak ada kolom di service_orders yang
+/// menyimpannya, jadi tidak ada yang bisa dipulihkan belakangan.
+///
+/// Jendela impor yang melebar sampai Januari memunculkan dua nama yang
+/// tidak ada di jendela sebelumnya. Salah satunya mengerjakan puluhan
+/// nota. Kalau akunnya belum ada saat berkas ini dijalankan, puluhan nota
+/// itu tercatat tanpa pengerja -- dan yang membacanya nanti akan mengira
+/// memang tidak ada yang mengerjakannya.
+///
+/// Bagian ini membuat urutannya tidak lagi menentukan.
+String _bagianTeknisi(List<Nota> nota) {
+  final nama = <String>{
+    for (final n in nota)
+      if ((n.teknisi ?? '').trim().isNotEmpty) n.teknisi!.trim(),
+  }.toList()..sort();
+
+  final pasangan = [
+    for (final n in nota)
+      if ((n.teknisi ?? '').trim().isNotEmpty)
+        "  (${q(n.noNota)}, ${q(n.teknisi!.trim())})",
+  ];
+
+  return '''
 
 -- ---------------------------------------------------------------------
---  LANGKAH 2 -- kirim antar cabang
+--  LANGKAH 2 -- teknisi yang akunnya belum ada
+--
+--    Nama yang dipakai arsip ini:
+--      ${nama.join(', ')}
+--
+--    Yang belum punya akun akan tercatat sebagai nota tanpa pengerja --
+--    diam-diam, karena penyisipannya memakai left join. Periksa dulu:
+--
+--      select v.nama
+--      from (values ${nama.map((n) => "(${q(n)})").join(', ')})
+--             as v(nama)
+--      where not exists (
+--        select 1 from profiles p
+--        where lower(trim(p.nama)) = lower(trim(v.nama))
+--      );
+--
+--    Yang muncul di situ dibuatkan akunnya lewat aplikasi -- Pengaturan
+--    -> Pengguna. Tidak bisa dari sini: profiles.id menunjuk ke
+--    auth.users, dan pengguna hanya lahir lewat Edge Function.
+--
+--    Sesudah akunnya ada, jalankan blok di bawah untuk menempelkan
+--    namanya ke nota yang terlanjur kosong. Aman dijalankan ulang, dan
+--    aman dijalankan walau tidak ada yang perlu ditempel.
+-- ---------------------------------------------------------------------
+update service_orders so
+set teknisi_id = p.id
+from (values
+${pasangan.join(',\n')}
+) as v(no_nota, teknisi_nama)
+join profiles p on lower(trim(p.nama)) = lower(trim(v.teknisi_nama))
+where so.no_nota = v.no_nota
+  and so.teknisi_id is null;
+''';
+}
+
+String _bagianKirim(List<String> kirim) =>
+    '''
+
+-- ---------------------------------------------------------------------
+--  LANGKAH 3 -- kirim antar cabang
 -- ---------------------------------------------------------------------
 insert into shipments (
   id, tanggal_kirim, dari_cabang, ke_cabang, user_nama, barang_nama,
@@ -702,14 +774,14 @@ where not exists (
 
 
 -- ---------------------------------------------------------------------
---  LANGKAH 3 -- periksa hasilnya
+--  LANGKAH 4 -- periksa hasilnya
 -- ---------------------------------------------------------------------
 --  Jalankan ini sesudahnya. Angkanya harus cocok dengan yang tertulis di
 --  kepala berkas ini.
 --
 --    select status, count(*), sum(biaya)
 --    from service_orders
---    where tanggal_masuk >= '2026-07-01' and tanggal_masuk < '2026-10-01'
+--    where tanggal_masuk >= '2026-01-01' and tanggal_masuk < '2026-10-01'
 --    group by status order by 2 desc;
 --
 --  Dan periksa satu nota yang dulu salah -- harusnya 'diambil', teknisi

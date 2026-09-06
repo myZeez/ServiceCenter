@@ -14,15 +14,33 @@ List<List<String>> baca(String isi, {String pemisah = ','}) {
     final c = isi[i];
     if (kutip) {
       if (c == '"') {
-        if (i + 1 < isi.length && isi[i + 1] == '"') { sel.write('"'); i++; }
-        else { kutip = false; }
-      } else { sel.write(c); }
-    } else if (c == '"') { kutip = true; }
-    else if (c == pemisah) { baris.add(sel.toString()); sel.clear(); }
-    else if (c == '\n') { baris.add(sel.toString()); sel.clear(); hasil.add(baris); baris = <String>[]; }
-    else if (c != '\r') { sel.write(c); }
+        if (i + 1 < isi.length && isi[i + 1] == '"') {
+          sel.write('"');
+          i++;
+        } else {
+          kutip = false;
+        }
+      } else {
+        sel.write(c);
+      }
+    } else if (c == '"') {
+      kutip = true;
+    } else if (c == pemisah) {
+      baris.add(sel.toString());
+      sel.clear();
+    } else if (c == '\n') {
+      baris.add(sel.toString());
+      sel.clear();
+      hasil.add(baris);
+      baris = <String>[];
+    } else if (c != '\r') {
+      sel.write(c);
+    }
   }
-  if (sel.isNotEmpty || baris.isNotEmpty) { baris.add(sel.toString()); hasil.add(baris); }
+  if (sel.isNotEmpty || baris.isNotEmpty) {
+    baris.add(sel.toString());
+    hasil.add(baris);
+  }
   return hasil;
 }
 

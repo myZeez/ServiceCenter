@@ -141,8 +141,12 @@ void main() {
   final nota = <Nota>[];
   final sql = File('$_akar/supabase/scripts/import_servis_2026.sql')
       .readAsStringSync();
+  // Nomor notanya ikut dituntut berawalan SVR-/SRV-. Tanpa itu, 94 baris
+  // pengiriman antar cabang di bagian bawah berkas ikut terbaca sebagai
+  // nota -- susunan kolomnya kebetulan sama-sama diawali teks lalu
+  // tanggal, dan yang terbaca sebagai nama pelanggan adalah nama cabang.
   final pola = RegExp(
-    r"^  \('([^']*)', '(\d{4})-(\d{2})-(\d{2})', '([^']*)', "
+    r"^  \('((?:SVR|SRV)-[^']*)', '(\d{4})-(\d{2})-(\d{2})', '([^']*)', "
     r"(?:'[^']*'|null), '([^']*)'",
     multiLine: true,
   );
@@ -171,22 +175,22 @@ void main() {
   // -------------------------------------------------------------------
   // 3. Angkanya
   // -------------------------------------------------------------------
-  bool diJendela(DateTime t) => t.year == 2026 && t.month >= 7 && t.month <= 9;
+  bool diJendela(DateTime t) => t.year == 2026 && t.month <= 9;
 
   final klaimJendela = klaim.where((k) => diJendela(k.tanggal)).toList();
   final notaGaransi = nota.where((n) => n.garansi).toList();
 
-  print('ARSIP KLAIM GARANSI');
-  print('  seluruhnya          ${klaim.length}');
-  print(
+  stderr.writeln('ARSIP KLAIM GARANSI');
+  stderr.writeln('  seluruhnya          ${klaim.length}');
+  stderr.writeln(
     '  tahun 2026          ${klaim.where((k) => k.tanggal.year == 2026).length}',
   );
-  print('  Juli-September 2026 ${klaimJendela.length}');
+  stderr.writeln('  Januari-September 2026 ${klaimJendela.length}');
 
-  print('');
-  print('ARSIP NOTA SERVIS (berkas impor, Juli-September 2026)');
-  print('  seluruhnya          ${nota.length}');
-  print('  bertanda garansi    ${notaGaransi.length}');
+  stderr.writeln('');
+  stderr.writeln('ARSIP NOTA SERVIS (berkas impor, Januari-September 2026)');
+  stderr.writeln('  seluruhnya          ${nota.length}');
+  stderr.writeln('  bertanda garansi    ${notaGaransi.length}');
 
   // -------------------------------------------------------------------
   // 4. Berapa yang benar-benar pasangan
@@ -230,24 +234,28 @@ void main() {
     }
   }
 
-  print('');
-  print('PASANGANNYA (lewat nama pelanggan, selisih tanggal <= 30 hari)');
-  print('  klaim -> nota yang sudah bertanda garansi  $keGaransi');
-  print('  klaim -> nota yang BELUM bertanda garansi  $keBiasa');
-  print('  klaim tanpa nota sama sekali               ${yatim.length}');
-  print(
+  stderr.writeln('');
+  stderr.writeln(
+    'PASANGANNYA (lewat nama pelanggan, selisih tanggal <= 30 hari)',
+  );
+  stderr.writeln('  klaim -> nota yang sudah bertanda garansi  $keGaransi');
+  stderr.writeln('  klaim -> nota yang BELUM bertanda garansi  $keBiasa');
+  stderr.writeln(
+    '  klaim tanpa nota sama sekali               ${yatim.length}',
+  );
+  stderr.writeln(
     '  nota bertanda garansi tanpa klaim          '
     '${notaGaransi.where((n) => !terpakai.contains(n.noNota)).length}',
   );
 
-  print('');
-  print('KLAIM YANG NOTANYA BELUM BERTANDA GARANSI');
+  stderr.writeln('');
+  stderr.writeln('KLAIM YANG NOTANYA BELUM BERTANDA GARANSI');
   for (final (k, n) in salahTanda.take(15)) {
-    print('  ${n.noNota}  ${n.status.padRight(11)} ${k.nama}');
+    stderr.writeln('  ${n.noNota}  ${n.status.padRight(11)} ${k.nama}');
   }
 
-  print('');
-  print('KLAIM YANG TIDAK PUNYA NOTA SAMA SEKALI');
+  stderr.writeln('');
+  stderr.writeln('KLAIM YANG TIDAK PUNYA NOTA SAMA SEKALI');
   var stok = 0;
   var cabang = 0;
   for (final k in yatim) {
@@ -258,18 +266,22 @@ void main() {
       cabang++;
     }
   }
-  print('  unit stok toko sendiri     $stok');
-  print('  unit dari cabang lain      $cabang');
-  print('  sisanya                    ${yatim.length - stok - cabang}');
+  stderr.writeln('  unit stok toko sendiri     $stok');
+  stderr.writeln('  unit dari cabang lain      $cabang');
+  stderr.writeln(
+    '  sisanya                    ${yatim.length - stok - cabang}',
+  );
   for (final k in yatim) {
     final t =
         '${k.tanggal.day.toString().padLeft(2, '0')}/'
         '${k.tanggal.month.toString().padLeft(2, '0')}';
-    print('  $t  ${k.brand.padRight(7)} ${k.status.padRight(22)} ${k.nama}');
+    stderr.writeln(
+      '  $t  ${k.brand.padRight(7)} ${k.status.padRight(22)} ${k.nama}',
+    );
   }
 
-  print('');
-  print('STATUS KLAIM DI JENDELA ITU');
+  stderr.writeln('');
+  stderr.writeln('STATUS KLAIM DI JENDELA ITU');
   final perStatus = <String, int>{};
   for (final k in klaimJendela) {
     perStatus.update(
@@ -279,7 +291,7 @@ void main() {
     );
   }
   for (final e in perStatus.entries) {
-    print('  ${e.key.padRight(24)} ${e.value}');
+    stderr.writeln('  ${e.key.padRight(24)} ${e.value}');
   }
 
   // -------------------------------------------------------------------
@@ -309,18 +321,18 @@ void main() {
     }
   }
 
-  print('');
-  print('YANG AKAN DITAUTKAN OTOMATIS');
-  print('  nama sama persis, satu calon saja  ${pasangan.length}');
-  print('  calonnya lebih dari satu (dilewat) ${ragu.length}');
-  print(
+  stderr.writeln('');
+  stderr.writeln('YANG AKAN DITAUTKAN OTOMATIS');
+  stderr.writeln('  nama sama persis, satu calon saja  ${pasangan.length}');
+  stderr.writeln('  calonnya lebih dari satu (dilewat) ${ragu.length}');
+  stderr.writeln(
     '  sisanya diurus manual              '
     '${klaimJendela.length - pasangan.length - ragu.length}',
   );
 
   _tulisSkrip(pasangan);
-  print('');
-  print('Ditulis: supabase/scripts/hubungkan_klaim_nota.sql');
+  stderr.writeln('');
+  stderr.writeln('Ditulis: supabase/scripts/hubungkan_klaim_nota.sql');
 }
 
 String _q(String s) => "'${s.replaceAll("'", "''")}'";
@@ -436,7 +448,7 @@ void _tulisSkrip(List<(Klaim, Nota)> pasangan) {
 --    where not exists (
 --      select 1 from service_orders so where so.claim_id = c.id
 --    )
---    and c.tanggal >= '2026-07-01'
+--    and c.tanggal >= '2026-01-01'
 --    order by c.tanggal;''');
 
   File(

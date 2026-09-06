@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/data/models.dart';
+import '../../core/hari_laporan.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
@@ -36,11 +37,15 @@ final serviceFilterProvider = StateProvider<ServiceFilter>(
   (ref) => const ServiceFilter(),
 );
 
-/// Hari yang sedang dilihat di halaman Servis.
-final hariServisProvider = StateProvider<DateTime>((ref) {
-  final n = DateTime.now();
-  return DateTime(n.year, n.month, n.day);
-});
+/// Hari kerja yang sedang dilihat di halaman Servis.
+///
+/// Sesudah jam tutup ia sudah menunjuk hari berikutnya, dan itu memang
+/// yang dibutuhkan: nota yang dibuat jam 17.30 tercatat sebagai nota
+/// besok, dan halaman yang masih menampilkan hari ini akan terlihat
+/// seperti baru saja menelan nota yang barusan diketik.
+final hariServisProvider = StateProvider<DateTime>(
+  (ref) => hariLaporanKini(ref.read(jamTutupProvider)),
+);
 
 bool _hariSama(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
@@ -61,12 +66,13 @@ List<ServiceOrderEntry> saringNota(
   required DateTime hari,
   String? status,
   String query = '',
+  int jamTutup = jamTutupBawaan,
 }) {
   final q = query.toLowerCase().trim();
 
   return [
     for (final n in semua)
-      if ((q.isNotEmpty || _hariSama(n.tanggalMasuk, hari)) &&
+      if ((q.isNotEmpty || hariLaporanSama(n.tanggalMasuk, hari, jamTutup)) &&
           (status == null || n.status == status) &&
           (q.isEmpty ||
               n.noNota.toLowerCase().contains(q) ||
@@ -110,13 +116,25 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
     };
 
     final hari = ref.watch(hariServisProvider);
+    final jamTutup = ref.watch(jamTutupProvider);
     final mencari = filter.query.trim().isNotEmpty;
+
+    final sekarang = DateTime.now();
+    final sudahTutup = !_hariSama(
+      hariLaporan(sekarang, jamTutup),
+      DateTime(sekarang.year, sekarang.month, sekarang.day),
+    );
 
     // Angka di kotak ikut cakupan daftarnya: saat mencari ia menghitung
     // seluruh arsip, saat tidak ia menghitung hari itu saja. Kotak yang
     // menghitung sesuatu yang berbeda dari daftarnya adalah cara paling
     // mudah membuat orang mengira ada nota yang hilang.
-    final cakupan = saringNota(semua, hari: hari, query: filter.query);
+    final cakupan = saringNota(
+      semua,
+      hari: hari,
+      query: filter.query,
+      jamTutup: jamTutup,
+    );
     final perStatus = <String, int>{};
     for (final n in cakupan) {
       perStatus.update(n.status, (v) => v + 1, ifAbsent: () => 1);
@@ -127,6 +145,7 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
       hari: hari,
       status: filter.status,
       query: filter.query,
+      jamTutup: jamTutup,
     );
 
     // Ctrl+N membuka formulir tanpa memindahkan tangan ke tetikus. Fokus
@@ -149,9 +168,16 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
             children: [
               PageHeader(
                 title: 'Servis',
+                // Sesudah jam tutup halaman ini menunjuk tanggal besok.
+                // Tanpa kalimatnya, yang terlihat adalah tanggal yang
+                // berpindah sendiri -- dan nota yang baru saja diketik
+                // seolah masuk ke hari yang salah.
                 subtitle: mencari
                     ? 'Mencari di seluruh ${semua.length} nota  ·  '
                           '${tampil.length} ketemu'
+                    : sudahTutup
+                    ? '${cakupan.length} nota  ·  laporan tutup $jamTutup.00, '
+                          'nota baru masuk hari berikutnya'
                     : '${cakupan.length} nota  ·  Ctrl+N untuk tambah',
                 actions: [
                   if (!mencari) ...[
@@ -293,15 +319,19 @@ class _PilihHari extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final jamTutup = ref.watch(jamTutupProvider);
     final n = DateTime.now();
-    final iniHari = DateTime(n.year, n.month, n.day);
+
+    // Hari kerja, bukan hari kalender. Sesudah jam tutup keduanya berbeda,
+    // dan yang dipakai halaman ini adalah hari kerjanya -- termasuk untuk
+    // menentukan sampai mana tombol maju boleh melangkah.
+    final iniHari = hariLaporan(n, jamTutup);
     final bisaMaju = hari.isBefore(iniHari);
 
-    void pindah(int hariKe) => ref
-        .read(hariServisProvider.notifier)
-        .state = hari.add(Duration(days: hariKe));
+    void pindah(int hariKe) => ref.read(hariServisProvider.notifier).state =
+        hari.add(Duration(days: hariKe));
 
-    return Container(
+    final kotak = Container(
       decoration: BoxDecoration(
         border: Border.all(color: const Color(0xFFCFD5D4)),
         borderRadius: BorderRadius.circular(AppRadius.small),
@@ -356,6 +386,13 @@ class _PilihHari extends ConsumerWidget {
         ],
       ),
     );
+
+    // Keterangan jam tutupnya tidak ditaruh di sebelah kotak ini.
+    // Menambah satu widget lagi ke baris tombol halaman ini membuat
+    // tata letaknya jebol di jendela 1000 piksel -- ada test yang
+    // menangkapnya. Kalimatnya pindah ke subjudul halaman, tempat orang
+    // memang membaca konteks.
+    return kotak;
   }
 }
 

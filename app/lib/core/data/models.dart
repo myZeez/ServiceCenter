@@ -42,7 +42,8 @@ double? _numN(Object? v) => switch (v) {
 List<double> _daftarAngka(Object? v) => switch (v) {
   final List<dynamic> l => [for (final e in l) ?_numN(e)],
   final String s => [
-    for (final p in s.replaceAll(RegExp(r'[{}]'), '').split(',')) ?_numN(p.trim()),
+    for (final p in s.replaceAll(RegExp(r'[{}]'), '').split(','))
+      ?_numN(p.trim()),
   ],
   _ => const [],
 };
@@ -506,6 +507,7 @@ class StoreSetting {
     this.alamat,
     this.telepon,
     this.ketentuan,
+    this.tutupJam = 17,
   });
 
   final int id;
@@ -514,12 +516,20 @@ class StoreSetting {
   final String? telepon;
   final String? ketentuan;
 
+  /// Jam laporan harian ditutup. Nota pada jam ini atau sesudahnya
+  /// dihitung sebagai hari berikutnya; 24 berarti hari kalender biasa.
+  final int tutupJam;
+
   factory StoreSetting.fromMap(Map<String, dynamic> r) => StoreSetting(
     id: r['id'] as int,
     nama: r['nama'] as String,
     alamat: r['alamat'] as String?,
     telepon: r['telepon'] as String?,
     ketentuan: r['ketentuan'] as String?,
+    // Bawaannya dipakai juga saat kolomnya belum ada -- aplikasi yang
+    // lebih baru dari databasenya tidak boleh gagal membaca, ia cukup
+    // memakai jam yang sama dengan bawaan servernya.
+    tutupJam: (r['tutup_jam'] as num?)?.toInt() ?? 17,
   );
 }
 
@@ -656,7 +666,10 @@ class PartCost {
 
 /// Pilihan persentase yang muncul saat menetapkan harga.
 class PartSettingsRow {
-  const PartSettingsRow({required this.upTokoPilihan, required this.upTokoBawaan});
+  const PartSettingsRow({
+    required this.upTokoPilihan,
+    required this.upTokoBawaan,
+  });
 
   final List<double> upTokoPilihan;
   final double upTokoBawaan;

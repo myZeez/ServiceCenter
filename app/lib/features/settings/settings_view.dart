@@ -9,6 +9,7 @@ import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
 import '../../core/widgets/grid_canvas.dart';
 import '../../core/widgets/swiss_widgets.dart';
+import 'hari_kerja_card.dart';
 import 'nomor_nota_card.dart';
 import 'omset_card.dart';
 import 'print_cards.dart';
@@ -70,8 +71,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     )
                   : OutlinedButton.icon(
                       onPressed: () => setState(() => _menata = true),
-                      icon: const Icon(Icons.dashboard_customize_outlined,
-                          size: 16),
+                      icon: const Icon(
+                        Icons.dashboard_customize_outlined,
+                        size: 16,
+                      ),
                       label: const Text('UBAH LAYOUT'),
                     ),
               const SizedBox(width: AppSpacing.xs),
@@ -115,8 +118,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     gap: AppSpacing.s,
                     padding: const EdgeInsets.only(bottom: AppSpacing.s),
                     layout:
-                        ref.watch(gridLayoutProvider('pengaturan')).valueOrNull ??
-                            const GridLayout(),
+                        ref
+                            .watch(gridLayoutProvider('pengaturan'))
+                            .valueOrNull ??
+                        const GridLayout(),
                     editable: _menata,
                     onLayoutChanged: (v) =>
                         simpanGridLayout(ref, 'pengaturan', v),
@@ -187,6 +192,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         rowSpan: 8,
                         child: MetodeBayarCard(),
                       ),
+                      GridArea(
+                        id: 'hari_kerja',
+                        colSpan: 6,
+                        rowSpan: 8,
+                        child: HariKerjaCard(),
+                      ),
                     ],
                   );
                 }
@@ -213,6 +224,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     SizedBox(height: 450, child: UpTokoCard()),
                     SizedBox(height: AppSpacing.s),
                     SizedBox(height: 440, child: MetodeBayarCard()),
+                    SizedBox(height: AppSpacing.s),
+                    SizedBox(height: 480, child: HariKerjaCard()),
                     SizedBox(height: AppSpacing.sm),
                   ],
                 );
@@ -254,8 +267,10 @@ class _UsersCard extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               itemCount: profiles.length,
               separatorBuilder: (_, _) => const Divider(),
-              itemBuilder: (context, i) =>
-                  _UserRow(profile: profiles[i], isSelf: profiles[i].id == me?.id),
+              itemBuilder: (context, i) => _UserRow(
+                profile: profiles[i],
+                isSelf: profiles[i].id == me?.id,
+              ),
             ),
     );
   }
@@ -287,10 +302,12 @@ class _UserRow extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color:
-                              profile.aktif ? AppColors.black : AppColors.grey,
-                          decoration:
-                              profile.aktif ? null : TextDecoration.lineThrough,
+                          color: profile.aktif
+                              ? AppColors.black
+                              : AppColors.grey,
+                          decoration: profile.aktif
+                              ? null
+                              : TextDecoration.lineThrough,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -385,10 +402,7 @@ class _BrandsCard extends ConsumerWidget {
     return BentoCard(
       title: 'Brand',
       padding: EdgeInsets.zero,
-      trailing: InlineAction(
-        label: 'Tambah',
-        onTap: () => _form(context, ref),
-      ),
+      trailing: InlineAction(label: 'Tambah', onTap: () => _form(context, ref)),
       child: brands.isEmpty
           ? const _CardEmpty('Belum ada brand.')
           : ListView.separated(
@@ -407,7 +421,8 @@ class _BrandsCard extends ConsumerWidget {
                     () => ref
                         .read(supabaseProvider)
                         .from('brands')
-                        .update({'aktif': !b.aktif}).eq('id', b.id),
+                        .update({'aktif': !b.aktif})
+                        .eq('id', b.id),
                   ),
                 );
               },
@@ -415,7 +430,11 @@ class _BrandsCard extends ConsumerWidget {
     );
   }
 
-  Future<void> _form(BuildContext context, WidgetRef ref, {Brand? brand}) async {
+  Future<void> _form(
+    BuildContext context,
+    WidgetRef ref, {
+    Brand? brand,
+  }) async {
     final result = await showDialog<List<String>>(
       context: context,
       builder: (_) => _MasterFormDialog(
@@ -449,10 +468,7 @@ class _PartTypesCard extends ConsumerWidget {
     return BentoCard(
       title: 'Jenis Part',
       padding: EdgeInsets.zero,
-      trailing: InlineAction(
-        label: 'Tambah',
-        onTap: () => _form(context, ref),
-      ),
+      trailing: InlineAction(label: 'Tambah', onTap: () => _form(context, ref)),
       child: parts.isEmpty
           ? const _CardEmpty('Belum ada jenis part.')
           : ListView.separated(
@@ -472,7 +488,8 @@ class _PartTypesCard extends ConsumerWidget {
                     () => ref
                         .read(supabaseProvider)
                         .from('part_types')
-                        .update({'aktif': !p.aktif}).eq('id', p.id),
+                        .update({'aktif': !p.aktif})
+                        .eq('id', p.id),
                   ),
                 );
               },
@@ -507,7 +524,8 @@ class _PartTypesCard extends ConsumerWidget {
       } else {
         await client
             .from('part_types')
-            .update({'kode': kode, 'nama': nama}).eq('id', part.id);
+            .update({'kode': kode, 'nama': nama})
+            .eq('id', part.id);
       }
     });
   }
@@ -522,7 +540,6 @@ Future<void> _write(
 ) async {
   try {
     await action();
-
   } on PostgrestException catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -592,7 +609,10 @@ class _MasterRow extends StatelessWidget {
           ),
           InlineAction(label: 'Ubah', onTap: onEdit),
           const SizedBox(width: AppSpacing.xs),
-          InlineAction(label: aktif ? 'Nonaktifkan' : 'Aktifkan', onTap: onToggle),
+          InlineAction(
+            label: aktif ? 'Nonaktifkan' : 'Aktifkan',
+            onTap: onToggle,
+          ),
         ],
       ),
     );
@@ -634,15 +654,15 @@ class _CardEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.grey, fontSize: 13),
-          ),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: AppColors.grey, fontSize: 13),
+      ),
+    ),
+  );
 }
 
 class _Field {
@@ -696,7 +716,9 @@ class _MasterFormDialogState extends State<_MasterFormDialog> {
                     controller: _controllers[i],
                     autofocus: i == 0,
                     textCapitalization: TextCapitalization.characters,
-                    decoration: InputDecoration(hintText: widget.fields[i].hint),
+                    decoration: InputDecoration(
+                      hintText: widget.fields[i].hint,
+                    ),
                     validator: (v) =>
                         (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
                   ),
@@ -759,16 +781,18 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
     try {
       // Pembuatan akun ditangani Edge Function di server, karena butuh
       // service_role key yang tidak boleh ada di dalam aplikasi.
-      await ref.read(supabaseProvider).functions.invoke(
-        'create-technician',
-        body: {
-          'nama': _nama.text.trim(),
-          'email': _email.text.trim(),
-          'password': _password.text,
-          'role': _role,
-        },
-      );
-  
+      await ref
+          .read(supabaseProvider)
+          .functions
+          .invoke(
+            'create-technician',
+            body: {
+              'nama': _nama.text.trim(),
+              'email': _email.text.trim(),
+              'password': _password.text,
+              'role': _role,
+            },
+          );
 
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -857,7 +881,10 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
                     initialValue: _role,
                     isExpanded: true,
                     items: const [
-                      DropdownMenuItem(value: 'teknisi', child: Text('Teknisi')),
+                      DropdownMenuItem(
+                        value: 'teknisi',
+                        child: Text('Teknisi'),
+                      ),
                       DropdownMenuItem(value: 'admin', child: Text('Admin')),
                     ],
                     onChanged: (v) => setState(() => _role = v!),
@@ -909,18 +936,14 @@ class _Notice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(AppSpacing.xs),
-        decoration: const BoxDecoration(
-          color: Color(0x0DD82C2C),
-          border: Border(left: BorderSide(color: AppColors.red, width: 3)),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: AppColors.red,
-            fontSize: 12,
-            height: 1.4,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.all(AppSpacing.xs),
+    decoration: const BoxDecoration(
+      color: Color(0x0DD82C2C),
+      border: Border(left: BorderSide(color: AppColors.red, width: 3)),
+    ),
+    child: Text(
+      text,
+      style: const TextStyle(color: AppColors.red, fontSize: 12, height: 1.4),
+    ),
+  );
 }

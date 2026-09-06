@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/export/excel_export.dart';
 import '../../core/data/models.dart';
+import '../../core/hari_laporan.dart';
 import '../../core/omset/omset_providers.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
@@ -123,10 +124,9 @@ class ServiceReportsView extends ConsumerWidget {
 // Laporan harian untuk pusat — dua tabel, keluar dan masuk
 // =====================================================================
 
-final tanggalHarianProvider = StateProvider<DateTime>((ref) {
-  final n = DateTime.now();
-  return DateTime(n.year, n.month, n.day);
-});
+final tanggalHarianProvider = StateProvider<DateTime>(
+  (ref) => hariLaporanKini(ref.read(jamTutupProvider)),
+);
 
 bool _hariSama(DateTime? a, DateTime b) =>
     a != null && a.year == b.year && a.month == b.month && a.day == b.day;
@@ -137,6 +137,7 @@ class _Harian extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tanggal = ref.watch(tanggalHarianProvider);
+    final jamTutup = ref.watch(jamTutupProvider);
     final semua =
         ref.watch(serviceOrdersProvider).valueOrNull ??
         const <ServiceOrderEntry>[];
@@ -144,11 +145,18 @@ class _Harian extends ConsumerWidget {
     // Keluar: pekerjaannya rampung hari itu. Masuk: unitnya diterima hari
     // itu. Keduanya termasuk garansi maupun reguler -- pusat membaca
     // seluruh lalu lintas unit, bukan hanya yang berbayar.
+    //
+    // Yang keluar dibandingkan apa adanya: tanggal_selesai sudah berupa
+    // tanggal, dan servernya yang menstempelnya dengan hari kerja. Yang
+    // masuk masih berupa saat lengkap, jadi pergeserannya dihitung di
+    // sini.
     final keluar =
         semua.where((n) => _hariSama(n.tanggalSelesai, tanggal)).toList()
           ..sort((a, b) => a.noNota.compareTo(b.noNota));
     final masuk =
-        semua.where((n) => _hariSama(n.tanggalMasuk, tanggal)).toList()
+        semua
+            .where((n) => hariLaporanSama(n.tanggalMasuk, tanggal, jamTutup))
+            .toList()
           ..sort((a, b) => a.noNota.compareTo(b.noNota));
 
     final total = keluar.fold<double>(0, (a, n) => a + n.biaya);
@@ -175,11 +183,10 @@ class _Harian extends ConsumerWidget {
             ),
             const SizedBox(width: AppSpacing.xs),
             OutlinedButton(
-              onPressed: () {
-                final n = DateTime.now();
-                ref.read(tanggalHarianProvider.notifier).state =
-                    DateTime(n.year, n.month, n.day);
-              },
+              // Hari kerja, bukan hari kalender: sesudah jam tutup yang
+              // sedang berjalan sudah hari berikutnya.
+              onPressed: () => ref.read(tanggalHarianProvider.notifier).state =
+                  hariLaporanKini(jamTutup),
               child: const Text('HARI INI'),
             ),
             const Spacer(),
@@ -189,8 +196,11 @@ class _Harian extends ConsumerWidget {
             _TombolExport(
               label: 'EXCEL ${_namaBulan.format(tanggal).toUpperCase()}',
               aktif: semua.isNotEmpty,
-              onExport: () =>
-                  ExcelExport.harianBulanan(semua: semua, bulan: tanggal),
+              onExport: () => ExcelExport.harianBulanan(
+                semua: semua,
+                bulan: tanggal,
+                jamTutup: jamTutup,
+              ),
             ),
           ],
         ),
@@ -271,9 +281,9 @@ class _Harian extends ConsumerWidget {
   }
 
   static String _barang(ServiceOrderEntry n) => [
-        n.barangNama,
-        if ((n.barangType ?? '').isNotEmpty) n.barangType!,
-      ].join(' ');
+    n.barangNama,
+    if ((n.barangType ?? '').isNotEmpty) n.barangType!,
+  ].join(' ');
 }
 
 /// Tabel sederhana untuk laporan harian. Lebar 0 berarti kolomnya berbagi
@@ -749,8 +759,9 @@ class _Keseluruhan extends ConsumerWidget {
     final nota = semua.where((n) => bulan.memuat(n.tanggalMasuk)).toList();
 
     final kodePiutang = {
-      for (final m in ref.watch(allMetodeBayarProvider).valueOrNull ??
-          const <MetodeBayar>[])
+      for (final m
+          in ref.watch(allMetodeBayarProvider).valueOrNull ??
+              const <MetodeBayar>[])
         if (m.piutang) m.kode,
     };
 

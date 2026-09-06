@@ -79,10 +79,26 @@ void main() {
         final gaya = sheet
             .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r))
             .cellStyle;
-        expect(gaya?.leftBorder.borderStyle, BorderStyle.Thin, reason: 'r$r c$c');
-        expect(gaya?.rightBorder.borderStyle, BorderStyle.Thin, reason: 'r$r c$c');
-        expect(gaya?.topBorder.borderStyle, BorderStyle.Thin, reason: 'r$r c$c');
-        expect(gaya?.bottomBorder.borderStyle, BorderStyle.Thin, reason: 'r$r c$c');
+        expect(
+          gaya?.leftBorder.borderStyle,
+          BorderStyle.Thin,
+          reason: 'r$r c$c',
+        );
+        expect(
+          gaya?.rightBorder.borderStyle,
+          BorderStyle.Thin,
+          reason: 'r$r c$c',
+        );
+        expect(
+          gaya?.topBorder.borderStyle,
+          BorderStyle.Thin,
+          reason: 'r$r c$c',
+        );
+        expect(
+          gaya?.bottomBorder.borderStyle,
+          BorderStyle.Thin,
+          reason: 'r$r c$c',
+        );
       }
     });
 
@@ -287,6 +303,35 @@ void main() {
 
       expect(lembar[0].tabel[0].baris.length, 1, reason: 'tanggal 1');
       expect(lembar[1].tabel[0].baris.length, 0, reason: 'tanggal 2');
+    });
+
+    test('nota sesudah jam tutup masuk tab hari berikutnya', () {
+      // Laporan ini yang dikirim ke pusat, dan pusat membacanya menurut
+      // hari kerja toko: ditutup jam 17.00, unit yang datang sesudahnya
+      // dicatat sebagai unit besok. Tab tanggal 4 yang memuat nota jam
+      // 18.30 tanggal 4 akan berselisih dengan buku di meja depan.
+      final lembar = ExcelExport.lembarHarianBulanan(
+        semua: [
+          _nota(noNota: 'SORE', masuk: DateTime(2026, 9, 4, 9, 0)),
+          _nota(noNota: 'MALAM', masuk: DateTime(2026, 9, 4, 18, 30)),
+        ],
+        bulan: DateTime(2026, 9),
+      );
+
+      // Tabel kedua tiap lembar adalah nota masuk.
+      expect(lembar[3].tabel[1].baris.length, 1, reason: 'tanggal 4');
+      expect(lembar[4].tabel[1].baris.length, 1, reason: 'tanggal 5');
+    });
+
+    test('jam tutup 24 mengembalikannya ke hari kalender', () {
+      final lembar = ExcelExport.lembarHarianBulanan(
+        semua: [_nota(noNota: 'MALAM', masuk: DateTime(2026, 9, 4, 18, 30))],
+        bulan: DateTime(2026, 9),
+        jamTutup: 24,
+      );
+
+      expect(lembar[3].tabel[1].baris.length, 1, reason: 'tanggal 4');
+      expect(lembar[4].tabel[1].baris.length, 0, reason: 'tanggal 5');
     });
   });
 

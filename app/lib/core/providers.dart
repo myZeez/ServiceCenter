@@ -5,15 +5,14 @@ import '../features/parts/part_status.dart';
 import 'data/db.dart';
 import 'data/models.dart';
 import 'data/prefs.dart';
+import 'hari_laporan.dart';
 import 'widgets/grid_canvas.dart';
 
 final supabaseProvider = Provider<SupabaseClient>(
   (ref) => Supabase.instance.client,
 );
 
-final databaseProvider = Provider<Db>(
-  (ref) => Db(ref.watch(supabaseProvider)),
-);
+final databaseProvider = Provider<Db>((ref) => Db(ref.watch(supabaseProvider)));
 
 /// Diisi di main() sebelum aplikasi berjalan, supaya layar tidak perlu
 /// menunggui pembacaan berkas pengaturan yang isinya sekadar nama printer.
@@ -254,7 +253,9 @@ final claimsProvider = Provider<AsyncValue<List<Claim>>>((ref) {
   final filter = ref.watch(claimFilterProvider);
   final q = filter.query.toLowerCase().trim();
 
-  return ref.watch(allClaimsProvider).whenData(
+  return ref
+      .watch(allClaimsProvider)
+      .whenData(
         (list) => list.where((c) {
           if (filter.brandId != null && c.brandId != filter.brandId) {
             return false;
@@ -283,10 +284,10 @@ final statusCountsProvider = Provider<AsyncValue<Map<String, int>>>(
 
 final partsOfClaimProvider =
     Provider.family<AsyncValue<List<ClaimPart>>, String>(
-  (ref, claimId) => ref
-      .watch(allPartsProvider)
-      .whenData((l) => l.where((p) => p.claimId == claimId).toList()),
-);
+      (ref, claimId) => ref
+          .watch(allPartsProvider)
+          .whenData((l) => l.where((p) => p.claimId == claimId).toList()),
+    );
 
 /// Nota servis yang menaungi sebuah klaim, kalau memang ada.
 ///
@@ -344,7 +345,8 @@ final partCostsProvider = StreamProvider<List<PartCost>>(
 );
 
 final partCostProvider = Provider.family<PartCost?, String>((ref, id) {
-  for (final c in ref.watch(partCostsProvider).valueOrNull ?? const <PartCost>[]) {
+  for (final c
+      in ref.watch(partCostsProvider).valueOrNull ?? const <PartCost>[]) {
     if (c.partOrderId == id) return c;
   }
   return null;
@@ -426,14 +428,25 @@ final storeSettingsProvider = StreamProvider<StoreSetting?>(
   (ref) => ref.watch(databaseProvider).watchStoreSettings(),
 );
 
+/// Jam laporan harian ditutup, dari pengaturan toko.
+///
+/// Ditaruh di Pengaturan dan bukan di kode karena yang mengubahnya adalah
+/// orang yang sedang berdiri di toko. Jam tutup bisa bergeser -- bulan
+/// puasa, hari libur, atau sekadar keputusan baru -- dan menunggu aplikasi
+/// dibangun ulang untuk itu berarti angka laporannya salah setiap hari
+/// selama menunggu.
+final jamTutupProvider = Provider<int>(
+  (ref) =>
+      ref.watch(storeSettingsProvider).valueOrNull?.tutupJam ?? jamTutupBawaan,
+);
+
 // ---------------------------------------------------------------------
 // Pengaturan yang melekat pada perangkat
 // ---------------------------------------------------------------------
 
 /// Susunan grid yang dipilih pengguna, per halaman.
 final gridLayoutProvider = StreamProvider.family<GridLayout, String>(
-  (ref, key) =>
-      ref.watch(prefsProvider).watch('grid.$key').map(decodeLayout),
+  (ref, key) => ref.watch(prefsProvider).watch('grid.$key').map(decodeLayout),
 );
 
 Future<void> simpanGridLayout(WidgetRef ref, String key, GridLayout layout) =>

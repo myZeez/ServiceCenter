@@ -15,8 +15,7 @@ import 'package:sc_management/core/export/excel_export.dart';
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/theme.dart';
 import 'package:sc_management/features/service/service_reports_view.dart';
-import 'package:sc_management/core/providers.dart'
-    show serviceOrdersProvider;
+import 'package:sc_management/core/providers.dart' show serviceOrdersProvider;
 
 ServiceOrderEntry _nota({
   required String noNota,
@@ -45,6 +44,15 @@ ServiceOrderEntry _nota({
   updatedAt: masuk,
 );
 
+/// Tanggal yang dipakai seluruh berkas ini.
+///
+/// Dulu DateTime.now(). Itu bekerja sampai hari kerja toko berhenti
+/// berganti tengah malam: sesudah jam 17.00 tab ini membuka tanggal
+/// berikutnya, dan tesnya lulus atau gagal tergantung jam berapa ia
+/// dijalankan. Tanggal tetap membuat yang diuji tetap tata letaknya.
+final _hari = DateTime(2026, 9, 6, 9, 0);
+final _kemarin = DateTime(2026, 9, 5, 9, 0);
+
 Future<void> _lukis(WidgetTester tester, List<ServiceOrderEntry> data) async {
   await tester.binding.setSurfaceSize(const Size(1366, 768));
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -53,6 +61,9 @@ Future<void> _lukis(WidgetTester tester, List<ServiceOrderEntry> data) async {
     ProviderScope(
       overrides: [
         serviceOrdersProvider.overrideWith((ref) => Stream.value(data)),
+        tanggalHarianProvider.overrideWith(
+          (ref) => DateTime(_hari.year, _hari.month, _hari.day),
+        ),
       ],
       child: MaterialApp(
         theme: AppTheme.build(),
@@ -68,8 +79,8 @@ void main() {
 
   group('Tab harian', () {
     testWidgets('terlukis penuh tanpa galat tata letak', (tester) async {
-      final hari = DateTime.now();
-      final kemarin = hari.subtract(const Duration(days: 1));
+      final hari = _hari;
+      final kemarin = _kemarin;
 
       await _lukis(tester, [
         // Keluar hari ini -- masuk kemarin, jadi ikut tabel pertama saja.
@@ -87,8 +98,8 @@ void main() {
     });
 
     testWidgets('nota keluar dipisah dari nota masuk', (tester) async {
-      final hari = DateTime.now();
-      final kemarin = hari.subtract(const Duration(days: 1));
+      final hari = _hari;
+      final kemarin = _kemarin;
 
       await _lukis(tester, [
         _nota(noNota: 'SRV-0001', masuk: kemarin, selesai: hari),
@@ -106,17 +117,20 @@ void main() {
     testWidgets('tanggal tanpa transaksi memberi pesan, bukan tabel kosong', (
       tester,
     ) async {
-      final lama = DateTime.now().subtract(const Duration(days: 40));
+      final lama = _hari.subtract(const Duration(days: 40));
       await _lukis(tester, [_nota(noNota: 'SRV-0001', masuk: lama)]);
 
       expect(tester.takeException(), isNull);
-      expect(find.textContaining('Belum ada unit yang selesai'), findsOneWidget);
+      expect(
+        find.textContaining('Belum ada unit yang selesai'),
+        findsOneWidget,
+      );
       expect(find.textContaining('Belum ada unit yang masuk'), findsOneWidget);
     });
   });
 
   group('Keterangan harian', () {
-    final hari = DateTime.now();
+    final hari = _hari;
 
     test('nota batal ditandai Cancel apa pun isinya', () {
       final n = _nota(
@@ -135,7 +149,11 @@ void main() {
     });
 
     test('nota reguler memakai catatannya sendiri', () {
-      final n = _nota(noNota: 'SRV-0003', masuk: hari, keterangan: 'Belum bayar');
+      final n = _nota(
+        noNota: 'SRV-0003',
+        masuk: hari,
+        keterangan: 'Belum bayar',
+      );
       expect(ExcelExport.keteranganHarian(n), 'Belum bayar');
     });
 

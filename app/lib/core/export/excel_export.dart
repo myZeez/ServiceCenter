@@ -5,6 +5,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:intl/intl.dart';
 
 import '../data/models.dart';
+import '../hari_laporan.dart';
 
 final _tgl = DateFormat('dd/MM/yyyy');
 final _bulanTahun = DateFormat('MMMM yyyy', 'id');
@@ -290,9 +291,11 @@ class ExcelExport {
     required String periode,
   }) {
     final urut = [...nota]
-      ..sort((a, b) => (a.tanggalLunas ?? a.tanggalMasuk).compareTo(
-        b.tanggalLunas ?? b.tanggalMasuk,
-      ));
+      ..sort(
+        (a, b) => (a.tanggalLunas ?? a.tanggalMasuk).compareTo(
+          b.tanggalLunas ?? b.tanggalMasuk,
+        ),
+      );
     final total = urut.fold<double>(0, (a, n) => a + n.biaya);
 
     // Tanggal hanya ditulis pada baris pertama tiap harinya, seperti di
@@ -317,10 +320,13 @@ class ExcelExport {
           baris: [
             for (final n in urut)
               [
-                if (_hariSama(sebelumnya, n.tanggalLunas)) null else () {
-                  sebelumnya = n.tanggalLunas;
-                  return _tanggal(n.tanggalLunas);
-                }(),
+                if (_hariSama(sebelumnya, n.tanggalLunas))
+                  null
+                else
+                  () {
+                    sebelumnya = n.tanggalLunas;
+                    return _tanggal(n.tanggalLunas);
+                  }(),
                 TextCellValue(n.noNota),
                 TextCellValue(n.customerNama),
                 TextCellValue(_barang(n)),
@@ -401,10 +407,7 @@ class ExcelExport {
                 TextCellValue(n.keluhan ?? ''),
                 TextCellValue(teknisi[n.teknisiId] ?? ''),
                 _tanggal(n.tanggalSelesai),
-                if (n.tanggalLunas != null)
-                  DoubleCellValue(n.biaya)
-                else
-                  null,
+                if (n.tanggalLunas != null) DoubleCellValue(n.biaya) else null,
                 if (n.tanggalLunas == null && n.biaya > 0)
                   DoubleCellValue(n.biaya)
                 else
@@ -504,14 +507,16 @@ class ExcelExport {
   static Future<String?> harianBulanan({
     required List<ServiceOrderEntry> semua,
     required DateTime bulan,
+    int jamTutup = jamTutupBawaan,
   }) => simpanBanyak(
     namaBerkas: 'SVS ${_aman(_bulanTahun.format(bulan)).toUpperCase()}.xlsx',
-    lembar: lembarHarianBulanan(semua: semua, bulan: bulan),
+    lembar: lembarHarianBulanan(semua: semua, bulan: bulan, jamTutup: jamTutup),
   );
 
   static List<LembarExcel> lembarHarianBulanan({
     required List<ServiceOrderEntry> semua,
     required DateTime bulan,
+    int jamTutup = jamTutupBawaan,
   }) {
     final jumlahHari = DateTime(bulan.year, bulan.month + 1, 0).day;
 
@@ -521,21 +526,30 @@ class ExcelExport {
           semua: semua,
           tanggal: DateTime(bulan.year, bulan.month, h),
           namaLembar: '$h',
+          jamTutup: jamTutup,
         ),
     ];
   }
 
   /// Satu tanggal: dua tabel bertumpuk, nota keluar lalu nota masuk.
+  ///
+  /// Harinya hari kerja, bukan hari kalender: laporan ini ditutup pada jam
+  /// tutup toko, dan unit yang masuk sesudahnya sudah tercatat sebagai
+  /// unit hari berikutnya. Yang keluar dibandingkan apa adanya --
+  /// tanggal_selesai sudah distempel server dengan aturan yang sama.
   static LembarExcel lembarHarian({
     required List<ServiceOrderEntry> semua,
     required DateTime tanggal,
     String? namaLembar,
+    int jamTutup = jamTutupBawaan,
   }) {
     final keluar =
         semua.where((n) => _hariSama(n.tanggalSelesai, tanggal)).toList()
           ..sort((a, b) => a.noNota.compareTo(b.noNota));
     final masuk =
-        semua.where((n) => _hariSama(n.tanggalMasuk, tanggal)).toList()
+        semua
+            .where((n) => hariLaporanSama(n.tanggalMasuk, tanggal, jamTutup))
+            .toList()
           ..sort((a, b) => a.noNota.compareTo(b.noNota));
 
     final judul = 'LAPORAN PERHARI TGL ${_tgl.format(tanggal)}';

@@ -103,7 +103,7 @@ void main() {
     expect(find.text('FRM_LCD'), findsWidgets);
   });
 
-  testWidgets('admin tidak muncul di pilihan teknisi', (tester) async {
+  testWidgets('admin ikut muncul di pilihan teknisi', (tester) async {
     await tester.binding.setSurfaceSize(const Size(420, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -121,9 +121,11 @@ void main() {
     await _buka(tester, find.byType(DropdownButtonFormField<String>).first);
 
     expect(find.text('Reza Teknisi'), findsWidgets);
-    // Yang memegang obeng adalah teknisi, dan bagi hasil dihitung atas nama
-    // merekalah.
-    expect(find.text('Budi Admin'), findsNothing);
+    // Admin ikut: pada hari yang sepi memang orang di meja depan yang
+    // mengerjakan sendiri, dan arsip 2026 mencatatnya pada 462 nota.
+    // Mengeluarkannya berarti pekerjaan itu tidak bisa dicatat atas nama
+    // siapa pun.
+    expect(find.text('Budi Admin'), findsWidgets);
   });
 
   testWidgets('klaim yang punya nota menyebutkan status keduanya seiring', (

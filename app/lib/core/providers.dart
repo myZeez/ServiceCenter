@@ -173,15 +173,21 @@ final techniciansProvider = Provider<AsyncValue<List<Profile>>>(
 
 /// Siapa saja yang boleh ditunjuk mengerjakan sebuah unit.
 ///
-/// Admin tidak termasuk: yang memegang obeng adalah teknisi, dan bagi hasil
-/// dihitung atas nama merekalah. Daftar ini bisa kosong kalau belum ada
-/// teknisi terdaftar -- layar yang memakainya menjelaskan keadaan itu alih-
-/// alih menampilkan dropdown yang tampak terkunci.
+/// Admin ikut. Sempat dikeluarkan dengan alasan yang terdengar rapi --
+/// yang memegang obeng adalah teknisi -- tetapi arsipnya membantah:
+/// "Admin" tercatat sebagai pengerja pada 462 nota sepanjang 2026, dan
+/// pada hari yang sepi memang orang di meja depan yang mengerjakannya
+/// sendiri. Mengeluarkannya berarti pekerjaan itu tidak bisa dicatat atas
+/// nama siapa pun.
+///
+/// Daftar ini bisa kosong kalau belum ada pengguna aktif -- layar yang
+/// memakainya menjelaskan keadaan itu alih-alih menampilkan dropdown yang
+/// tampak terkunci.
 final pengerjaProvider = Provider<List<Profile>>(
   (ref) => [
     for (final p
         in ref.watch(allProfilesProvider).valueOrNull ?? const <Profile>[])
-      if (p.aktif && p.role != 'admin') p,
+      if (p.aktif) p,
   ],
 );
 

@@ -3,7 +3,9 @@
 // Sengaja ditulis sendiri, bukan memakai paket: berkas-berkas arsip ini
 // dibaca sekali saat menyusun impor, dan menambah dependensi ke aplikasi
 // yang dipasang di toko untuk keperluan sekali itu tidak sepadan.
-List<List<String>> baca(String isi) {
+/// [pemisah] karena tidak semua arsipnya berkoma: laporan harian yang
+/// diekspor dari Excel memakai titik koma.
+List<List<String>> baca(String isi, {String pemisah = ','}) {
   final hasil = <List<String>>[];
   var baris = <String>[];
   final sel = StringBuffer();
@@ -16,7 +18,7 @@ List<List<String>> baca(String isi) {
         else { kutip = false; }
       } else { sel.write(c); }
     } else if (c == '"') { kutip = true; }
-    else if (c == ',') { baris.add(sel.toString()); sel.clear(); }
+    else if (c == pemisah) { baris.add(sel.toString()); sel.clear(); }
     else if (c == '\n') { baris.add(sel.toString()); sel.clear(); hasil.add(baris); baris = <String>[]; }
     else if (c != '\r') { sel.write(c); }
   }

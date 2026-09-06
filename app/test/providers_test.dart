@@ -74,55 +74,43 @@ void main() {
   });
 
   group('Pilihan pengerja', () {
-    test('admin tidak bisa ditunjuk mengerjakan', () async {
+    test('admin ikut bisa ditunjuk mengerjakan', () async {
+      // Sempat dikeluarkan dengan alasan yang terdengar rapi -- yang
+      // memegang obeng adalah teknisi. Arsipnya membantah: "Admin"
+      // tercatat sebagai pengerja pada 462 nota sepanjang 2026. Pada hari
+      // yang sepi memang orang di meja depan yang mengerjakannya sendiri.
       final c = _wadah([
         _orang('1', 'Budi', 'admin'),
         _orang('2', 'Andi', 'teknisi'),
       ]);
       await c.read(allProfilesProvider.future);
 
-      expect(c.read(pengerjaProvider).map((p) => p.nama), ['Andi']);
+      expect(c.read(pengerjaProvider).map((p) => p.nama), ['Budi', 'Andi']);
     });
 
-    test('toko yang belum punya teknisi menghasilkan daftar kosong', () async {
-      // Sengaja tidak dijatuhkan kembali ke daftar admin. Yang benar adalah
-      // menambahkan teknisinya dulu, dan formulirnya mengatakan itu -- bukan
-      // menawarkan nama yang tidak boleh dipilih.
+    test('yang dinonaktifkan tetap tidak ditawarkan', () async {
       final c = _wadah([
         _orang('1', 'Budi', 'admin'),
-        _orang('2', 'Sari', 'admin'),
+        _orang('2', 'Sari', 'teknisi', aktif: false),
       ]);
       await c.read(allProfilesProvider.future);
 
-      expect(c.read(pengerjaProvider), isEmpty);
+      expect(c.read(pengerjaProvider).map((p) => p.nama), ['Budi']);
     });
 
-    test('yang sudah tercatat tetap ikut walau ia admin', () async {
+    test('yang sudah tercatat tetap ikut walau sudah dinonaktifkan', () async {
       // Dua sebabnya sama-sama keras: dropdown yang nilainya tidak ada di
       // antara pilihannya melempar galat, dan nama yang menghilang dari
       // kolomnya terbaca seperti pekerjaannya ikut terhapus.
       final c = _wadah([
         _orang('1', 'Budi', 'admin'),
         _orang('2', 'Andi', 'teknisi'),
+        _orang('9', 'Mantan', 'teknisi', aktif: false),
       ]);
       await c.read(allProfilesProvider.future);
 
-      final daftar = c.read(pengerjaUntukProvider('1'));
-      expect(daftar.map((p) => p.nama), ['Andi', 'Budi']);
-    });
-
-    test('yang sudah tercatat tetap ikut walau sudah dinonaktifkan', () async {
-      final c = _wadah([
-        _orang('1', 'Budi', 'admin'),
-        _orang('2', 'Andi', 'teknisi'),
-        _orang('3', 'Mantan', 'teknisi', aktif: false),
-      ]);
-      await c.read(allProfilesProvider.future);
-
-      expect(
-        c.read(pengerjaUntukProvider('3')).map((p) => p.nama),
-        ['Andi', 'Mantan'],
-      );
+      final daftar = c.read(pengerjaUntukProvider('9'));
+      expect(daftar.map((p) => p.nama), ['Budi', 'Andi', 'Mantan']);
     });
 
     test('tidak menggandakan orang yang memang sudah ada di daftar', () async {
@@ -132,7 +120,10 @@ void main() {
       ]);
       await c.read(allProfilesProvider.future);
 
-      expect(c.read(pengerjaUntukProvider('2')).map((p) => p.nama), ['Andi']);
+      expect(
+        c.read(pengerjaUntukProvider('2')).map((p) => p.nama),
+        ['Budi', 'Andi'],
+      );
     });
 
     test('tanpa siapa pun terpilih, daftarnya apa adanya', () async {
@@ -142,7 +133,10 @@ void main() {
       ]);
       await c.read(allProfilesProvider.future);
 
-      expect(c.read(pengerjaUntukProvider(null)).map((p) => p.nama), ['Andi']);
+      expect(
+        c.read(pengerjaUntukProvider(null)).map((p) => p.nama),
+        ['Budi', 'Andi'],
+      );
     });
   });
 

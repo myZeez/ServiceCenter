@@ -2,77 +2,121 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
 
-/// Posisi sebuah pesanan part. Nilainya harus sama persis dengan enum
+/// Posisi sebuah permintaan part. Nilainya harus sama persis dengan enum
 /// part_tahap di Postgres.
+///
+/// Daftarnya diambil dari arsip sheet yang dipakai bertahun-tahun, bukan
+/// dikarang: tiap nilai di sini punya ratusan sampai ribuan baris di
+/// belakangnya. Satu kolom, bukan dua -- di sheet aslinya "No Stock"
+/// memang status, sederajat dengan CANCEL, dan tidak ada satu pun baris
+/// yang pernah ditandai "ready".
 class PartTahap {
-  static const tanya = 'tanya';
+  /// Menunggu teknisi menyebutkan kode part persisnya. Tahap paling awal,
+  /// dan yang isinya paling menumpuk.
+  static const foto = 'foto';
+
+  /// Sudah ditanyakan ke supplier, harganya belum datang.
+  static const harga = 'harga';
+
+  /// Harga sudah keluar, menunggu pelanggan menyetujui dan membayar DP.
+  static const konfirmasi = 'konfirmasi';
+
   static const dipesan = 'dipesan';
   static const dipasang = 'dipasang';
+
+  /// Sudah diambil pelanggan. "CLOSE" di sheet lama.
   static const selesai = 'selesai';
+
+  /// Pelanggan mundur.
   static const batal = 'batal';
 
-  static const all = [tanya, dipesan, dipasang, selesai, batal];
+  /// Barangnya memang tidak ada. Berbeda dari batal, dan bedanya bukan
+  /// soal rasa: yang satu keputusan pelanggan, yang satu kegagalan kita
+  /// mencari barang -- dan hanya yang kedua layak dihitung sebagai
+  /// peluang yang hilang.
+  static const kosong = 'kosong';
 
-  /// Yang sudah lewat meja tanya-jawab dan menjadi pesanan sungguhan.
-  /// Inilah isi halaman Pemesanan Part.
-  static const dipesanKeAtas = [dipesan, dipasang, selesai];
+  static const all = [
+    foto,
+    harga,
+    konfirmasi,
+    dipesan,
+    dipasang,
+    selesai,
+    batal,
+    kosong,
+  ];
 
-  static bool sudahDipesan(String tahap) => dipesanKeAtas.contains(tahap);
+  /// Yang masih di meja tanya-jawab: belum ada uang yang berpindah.
+  static const sebelumDp = [foto, harga, konfirmasi, batal, kosong];
+
+  /// Yang sudah jadi pesanan sungguhan. Inilah isi halaman Pemesanan.
+  static const sesudahDp = [dipesan, dipasang, selesai];
+
+  static bool sudahDipesan(String tahap) => sesudahDp.contains(tahap);
+
+  /// Tahap yang tidak masuk akal tanpa harga. Dijaga juga oleh constraint
+  /// di Postgres; daftar ini supaya layar bisa menolak lebih dulu dengan
+  /// kalimat yang bisa dibaca.
+  static bool perluHarga(String tahap) =>
+      !const [foto, harga, batal, kosong].contains(tahap);
 
   static const _labels = {
-    tanya: 'Tanya Harga',
+    foto: 'Tunggu Kode Part',
+    harga: 'Tunggu Harga',
+    konfirmasi: 'Tunggu Konfirmasi DP',
     dipesan: 'Part Dipesan',
     dipasang: 'Part Dipasang',
-    selesai: 'Selesai',
+    selesai: 'Close',
     batal: 'Batal',
+    kosong: 'No Stock',
   };
 
-  // Mengikuti aturan yang sama dengan status nota: yang menuntut tindakan
-  // diberi bobot paling besar, yang sudah tuntas mundur ke belakang.
+  /// Label pendek untuk kolom tabel yang sempit dan chip saringan.
+  static const _pendek = {
+    foto: 'Kode Part',
+    harga: 'Tunggu Harga',
+    konfirmasi: 'Tunggu DP',
+    dipesan: 'Dipesan',
+    dipasang: 'Dipasang',
+    selesai: 'Close',
+    batal: 'Batal',
+    kosong: 'No Stock',
+  };
+
+  // Aturannya sama dengan status nota: yang menuntut tindakan diberi
+  // bobot paling besar, yang sudah tuntas mundur ke belakang.
   //
-  // 'dipasang' sengaja merah. Part sudah menempel di unit pelanggan
-  // sementara sisa tagihannya belum masuk -- itu keadaan paling rawan di
-  // seluruh alur ini, dan satu-satunya yang benar-benar bisa merugikan
-  // toko kalau terlewat.
+  // 'dipasang' sengaja merah dan terisi. Part sudah menempel di unit
+  // pelanggan sementara sisa tagihannya belum masuk -- satu-satunya
+  // keadaan di seluruh alur ini yang benar-benar bisa merugikan toko
+  // kalau terlewat.
   static const _colors = {
-    tanya: AppColors.blue,
+    foto: AppColors.grey,
+    harga: AppColors.blue,
+    konfirmasi: AppColors.blue,
     dipesan: AppColors.blue,
     dipasang: AppColors.red,
     selesai: AppColors.black,
     batal: AppColors.grey,
+    kosong: AppColors.red,
   };
 
   static const _filled = {
-    tanya: false,
+    foto: false,
+    harga: false,
+    konfirmasi: true,
     dipesan: true,
     dipasang: true,
     selesai: false,
     batal: false,
+    kosong: false,
   };
 
   static String label(String t) => _labels[t] ?? t;
+  static String pendek(String t) => _pendek[t] ?? _labels[t] ?? t;
   static Color color(String t) => _colors[t] ?? AppColors.grey;
   static bool isFilled(String t) => _filled[t] ?? false;
-}
-
-/// Keadaan barangnya di tangan supplier. Berbeda dari tahap, dan sengaja
-/// dipisah: part bisa ready sementara pelanggannya belum tentu jadi.
-class PartStok {
-  static const ready = 'ready';
-  static const kosong = 'kosong';
-
-  static const all = [ready, kosong];
-
-  static const _labels = {ready: 'Ready Stok', kosong: 'No Stok'};
-
-  static String label(String? s) =>
-      s == null ? 'Belum dicek' : (_labels[s] ?? s);
-
-  static Color color(String? s) => switch (s) {
-    ready => AppColors.black,
-    kosong => AppColors.red,
-    _ => AppColors.grey,
-  };
 }
 
 class PartTahapChip extends StatelessWidget {
@@ -94,7 +138,10 @@ class PartTahapChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.small),
       ),
       child: Text(
-        PartTahap.label(tahap).toUpperCase(),
+        (compact ? PartTahap.pendek(tahap) : PartTahap.label(tahap))
+            .toUpperCase(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: filled ? AppColors.white : c,
           fontSize: compact ? 9 : 10,
@@ -107,24 +154,19 @@ class PartTahapChip extends StatelessWidget {
   }
 }
 
-/// Penanda stok. Sengaja bukan chip berbingkai seperti tahap -- dua chip
-/// bersebelahan dengan bobot yang sama membuat mata harus membaca
-/// keduanya untuk tahu mana yang penting.
-class PartStokLabel extends StatelessWidget {
-  const PartStokLabel(this.stok, {super.key});
-
-  final String? stok;
-
-  @override
-  Widget build(BuildContext context) => Text(
-    PartStok.label(stok).toUpperCase(),
-    maxLines: 1,
-    overflow: TextOverflow.ellipsis,
-    style: TextStyle(
-      fontSize: 9.5,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0.7,
-      color: PartStok.color(stok),
-    ),
-  );
-}
+/// Asal part: OEM, atau saluran resmi merek seperti ASUS ID dan ACER ID.
+///
+/// Bukan pilihan tertutup. Di arsipnya ada belasan nilai yang tumbuh
+/// sendiri sepanjang tahun -- AXIOO ID, MSI ID, Canon ID, sampai nama
+/// toko tempat membeli lepasan. Daftar ini hanya bibit untuk pelengkapan
+/// otomatis; apa pun yang diketik tetap tersimpan.
+const asalPartUmum = [
+  'OEM',
+  'ORI',
+  'ASUS ID',
+  'ACER ID',
+  'LENOVO ID',
+  'HP ID',
+  'AXIOO ID',
+  'MSI ID',
+];

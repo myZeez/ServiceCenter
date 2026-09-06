@@ -15,24 +15,31 @@ PartOrder _pesanan({
   required String id,
   String nama = 'Jamal',
   String tahap = 'selesai',
-  String? stok = 'ready',
   double? harga = 120000,
   double dp = 0,
   double sisa = 0,
+  DateTime? tanggalDp,
+  DateTime? tanggalOrder,
+  String? noPo,
+  String? catatan,
 }) => PartOrder(
   id: id,
   tanggal: DateTime(2026, 9, 4),
   customerNama: nama,
+  customerTelp: '0812',
   barangType: 'ASUS X441',
   barangSn: 'SN$id',
   partReq: 'KEYBOARD',
-  keterangan: 'oem',
+  keterangan: 'asus id',
   teknisiId: 't1',
-  stok: stok,
   tahap: tahap,
   harga: harga,
   dp: dp,
   sisa: sisa,
+  tanggalDp: tanggalDp,
+  tanggalOrder: tanggalOrder,
+  noPo: noPo,
+  catatan: catatan,
   updatedAt: DateTime(2026, 9, 4),
 );
 
@@ -58,24 +65,27 @@ void main() {
     expect(l.tabel.single.judul, contains('SEPTEMBER 2026'));
   });
 
-  test('kolomnya lengkap dan berurutan', () {
+  test('kolomnya mengikuti urutan sheet yang selama ini dipakai', () {
     final judul = _lembar([]).tabel.single.kolom.map((k) => k.judul);
     expect(judul, [
-      'TANGGAL',
-      'NAMA PELANGGAN',
-      'TIPE',
+      'TANGGAL DP',
+      'NAMA CUSTOMER',
+      'NO TELP',
       'SN',
-      'PART REQ',
-      'KET',
+      'MERK/TIPE',
+      'PART',
+      'STATUS',
+      'TANGGAL ORDER',
       'TEKNISI',
-      'STOK',
-      'TAHAP',
-      'HPP',
+      'HARGA HPP',
       'UP %',
       'HARGA JUAL',
       'UNTUNG',
       'DP USER',
       'SISA',
+      'NO PO',
+      'KETERANGAN',
+      'CATATAN',
     ]);
   });
 
@@ -88,7 +98,7 @@ void main() {
     );
 
     final baris = l.tabel.single.baris.single;
-    expect((baris[9] as DoubleCellValue).value, 100000); // HPP
+    expect((baris[9] as DoubleCellValue).value, 100000); // HARGA HPP
     expect((baris[10] as DoubleCellValue).value, 20); // UP %
     expect((baris[11] as DoubleCellValue).value, 120000); // HARGA JUAL
     expect((baris[12] as DoubleCellValue).value, 20000); // UNTUNG
@@ -102,20 +112,50 @@ void main() {
     expect(baris[12], isNull);
   });
 
-  test('stok dan tahap ditulis sebagai kata, bukan kode basis data', () {
-    final baris = _lembar([
-      _pesanan(id: '1', stok: 'kosong', tahap: 'dipasang'),
-    ]).tabel.single.baris.single;
-
-    expect((baris[7] as TextCellValue).value.toString(), 'NO STOK');
-    expect((baris[8] as TextCellValue).value.toString(), 'PART DIPASANG');
+  test('status ditulis dengan istilah sheet lama, bukan kode basis data', () {
+    for (final (tahap, teks) in const [
+      ('foto', 'WAIT FOTO/KODE PART'),
+      ('harga', 'TUNGGU HARGA'),
+      ('konfirmasi', 'WAIT CONFIRM USER DP'),
+      ('dipesan', 'ORDERED'),
+      ('selesai', 'CLOSE'),
+      ('batal', 'CANCEL'),
+      ('kosong', 'NO STOCK'),
+    ]) {
+      final baris = _lembar([
+        _pesanan(id: '1', tahap: tahap, harga: null),
+      ]).tabel.single.baris.single;
+      expect((baris[6] as TextCellValue).value.toString(), teks);
+    }
   });
 
-  test('stok yang belum dicek ditulis kosong, bukan tanda hubung', () {
-    final baris = _lembar([
-      _pesanan(id: '1', stok: null),
+  test('tanggal DP dipakai kalau ada, tanggal bertanya kalau belum', () {
+    final adaDp = _lembar([
+      _pesanan(id: '1', tanggalDp: DateTime(2026, 9, 20)),
     ]).tabel.single.baris.single;
-    expect((baris[7] as TextCellValue).value.toString(), '');
+    expect((adaDp[0] as DateCellValue).day, 20);
+
+    final belum = _lembar([_pesanan(id: '2')]).tabel.single.baris.single;
+    expect((belum[0] as DateCellValue).day, 4);
+  });
+
+  test('kolom pemesanan ikut: tanggal order, no PO, dan catatan', () {
+    final baris = _lembar([
+      _pesanan(
+        id: '1',
+        tanggalOrder: DateTime(2026, 9, 8),
+        noPo: 'IDD7510006',
+        catatan: 'ORI KB MODULE 3-6 WEEK',
+      ),
+    ]).tabel.single.baris.single;
+
+    expect((baris[7] as DateCellValue).day, 8);
+    expect((baris[15] as TextCellValue).value.toString(), 'IDD7510006');
+    expect((baris[16] as TextCellValue).value.toString(), 'ASUS ID');
+    expect(
+      (baris[17] as TextCellValue).value.toString(),
+      'ORI KB MODULE 3-6 WEEK',
+    );
   });
 
   test('baris penutup menjumlahkan kolom uangnya', () {
@@ -137,6 +177,9 @@ void main() {
     expect((tutup[12] as DoubleCellValue).value, 40000); // Untung
     expect((tutup[13] as DoubleCellValue).value, 130000); // DP
     expect((tutup[14] as DoubleCellValue).value, 70000); // Sisa
+    // Penutupnya harus selebar tabelnya, atau garis tepinya putus di
+    // tengah baris total.
+    expect(tutup.length, l.tabel.single.kolom.length);
   });
 
   test('urut menurut tanggal, bukan urutan datangnya dari server', () {
@@ -182,6 +225,6 @@ void main() {
 
     // Judul, kepala kolom, satu baris data, satu baris penutup.
     expect(sheet.maxRows, 4);
-    expect(sheet.maxColumns, 15);
+    expect(sheet.maxColumns, 18);
   });
 }

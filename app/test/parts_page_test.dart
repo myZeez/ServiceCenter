@@ -1,9 +1,10 @@
 // Halaman part di layar sempit.
 //
 // Yang diuji terutama bukan tampilannya melainkan batasnya: teknisi tidak
-// boleh ditawari tahap yang pasti ditolak server. Kolom yang bisa diketik
-// lalu ditolak diam-diam adalah cacat yang paling lama tidak ketahuan,
-// karena tidak ada galat -- hanya perubahan yang tidak pernah tersimpan.
+// boleh ditawari tahap yang pasti ditolak server, dan harus bisa mengisi
+// hal yang justru ditunggu darinya. Kolom yang bisa diketik lalu ditolak
+// diam-diam adalah cacat yang paling lama tidak ketahuan, karena tidak ada
+// galat -- hanya perubahan yang tidak pernah tersimpan.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,13 +12,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/providers.dart';
+import 'package:sc_management/features/parts/part_status.dart';
 import 'package:sc_management/features/parts/parts_page.dart';
 
 PartOrder _pesanan({
   required String id,
   String nama = 'Jamal',
-  String tahap = 'dipesan',
-  String? stok = 'ready',
+  String tahap = PartTahap.dipesan,
   double? harga = 120000,
 }) => PartOrder(
   id: id,
@@ -26,7 +27,6 @@ PartOrder _pesanan({
   barangType: 'ASUS X441',
   partReq: 'KEYBOARD',
   teknisiId: 't1',
-  stok: stok,
   tahap: tahap,
   harga: harga,
   updatedAt: DateTime(2026, 9, 4),
@@ -63,7 +63,7 @@ void main() {
   testWidgets('menampilkan antrean part', (tester) async {
     await _lukis(tester, [
       _pesanan(id: '1', nama: 'Jamal'),
-      _pesanan(id: '2', nama: 'Soni', tahap: 'tanya', harga: null),
+      _pesanan(id: '2', nama: 'Soni', tahap: PartTahap.foto, harga: null),
     ]);
 
     expect(tester.takeException(), isNull);
@@ -75,10 +75,10 @@ void main() {
   testWidgets('saringan tahap menyembunyikan yang lain', (tester) async {
     await _lukis(tester, [
       _pesanan(id: '1', nama: 'Jamal'),
-      _pesanan(id: '2', nama: 'Soni', tahap: 'tanya', harga: null),
+      _pesanan(id: '2', nama: 'Soni', tahap: PartTahap.foto, harga: null),
     ]);
 
-    await tester.tap(find.text('TANYA HARGA  1'));
+    await tester.tap(find.text('KODE PART  1'));
     await tester.pumpAndSettle();
 
     expect(find.text('Soni'), findsOneWidget);
@@ -94,35 +94,53 @@ void main() {
     expect(find.textContaining('HPP'), findsNothing);
   });
 
-  testWidgets('teknisi hanya ditawari menandai part terpasang', (
+  testWidgets('teknisi bisa mengisi kode part — itu yang ditunggu darinya', (
     tester,
   ) async {
-    await _lukis(tester, [_pesanan(id: '1', tahap: 'dipesan')]);
+    await _lukis(tester, [
+      _pesanan(id: '1', tahap: PartTahap.foto, harga: null),
+    ]);
 
     await tester.tap(find.text('Jamal'));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('PART SUDAH DIPASANG'), findsOneWidget);
-    // Tahap penuh, harga, dan DP tidak ditawarkan sama sekali: semuanya
-    // akan ditolak trigger di server.
+    expect(find.text('KODE / NAMA PART'), findsOneWidget);
+    expect(find.text('KODE PART SUDAH DIISI'), findsOneWidget);
+    // Yang menyangkut uang tetap tidak ditawarkan.
     expect(find.text('TAHAP'), findsNothing);
     expect(find.text('HARGA JUAL'), findsNothing);
     expect(find.text('DP USER'), findsNothing);
     expect(find.textContaining('diatur dari meja depan'), findsOneWidget);
   });
 
-  testWidgets('teknisi tidak ditawari apa pun pada tahap yang bukan haknya', (
+  testWidgets('teknisi menandai part terpasang saat sudah dipesan', (
     tester,
   ) async {
-    await _lukis(tester, [_pesanan(id: '1', tahap: 'tanya', harga: null)]);
+    await _lukis(tester, [_pesanan(id: '1', tahap: PartTahap.dipesan)]);
 
     await tester.tap(find.text('Jamal'));
     await tester.pumpAndSettle();
 
-    // Belum dipesan berarti belum ada yang bisa dipasang.
+    expect(find.text('PART SUDAH DIPASANG'), findsOneWidget);
+    expect(find.text('KODE PART SUDAH DIISI'), findsNothing);
+  });
+
+  testWidgets('tidak ada perpindahan yang ditawarkan di tahap milik admin', (
+    tester,
+  ) async {
+    await _lukis(tester, [
+      _pesanan(id: '1', tahap: PartTahap.konfirmasi, harga: 500000),
+    ]);
+
+    await tester.tap(find.text('Jamal'));
+    await tester.pumpAndSettle();
+
+    // Menunggu jawaban pelanggan bukan urusan teknisi, dan tombol yang
+    // pasti ditolak server sebaiknya tidak pernah muncul.
     expect(find.text('PART SUDAH DIPASANG'), findsNothing);
-    expect(find.text('STOK'), findsOneWidget);
+    expect(find.text('KODE PART SUDAH DIISI'), findsNothing);
+    expect(find.text('KODE / NAMA PART'), findsOneWidget);
     expect(find.text('CATATAN'), findsOneWidget);
   });
 

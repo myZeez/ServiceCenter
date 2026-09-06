@@ -25,6 +25,8 @@ final _rp = NumberFormat.currency(
   decimalDigits: 0,
 );
 final _persen = NumberFormat('#,##0.#', 'id_ID');
+final _tglFmt = DateFormat('dd MMM yyyy');
+final _iso = DateFormat('yyyy-MM-dd');
 
 /// Data yang dibawa dari sebuah nota servis ke tanya harga baru.
 ///
@@ -109,6 +111,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
   final _harga = TextEditingController();
   final _dp = TextEditingController();
   final _catatan = TextEditingController();
+  final _noPo = TextEditingController();
 
   final _namaFokus = FocusNode();
   final _dpFokus = FocusNode();
@@ -117,9 +120,11 @@ class _PartDialogState extends ConsumerState<PartDialog> {
 
   String? _keterangan;
   String? _teknisiId;
-  String? _stok;
   String? _notaId;
-  String _tahap = PartTahap.tanya;
+  String _tahap = PartTahap.foto;
+
+  DateTime? _tanggalDp;
+  DateTime? _tanggalOrder;
 
   /// Persentase yang dipilih dari daftar. Null berarti admin mengetik
   /// sendiri harga jualnya, dan persentasenya dibaca mundur dari situ.
@@ -170,11 +175,13 @@ class _PartDialogState extends ConsumerState<PartDialog> {
     _harga.text = p.harga == null ? '' : p.harga!.toInt().toString();
     _dp.text = p.dp == 0 ? '' : p.dp.toInt().toString();
     _catatan.text = p.catatan ?? '';
+    _noPo.text = p.noPo ?? '';
     _keterangan = p.keterangan;
     _teknisiId = p.teknisiId;
-    _stok = p.stok;
     _tahap = p.tahap;
     _notaId = p.serviceOrderId;
+    _tanggalDp = p.tanggalDp;
+    _tanggalOrder = p.tanggalOrder;
   }
 
   @override
@@ -190,6 +197,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
       _harga,
       _dp,
       _catatan,
+      _noPo,
     ]) {
       c.dispose();
     }
@@ -227,10 +235,9 @@ class _PartDialogState extends ConsumerState<PartDialog> {
     // Dua aturan yang juga ditegakkan Postgres. Diperiksa di sini juga
     // supaya penolakannya berupa kalimat di tempat yang salah, bukan
     // galat constraint yang tidak bisa dibaca siapa pun.
-    if (_tahap != PartTahap.tanya && _tahap != PartTahap.batal &&
-        harga == null) {
-      setState(() => _error = 'Isi harga jualnya dulu sebelum pesanan '
-          'berjalan. Pelanggan perlu angka untuk dipegang.');
+    if (PartTahap.perluHarga(_tahap) && harga == null) {
+      setState(() => _error = 'Isi harga jualnya dulu. Tahap ini menunggu '
+          'jawaban pelanggan atas sebuah angka — dan angkanya belum ada.');
       return;
     }
     if (dp > 0 && harga == null) {
@@ -258,11 +265,15 @@ class _PartDialogState extends ConsumerState<PartDialog> {
       _error = null;
     });
 
-    final client = ref.read(supabaseProvider);
-    final db = ref.read(databaseProvider);
-    final user = ref.read(currentUserProvider);
-
+    // Dibaca di dalam try, bukan di luarnya. Kegagalan di baris-baris ini
+    // memang hampir mustahil, tetapi kalau terjadi di luar try ia lolos
+    // tanpa tertangkap -- dan yang tertinggal adalah tombol simpan yang
+    // berputar selamanya tanpa satu pun keterangan.
     try {
+      final client = ref.read(supabaseProvider);
+      final db = ref.read(databaseProvider);
+      final user = ref.read(currentUserProvider);
+
       // Pelanggan baru dibuatkan catatannya sendiri, sama seperti di nota
       // servis, supaya kunjungan berikutnya tinggal dipilih.
       var customerId = _pelanggan?.id;
@@ -287,10 +298,16 @@ class _PartDialogState extends ConsumerState<PartDialog> {
         'part_req': _partReq.text.trim(),
         'keterangan': _keterangan,
         'teknisi_id': _teknisiId,
-        'stok': _stok,
         'tahap': _tahap,
         'harga': harga,
         'dp': dp,
+        // Tanggal DP diisi server saat tahapnya berpindah; yang dikirim
+        // dari sini hanya koreksi manual, dan koreksi itu tidak ditimpa.
+        'tanggal_dp': _tanggalDp == null ? null : _iso.format(_tanggalDp!),
+        'tanggal_order': _tanggalOrder == null
+            ? null
+            : _iso.format(_tanggalOrder!),
+        'no_po': _kosongNull(_noPo),
         'service_order_id': _notaId,
         'catatan': _kosongNull(_catatan),
         if (widget.isNew) 'created_by': user!.id,
@@ -541,62 +558,45 @@ class _PartDialogState extends ConsumerState<PartDialog> {
             const SizedBox(width: AppSpacing.s),
             Expanded(
               child: LabeledField(
-                label: 'Keterangan',
-                child: DropdownButtonFormField<String>(
-                  initialValue: _keterangan,
-                  isExpanded: true,
-                  hint: const Text('—'),
-                  items: const [
-                    DropdownMenuItem(value: 'oem', child: Text('OEM')),
-                    DropdownMenuItem(value: 'ori', child: Text('ORI')),
-                    DropdownMenuItem(value: 'copy', child: Text('Copy')),
-                  ],
-                  onChanged: (v) => setState(() => _keterangan = v),
+                label: 'Asal Part',
+                hint: 'OEM, atau saluran resmi merek.',
+                child: Autocomplete<String>(
+                  initialValue: TextEditingValue(text: _keterangan ?? ''),
+                  optionsBuilder: (v) {
+                    final q = v.text.trim().toUpperCase();
+                    return [
+                      for (final a in ref.watch(asalPartProvider))
+                        if (q.isEmpty || a.contains(q)) a,
+                    ];
+                  },
+                  onSelected: (v) => _keterangan = v,
+                  fieldViewBuilder: (context, ctrl, node, _) => TextFormField(
+                    controller: ctrl,
+                    focusNode: node,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(hintText: 'OEM'),
+                    onChanged: (v) =>
+                        _keterangan = v.trim().isEmpty ? null : v.trim(),
+                  ),
                 ),
               ),
             ),
           ],
         ),
         const SizedBox(height: AppSpacing.s),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: LabeledField(
-                label: 'Teknisi',
-                hint: techs.isEmpty ? 'Belum ada teknisi terdaftar.' : null,
-                child: DropdownButtonFormField<String>(
-                  initialValue: _teknisiId,
-                  isExpanded: true,
-                  hint: const Text('Belum ditentukan'),
-                  items: [
-                    for (final t in techs)
-                      DropdownMenuItem(value: t.id, child: Text(t.nama)),
-                  ],
-                  onChanged: (v) => setState(() => _teknisiId = v),
-                ),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.s),
-            Expanded(
-              child: LabeledField(
-                label: 'Stok',
-                child: DropdownButtonFormField<String>(
-                  initialValue: _stok,
-                  isExpanded: true,
-                  hint: const Text('Belum dicek'),
-                  items: [
-                    for (final s in PartStok.all)
-                      DropdownMenuItem(
-                        value: s,
-                        child: Text(PartStok.label(s)),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() => _stok = v),
-                ),
-              ),
-            ),
-          ],
+        LabeledField(
+          label: 'Teknisi',
+          hint: techs.isEmpty ? 'Belum ada teknisi terdaftar.' : null,
+          child: DropdownButtonFormField<String>(
+            initialValue: _teknisiId,
+            isExpanded: true,
+            hint: const Text('Belum ditentukan'),
+            items: [
+              for (final t in techs)
+                DropdownMenuItem(value: t.id, child: Text(t.nama)),
+            ],
+            onChanged: (v) => setState(() => _teknisiId = v),
+          ),
         ),
 
         const SizedBox(height: AppSpacing.sm),
@@ -736,7 +736,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
         // bukan sekadar mengganti nilai dropdown: membayar DP adalah saat
         // uang pelanggan mulai dipegang toko, dan itu pantas terasa seperti
         // keputusan.
-        if (_tahap == PartTahap.tanya) ...[
+        if (!PartTahap.sudahDipesan(_tahap)) ...[
           Row(
             children: [
               FilledButton.icon(
@@ -828,6 +828,58 @@ class _PartDialogState extends ConsumerState<PartDialog> {
             ),
           ],
         ),
+
+        // Baris ini hanya berarti setelah uangnya berpindah. Sebelum itu
+        // belum ada yang dipesan ke siapa pun, dan tiga kolom kosong yang
+        // tidak bisa diisi hanya membuat formulirnya tampak belum selesai.
+        if (PartTahap.sudahDipesan(_tahap)) ...[
+          const SizedBox(height: AppSpacing.s),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: LabeledField(
+                  label: 'Tanggal DP',
+                  hint: 'Diisi server saat pesanan dibuka.',
+                  child: _tombolTgl(
+                    context,
+                    nilai: _tanggalDp,
+                    kosong: 'Otomatis',
+                    onPilih: (d) => setState(() => _tanggalDp = d),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(
+                child: LabeledField(
+                  label: 'Tanggal Order',
+                  hint: 'Kapan dipesan ke supplier.',
+                  child: _tombolTgl(
+                    context,
+                    nilai: _tanggalOrder,
+                    kosong: 'Belum dipesan',
+                    onPilih: (d) => setState(() => _tanggalOrder = d),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(
+                child: LabeledField(
+                  label: 'No PO',
+                  hint: 'Atau nama tempat membeli.',
+                  child: TextFormField(
+                    controller: _noPo,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      hintText: 'IDD7510006',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+
         const SizedBox(height: AppSpacing.s),
         LabeledField(
           label: 'Nota Servis untuk Jasa Pasang',
@@ -858,6 +910,47 @@ class _PartDialogState extends ConsumerState<PartDialog> {
       ],
     );
   }
+
+  /// Tombol pemilih tanggal. Kosong ditulis dengan kata, bukan tanda
+  /// hubung: "Belum dipesan" menjawab pertanyaannya, "—" hanya menyatakan
+  /// bahwa kolomnya kosong.
+  Widget _tombolTgl(
+    BuildContext context, {
+    required DateTime? nilai,
+    required String kosong,
+    required ValueChanged<DateTime> onPilih,
+  }) => OutlinedButton(
+    onPressed: () async {
+      final p = await showDatePicker(
+        context: context,
+        initialDate: nilai ?? DateTime.now(),
+        firstDate: DateTime(2020),
+        lastDate: DateTime.now().add(const Duration(days: 365)),
+      );
+      if (p != null) onPilih(p);
+    },
+    style: OutlinedButton.styleFrom(
+      alignment: Alignment.centerLeft,
+      side: const BorderSide(color: Color(0xFFCFD5D4)),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.s,
+        vertical: 13,
+      ),
+    ),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        nilai == null ? kosong : _tglFmt.format(nilai),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: nilai == null ? AppColors.grey : AppColors.black,
+        ),
+      ),
+    ),
+  );
 
   Widget _kaki(BuildContext context) {
     return Container(

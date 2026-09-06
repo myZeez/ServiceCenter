@@ -1,9 +1,9 @@
 // Dua layar tanya harga dan pemesanan part di Windows.
 //
-// Keduanya membaca tabel yang sama; yang membedakan hanya saringannya.
-// Kalau saringan itu meleset, sebuah unit menghilang dari layar tanpa satu
-// pun tanda bahwa ia pernah ada -- persis jenis kegagalan yang tidak
-// pernah tertangkap flutter analyze.
+// Keduanya membaca tabel yang sama; yang membedakan hanya saringannya --
+// Tanya Harga berhenti di batas DP, Pemesanan mulai dari sana. Kalau
+// saringan itu meleset, sebuah unit menghilang dari kedua layar tanpa satu
+// pun tanda bahwa ia pernah ada.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,18 +12,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/providers.dart';
 import 'package:sc_management/features/parts/part_orders_view.dart';
+import 'package:sc_management/features/parts/part_status.dart';
 import 'package:sc_management/features/parts/parts_view.dart';
 
 PartOrder _pesanan({
   required String id,
   String nama = 'Jamal',
   String part = 'KEYBOARD',
-  String tahap = 'tanya',
-  String? stok,
+  String tahap = PartTahap.foto,
   double? harga,
   double dp = 0,
   double sisa = 0,
   String? teknisi = 't1',
+  String? catatan,
 }) => PartOrder(
   id: id,
   tanggal: DateTime(2026, 9, 4),
@@ -31,13 +32,13 @@ PartOrder _pesanan({
   barangType: 'ASUS X441',
   barangSn: 'SN$id',
   partReq: part,
-  keterangan: 'oem',
+  keterangan: 'OEM',
   teknisiId: teknisi,
-  stok: stok,
   tahap: tahap,
   harga: harga,
   dp: dp,
   sisa: sisa,
+  catatan: catatan,
   updatedAt: DateTime(2026, 9, 4),
 );
 
@@ -71,12 +72,43 @@ Future<void> _lukis(
 }
 
 void main() {
+  group('tahap', () {
+    test('tiap tahap masuk tepat satu sisi batas DP', () {
+      for (final t in PartTahap.all) {
+        expect(
+          PartTahap.sebelumDp.contains(t) != PartTahap.sesudahDp.contains(t),
+          isTrue,
+          reason: '$t harus ada di salah satu sisi, tidak keduanya dan '
+              'tidak bukan keduanya',
+        );
+      }
+    });
+
+    test('tahap yang menunggu jawaban pelanggan menuntut harga', () {
+      // Menunggu pelanggan menyetujui angka yang belum ada tidak berarti
+      // apa-apa; ini juga dijaga constraint di Postgres.
+      expect(PartTahap.perluHarga(PartTahap.konfirmasi), isTrue);
+      expect(PartTahap.perluHarga(PartTahap.dipesan), isTrue);
+      expect(PartTahap.perluHarga(PartTahap.selesai), isTrue);
+
+      expect(PartTahap.perluHarga(PartTahap.foto), isFalse);
+      expect(PartTahap.perluHarga(PartTahap.harga), isFalse);
+      expect(PartTahap.perluHarga(PartTahap.kosong), isFalse);
+      expect(PartTahap.perluHarga(PartTahap.batal), isFalse);
+    });
+  });
+
   group('saringPesanan', () {
     final semua = [
-      _pesanan(id: '1', nama: 'Jamal', tahap: 'tanya'),
-      _pesanan(id: '2', nama: 'Soni', tahap: 'dipesan', harga: 120000),
-      _pesanan(id: '3', nama: 'Rudi', tahap: 'selesai', harga: 90000),
-      _pesanan(id: '4', nama: 'Tika', tahap: 'batal'),
+      _pesanan(id: '1', nama: 'Jamal', tahap: PartTahap.foto),
+      _pesanan(
+        id: '2',
+        nama: 'Soni',
+        tahap: PartTahap.dipesan,
+        harga: 120000,
+      ),
+      _pesanan(id: '3', nama: 'Rudi', tahap: PartTahap.selesai, harga: 90000),
+      _pesanan(id: '4', nama: 'Tika', tahap: PartTahap.kosong),
     ];
 
     test('tanpa saringan mengembalikan semuanya', () {
@@ -84,21 +116,18 @@ void main() {
     });
 
     test('hanyaTahap membatasi ke pesanan yang sudah berjalan', () {
-      final hasil = saringPesanan(
-        semua,
-        hanyaTahap: const ['dipesan', 'dipasang', 'selesai'],
-      );
+      final hasil = saringPesanan(semua, hanyaTahap: PartTahap.sesudahDp);
       expect(hasil.map((p) => p.customerNama), ['Soni', 'Rudi']);
     });
 
     test('tahap dan hanyaTahap berlaku bersamaan, bukan saling menimpa', () {
       final hasil = saringPesanan(
         semua,
-        hanyaTahap: const ['dipesan', 'dipasang', 'selesai'],
-        tahap: 'batal',
+        hanyaTahap: PartTahap.sesudahDp,
+        tahap: PartTahap.kosong,
       );
-      // 'batal' ada di tabel tetapi di luar cakupan halaman ini. Yang benar
-      // adalah kosong -- bukan menampilkannya karena tahapnya cocok.
+      // 'kosong' ada di tabel tetapi di luar cakupan halaman ini. Yang
+      // benar adalah kosong -- bukan menampilkannya karena tahapnya cocok.
       expect(hasil, isEmpty);
     });
 
@@ -115,10 +144,10 @@ void main() {
   });
 
   group('halaman Tanya Harga', () {
-    testWidgets('menampilkan seluruh permintaan', (tester) async {
+    testWidgets('menampilkan permintaan yang belum lewat DP', (tester) async {
       await _lukis(tester, const PartsView(), [
         _pesanan(id: '1', nama: 'Jamal'),
-        _pesanan(id: '2', nama: 'Soni', tahap: 'dipesan', harga: 120000),
+        _pesanan(id: '2', nama: 'Soni', tahap: PartTahap.harga),
       ]);
 
       expect(tester.takeException(), isNull);
@@ -127,18 +156,51 @@ void main() {
       expect(find.text('Reza'), findsNWidgets(2));
     });
 
-    testWidgets('stok yang belum dicek dibedakan dari yang kosong', (
+    testWidgets('yang sudah dibayar DP keluar dari halaman ini', (
       tester,
     ) async {
       await _lukis(tester, const PartsView(), [
         _pesanan(id: '1', nama: 'Jamal'),
-        _pesanan(id: '2', nama: 'Soni', stok: 'kosong'),
-        _pesanan(id: '3', nama: 'Rudi', stok: 'ready'),
+        _pesanan(
+          id: '2',
+          nama: 'Soni',
+          tahap: PartTahap.dipesan,
+          harga: 120000,
+        ),
       ]);
 
-      expect(find.text('BELUM DICEK'), findsOneWidget);
-      expect(find.text('NO STOK'), findsOneWidget);
-      expect(find.text('READY STOK'), findsOneWidget);
+      // Bukan disalin ke Pemesanan Part, melainkan pindah ke sana.
+      expect(find.text('Jamal'), findsOneWidget);
+      expect(find.text('Soni'), findsNothing);
+    });
+
+    testWidgets('tiga tahap awal dibedakan, bukan ditumpuk jadi satu', (
+      tester,
+    ) async {
+      await _lukis(tester, const PartsView(), [
+        _pesanan(id: '1', nama: 'Jamal', tahap: PartTahap.foto),
+        _pesanan(id: '2', nama: 'Soni', tahap: PartTahap.harga),
+        _pesanan(
+          id: '3',
+          nama: 'Rudi',
+          tahap: PartTahap.konfirmasi,
+          harga: 500000,
+        ),
+        _pesanan(id: '4', nama: 'Tika', tahap: PartTahap.kosong),
+      ]);
+
+      expect(find.text('KODE PART'), findsWidgets);
+      expect(find.text('TUNGGU HARGA'), findsWidgets);
+      expect(find.text('TUNGGU DP'), findsWidgets);
+      expect(find.text('NO STOCK'), findsWidgets);
+    });
+
+    testWidgets('catatan harga ikut terlihat di layar lebar', (tester) async {
+      await _lukis(tester, const PartsView(), [
+        _pesanan(id: '1', catatan: 'ORI KB MODULE 1500K, BATT 1300K'),
+      ]);
+
+      expect(find.text('ORI KB MODULE 1500K, BATT 1300K'), findsOneWidget);
     });
 
     testWidgets('daftar kosong tetap menawarkan cara menambah', (
@@ -154,11 +216,12 @@ void main() {
   group('halaman Pemesanan Part', () {
     testWidgets('hanya memuat pesanan yang sudah lewat DP', (tester) async {
       await _lukis(tester, const PartOrdersView(), [
-        _pesanan(id: '1', nama: 'Jamal', tahap: 'tanya'),
+        _pesanan(id: '1', nama: 'Jamal', tahap: PartTahap.konfirmasi,
+            harga: 90000),
         _pesanan(
           id: '2',
           nama: 'Soni',
-          tahap: 'dipesan',
+          tahap: PartTahap.dipesan,
           harga: 120000,
           dp: 50000,
           sisa: 70000,
@@ -176,14 +239,14 @@ void main() {
       await _lukis(tester, const PartOrdersView(), [
         _pesanan(
           id: '1',
-          tahap: 'dipesan',
+          tahap: PartTahap.dipesan,
           harga: 120000,
           dp: 50000,
           sisa: 70000,
         ),
         _pesanan(
           id: '2',
-          tahap: 'dipasang',
+          tahap: PartTahap.dipasang,
           harga: 80000,
           dp: 30000,
           sisa: 50000,
@@ -200,10 +263,9 @@ void main() {
       await _lukis(tester, const PartOrdersView(), [
         _pesanan(
           id: '1',
-          tahap: 'selesai',
+          tahap: PartTahap.selesai,
           harga: 90000,
           dp: 90000,
-          sisa: 0,
         ),
       ]);
 
@@ -212,7 +274,7 @@ void main() {
 
     testWidgets('kosong menjelaskan dari mana pesanan dimulai', (tester) async {
       await _lukis(tester, const PartOrdersView(), [
-        _pesanan(id: '1', tahap: 'tanya'),
+        _pesanan(id: '1', tahap: PartTahap.foto),
       ]);
 
       expect(find.text('Belum ada pesanan berjalan'), findsOneWidget);

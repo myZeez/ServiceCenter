@@ -57,7 +57,7 @@ class _PartOrdersViewState extends ConsumerState<PartOrdersView> {
         p.id: p.nama,
     };
 
-    final berjalan = saringPesanan(semua, hanyaTahap: PartTahap.dipesanKeAtas);
+    final berjalan = saringPesanan(semua, hanyaTahap: PartTahap.sesudahDp);
 
     final perTahap = <String, int>{};
     for (final p in berjalan) {
@@ -66,7 +66,7 @@ class _PartOrdersViewState extends ConsumerState<PartOrdersView> {
 
     final tampil = saringPesanan(
       semua,
-      hanyaTahap: PartTahap.dipesanKeAtas,
+      hanyaTahap: PartTahap.sesudahDp,
       tahap: filter.tahap,
       query: filter.query,
     );
@@ -139,7 +139,7 @@ class _PartOrdersViewState extends ConsumerState<PartOrdersView> {
                       .update((s) => s.copyWith(clear: true)),
                 ),
               ),
-              for (final t in PartTahap.dipesanKeAtas) ...[
+              for (final t in PartTahap.sesudahDp) ...[
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: StatTile(

@@ -25,9 +25,10 @@ final _tgl = DateFormat('dd/MM/yy');
 /// uang; di sini kolom itu memang tidak ditampilkan, jadi memecahnya jadi
 /// dua halaman hanya menambah satu ketukan tanpa menambah keterangan.
 ///
-/// Yang bisa diubah teknisi sedikit dan disengaja: keadaan stok, catatan,
-/// dan penanda bahwa partnya sudah ia pasang. Harga, DP, dan pelunasan
-/// tetap urusan meja depan -- server menolaknya, jadi menampilkan
+/// Yang bisa diubah teknisi sedikit dan disengaja: kode part, catatan, dan
+/// dua penanda -- kode sudah diisi, dan part sudah dipasang. Keduanya hal
+/// yang memang ia ketahui lebih dulu daripada meja depan. Harga, DP, dan
+/// pelunasan tetap urusan admin: server menolaknya, jadi menampilkan
 /// kolomnya di sini hanya akan mengundang orang mengetik sesuatu yang
 /// tidak akan pernah tersimpan.
 class PartsPage extends ConsumerStatefulWidget {
@@ -158,7 +159,7 @@ class _Saringan extends StatelessWidget {
             for (final t in PartTahap.all)
               if ((jumlah[t] ?? 0) > 0)
                 _Chip(
-                  label: '${PartTahap.label(t).toUpperCase()}  ${jumlah[t]}',
+                  label: '${PartTahap.pendek(t).toUpperCase()}  ${jumlah[t]}',
                   aktif: dipilih == t,
                   onTap: () => onPilih(t),
                 ),
@@ -235,7 +236,12 @@ class _Kartu extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Expanded(child: PartStokLabel(p.stok)),
+                Expanded(
+                  child: Text(
+                    _tgl.format(p.tanggal),
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ),
                 PartTahapChip(p.tahap, compact: true),
               ],
             ),
@@ -299,8 +305,8 @@ class _UbahPart extends ConsumerStatefulWidget {
 }
 
 class _UbahPartState extends ConsumerState<_UbahPart> {
-  late String? _stok = widget.pesanan.stok;
   late String _tahap = widget.pesanan.tahap;
+  late final _partReq = TextEditingController(text: widget.pesanan.partReq);
   late final _catatan = TextEditingController(
     text: widget.pesanan.catatan ?? '',
   );
@@ -309,15 +315,23 @@ class _UbahPartState extends ConsumerState<_UbahPart> {
 
   @override
   void dispose() {
+    _partReq.dispose();
     _catatan.dispose();
     super.dispose();
   }
 
   Future<void> _simpan() async {
+    if (_partReq.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kode part tidak boleh kosong.')),
+      );
+      return;
+    }
+
     setState(() => _busy = true);
     try {
       await ref.read(databaseProvider).ubahPartOrder(widget.pesanan.id, {
-        'stok': _stok,
+        'part_req': _partReq.text.trim(),
         'tahap': _tahap,
         'catatan': _catatan.text.trim().isEmpty ? null : _catatan.text.trim(),
       });
@@ -364,25 +378,26 @@ class _UbahPartState extends ConsumerState<_UbahPart> {
           ),
           const SizedBox(height: AppSpacing.sm),
 
+          // Inilah yang ditunggu ratusan baris di tahap "Tunggu Kode Part":
+          // kode persisnya hanya ada di tangan orang yang membuka unitnya.
+          // Kalau teknisi tidak bisa mengetiknya dari sini, tahap itu tidak
+          // akan pernah bergerak tanpa bolak-balik ke meja depan.
           LabeledField(
-            label: 'Stok',
-            child: DropdownButtonFormField<String>(
-              initialValue: _stok,
-              isExpanded: true,
-              hint: const Text('Belum dicek'),
-              items: [
-                for (final s in PartStok.all)
-                  DropdownMenuItem(value: s, child: Text(PartStok.label(s))),
-              ],
-              onChanged: (v) => setState(() => _stok = v),
+            label: 'Kode / Nama Part',
+            hint: 'Sebutkan sedetail yang terbaca di partnya.',
+            child: TextField(
+              controller: _partReq,
+              maxLines: 2,
+              textCapitalization: TextCapitalization.characters,
             ),
           ),
           const SizedBox(height: AppSpacing.s),
 
-          // Teknisi hanya mendapat satu perpindahan: menandai part sudah
-          // ia pasang. Dropdown penuh akan menawarkan tahap yang pasti
-          // ditolak server, dan penolakan yang bisa diramalkan sebaiknya
-          // tidak pernah ditawarkan.
+          // Teknisi hanya mendapat dua perpindahan, dan keduanya hal yang
+          // memang ia ketahui lebih dulu daripada meja depan. Dropdown
+          // penuh akan menawarkan tahap yang pasti ditolak server, dan
+          // penolakan yang bisa diramalkan sebaiknya tidak pernah
+          // ditawarkan.
           if (isAdmin)
             LabeledField(
               label: 'Tahap',
@@ -396,22 +411,21 @@ class _UbahPartState extends ConsumerState<_UbahPart> {
                 onChanged: (v) => setState(() => _tahap = v ?? _tahap),
               ),
             )
+          else if (p.tahap == PartTahap.foto)
+            _TombolTahap(
+              aktif: _tahap == PartTahap.harga,
+              label: 'KODE PART SUDAH DIISI',
+              labelAktif: 'DITERUSKAN KE MEJA DEPAN',
+              ikon: Icons.send_outlined,
+              onTekan: () => setState(() => _tahap = PartTahap.harga),
+            )
           else if (p.tahap == PartTahap.dipesan)
-            OutlinedButton.icon(
-              onPressed: _tahap == PartTahap.dipasang
-                  ? null
-                  : () => setState(() => _tahap = PartTahap.dipasang),
-              icon: Icon(
-                _tahap == PartTahap.dipasang
-                    ? Icons.check_circle
-                    : Icons.build_outlined,
-                size: 18,
-              ),
-              label: Text(
-                _tahap == PartTahap.dipasang
-                    ? 'DITANDAI SUDAH DIPASANG'
-                    : 'PART SUDAH DIPASANG',
-              ),
+            _TombolTahap(
+              aktif: _tahap == PartTahap.dipasang,
+              label: 'PART SUDAH DIPASANG',
+              labelAktif: 'DITANDAI SUDAH DIPASANG',
+              ikon: Icons.build_outlined,
+              onTekan: () => setState(() => _tahap = PartTahap.dipasang),
             ),
           const SizedBox(height: AppSpacing.s),
 
@@ -447,4 +461,34 @@ class _UbahPartState extends ConsumerState<_UbahPart> {
       ),
     );
   }
+}
+
+/// Tombol yang menandai satu perpindahan tahap, dan berubah bunyi begitu
+/// ditekan.
+///
+/// Perubahannya baru tersimpan saat SIMPAN ditekan, jadi tombolnya harus
+/// menyatakan "sudah ditandai", bukan "sudah terjadi" -- kalimat yang
+/// mengklaim lebih dari yang benar akan membuat orang menutup lembarnya
+/// tanpa menyimpan.
+class _TombolTahap extends StatelessWidget {
+  const _TombolTahap({
+    required this.aktif,
+    required this.label,
+    required this.labelAktif,
+    required this.ikon,
+    required this.onTekan,
+  });
+
+  final bool aktif;
+  final String label;
+  final String labelAktif;
+  final IconData ikon;
+  final VoidCallback onTekan;
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+    onPressed: aktif ? null : onTekan,
+    icon: Icon(aktif ? Icons.check_circle : ikon, size: 18),
+    label: Text(aktif ? labelAktif : label),
+  );
 }

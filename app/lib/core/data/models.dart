@@ -544,11 +544,13 @@ class PartOrder {
     required this.partReq,
     this.keterangan,
     this.teknisiId,
-    this.stok,
     required this.tahap,
     this.harga,
     this.dp = 0,
     this.sisa = 0,
+    this.tanggalDp,
+    this.tanggalOrder,
+    this.noPo,
     this.tanggalSelesai,
     this.serviceOrderId,
     this.catatan,
@@ -567,14 +569,11 @@ class PartOrder {
 
   final String partReq;
 
-  /// OEM atau ORI. Teks bebas, bukan pilihan tertutup.
+  /// Asal partnya: OEM, ORI, atau saluran resmi merek seperti ASUS ID.
+  /// Teks bebas -- daftarnya tumbuh sendiri sepanjang tahun.
   final String? keterangan;
 
   final String? teknisiId;
-
-  /// Ready atau kosong. Null berarti belum sempat dicek ke supplier --
-  /// keadaan yang berbeda dari "sudah dicek, ternyata tidak ada".
-  final String? stok;
 
   final String tahap;
 
@@ -585,6 +584,18 @@ class PartOrder {
 
   /// Dihitung Postgres, tidak pernah dikirim aplikasi.
   final double sisa;
+
+  /// Kapan pelanggan membayar mukanya. Diisi server saat tahapnya
+  /// berpindah ke 'dipesan'; inilah yang dipakai mengelompokkan laporan
+  /// per bulan, bukan tanggal orangnya bertanya.
+  final DateTime? tanggalDp;
+
+  /// Kapan partnya dipesan ke supplier. Sering berbeda beberapa hari dari
+  /// tanggal DP, dan selisih itulah yang ditanyakan pelanggan.
+  final DateTime? tanggalOrder;
+
+  /// Nomor PO ke distributor, atau nama tempat membeli lepasan.
+  final String? noPo;
 
   final DateTime? tanggalSelesai;
 
@@ -605,11 +616,13 @@ class PartOrder {
     partReq: r['part_req'] as String,
     keterangan: r['keterangan'] as String?,
     teknisiId: r['teknisi_id'] as String?,
-    stok: r['stok'] as String?,
     tahap: r['tahap'] as String,
     harga: _numN(r['harga']),
     dp: _num(r['dp']),
     sisa: _num(r['sisa']),
+    tanggalDp: _tgl(r['tanggal_dp']),
+    tanggalOrder: _tgl(r['tanggal_order']),
+    noPo: r['no_po'] as String?,
     tanggalSelesai: _tgl(r['tanggal_selesai']),
     serviceOrderId: r['service_order_id'] as String?,
     catatan: r['catatan'] as String?,

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../features/parts/part_status.dart';
 import 'data/db.dart';
 import 'data/models.dart';
 import 'data/prefs.dart';
@@ -294,6 +295,22 @@ final partCostProvider = Provider.family<PartCost?, String>((ref, id) {
 final partSettingsProvider = StreamProvider<PartSettingsRow?>(
   (ref) => ref.watch(databaseProvider).watchPartSettings(),
 );
+
+/// Asal part yang pernah dipakai, untuk pelengkapan otomatis.
+///
+/// Dibaca dari isi tabelnya sendiri, bukan dari daftar tetap. Di arsip
+/// lama nilainya tumbuh sepanjang tahun -- AXIOO ID, MSI ID, Canon ID,
+/// sampai nama toko tempat membeli lepasan -- dan daftar yang harus
+/// diurus manual pasti tertinggal dari kenyataan. Yang sering dipakai
+/// jadi bibit awalnya supaya kolomnya tidak kosong di hari pertama.
+final asalPartProvider = Provider<List<String>>((ref) {
+  final pakai = <String>{...asalPartUmum};
+  for (final p in ref.watch(partOrdersProvider).valueOrNull ?? const []) {
+    final k = p.keterangan?.trim().toUpperCase();
+    if (k != null && k.isNotEmpty) pakai.add(k);
+  }
+  return pakai.toList()..sort();
+});
 
 /// Tanya harga yang lahir dari sebuah nota servis, kalau memang ada.
 ///

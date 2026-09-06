@@ -144,6 +144,15 @@ void main() {
     expect(find.text('Part Dipesan'), findsWidgets);
   });
 
+  testWidgets('dimulai di tahap yang menunggu kode part', (tester) async {
+    await _lukis(tester);
+
+    // Yang pertama ditunggu dari sebuah permintaan baru adalah kode part
+    // persisnya, dan itu ada di tangan teknisi -- bukan harga, yang belum
+    // bisa ditanyakan sebelum kodenya jelas.
+    expect(find.text('Tunggu Kode Part'), findsOneWidget);
+  });
+
   testWidgets('menolak pesanan berjalan tanpa harga', (tester) async {
     await _lukis(tester);
     await _isiWajib(tester);
@@ -151,7 +160,55 @@ void main() {
 
     await _ketuk(tester, find.widgetWithText(FilledButton, 'SIMPAN'));
 
-    expect(find.textContaining('Isi harga jualnya dulu'), findsWidgets);
+    expect(
+      find.textContaining('Tahap ini menunggu jawaban pelanggan'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('menolak menunggu konfirmasi DP atas harga yang belum ada', (
+    tester,
+  ) async {
+    await _lukis(tester);
+    await _isiWajib(tester);
+    await _pilihTahap(tester, 'Tunggu Konfirmasi DP');
+
+    await _ketuk(tester, find.widgetWithText(FilledButton, 'SIMPAN'));
+
+    expect(
+      find.textContaining('Tahap ini menunggu jawaban pelanggan'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('tahap awal tidak menuntut harga sama sekali', (tester) async {
+    await _lukis(tester);
+    await _isiWajib(tester);
+    await _pilihTahap(tester, 'Tunggu Harga');
+
+    await _ketuk(tester, find.widgetWithText(FilledButton, 'SIMPAN'));
+
+    // Menunggu jawaban supplier memang keadaan tanpa harga; menolaknya
+    // akan mengunci tahap yang paling ramai isinya.
+    expect(
+      find.textContaining('Tahap ini menunggu jawaban pelanggan'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('kolom pemesanan muncul hanya setelah uangnya berpindah', (
+    tester,
+  ) async {
+    await _lukis(tester);
+    expect(find.text('NO PO'), findsNothing);
+    expect(find.text('TANGGAL ORDER'), findsNothing);
+
+    await _isi(tester, 'HPP (MODAL)', '100000');
+    await _ketuk(tester, find.widgetWithText(FilledButton, 'USER DP'));
+
+    expect(find.text('NO PO'), findsOneWidget);
+    expect(find.text('TANGGAL ORDER'), findsOneWidget);
+    expect(find.text('TANGGAL DP'), findsOneWidget);
   });
 
   testWidgets('menolak pesanan ditutup padahal sisanya masih ada', (
@@ -161,7 +218,7 @@ void main() {
     await _isiWajib(tester);
     await _isi(tester, 'HPP (MODAL)', '100000');
     await _isi(tester, 'DP USER', '50000');
-    await _pilihTahap(tester, 'Selesai');
+    await _pilihTahap(tester, 'Close');
 
     await _ketuk(tester, find.widgetWithText(FilledButton, 'SIMPAN'));
 

@@ -98,13 +98,19 @@ class _PartsViewState extends ConsumerState<PartsView> {
         p.id: p.nama,
     };
 
+    // Halaman ini berhenti di batas DP, persis seperti sheet aslinya.
+    // Yang sudah dibayar pindah ke Pemesanan Part -- bukan disalin ke
+    // sana, melainkan keluar dari sini.
+    final belum = saringPesanan(semua, hanyaTahap: PartTahap.sebelumDp);
+
     final perTahap = <String, int>{};
-    for (final p in semua) {
+    for (final p in belum) {
       perTahap.update(p.tahap, (v) => v + 1, ifAbsent: () => 1);
     }
 
     final tampil = saringPesanan(
       semua,
+      hanyaTahap: PartTahap.sebelumDp,
       tahap: filter.tahap,
       query: filter.query,
     );
@@ -127,7 +133,8 @@ class _PartsViewState extends ConsumerState<PartsView> {
               PageHeader(
                 title: 'Tanya Harga',
                 subtitle:
-                    '${semua.length} permintaan part  ·  Ctrl+N untuk tambah',
+                    '${belum.length} permintaan berjalan  ·  Ctrl+N untuk '
+                    'tambah',
                 actions: [
                   SizedBox(
                     width: 300,
@@ -168,7 +175,7 @@ class _PartsViewState extends ConsumerState<PartsView> {
                 children: [
                   Expanded(
                     child: StatTile(
-                      value: '${semua.length}',
+                      value: '${belum.length}',
                       label: 'Semua',
                       selected: filter.tahap == null,
                       onTap: () => ref
@@ -176,12 +183,12 @@ class _PartsViewState extends ConsumerState<PartsView> {
                           .update((s) => s.copyWith(clear: true)),
                     ),
                   ),
-                  for (final t in PartTahap.all) ...[
+                  for (final t in PartTahap.sebelumDp) ...[
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: StatTile(
                         value: '${perTahap[t] ?? 0}',
-                        label: PartTahap.label(t),
+                        label: PartTahap.pendek(t),
                         accent: PartTahap.color(t),
                         selected: filter.tahap == t,
                         onTap: () => ref
@@ -205,10 +212,10 @@ class _PartsViewState extends ConsumerState<PartsView> {
                   child: tampil.isEmpty
                       ? EmptyState(
                           icon: Icons.request_quote_outlined,
-                          title: semua.isEmpty
+                          title: belum.isEmpty
                               ? 'Belum ada permintaan part'
                               : 'Tidak ada yang cocok',
-                          description: semua.isEmpty
+                          description: belum.isEmpty
                               ? 'Dicatat saat pelanggan menanyakan harga '
                                     'part unit non-garansi.'
                               : 'Ubah saringan atau kata pencarian di atas.',
@@ -239,6 +246,7 @@ class _Tabel extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, c) {
         final lebar = c.maxWidth;
+        final tampilCatatan = lebar >= 1240;
         final tampilUnit = lebar >= 1080;
         final tampilTeknisi = lebar >= 900;
         final tampilHarga = lebar >= 760;
@@ -265,12 +273,13 @@ class _Tabel extends StatelessWidget {
                   if (tampilUnit)
                     const Expanded(flex: 3, child: TableHeader('Unit')),
                   const Expanded(flex: 4, child: TableHeader('Part Req')),
+                  if (tampilCatatan)
+                    const Expanded(flex: 3, child: TableHeader('Catatan')),
                   if (tampilTeknisi)
                     const SizedBox(width: 92, child: TableHeader('Teknisi')),
-                  const SizedBox(width: 96, child: TableHeader('Stok')),
                   if (tampilHarga)
                     const SizedBox(width: 112, child: TableHeader('Harga')),
-                  const SizedBox(width: 124, child: TableHeader('Tahap')),
+                  const SizedBox(width: 132, child: TableHeader('Status')),
                 ],
               ),
             ),
@@ -282,6 +291,7 @@ class _Tabel extends StatelessWidget {
                   pesanan: items[i],
                   teknisi: techs[items[i].teknisiId],
                   tampilUnit: tampilUnit,
+                  tampilCatatan: tampilCatatan,
                   tampilTeknisi: tampilTeknisi,
                   tampilHarga: tampilHarga,
                 ),
@@ -299,6 +309,7 @@ class _Baris extends StatefulWidget {
     required this.pesanan,
     required this.teknisi,
     required this.tampilUnit,
+    required this.tampilCatatan,
     required this.tampilTeknisi,
     required this.tampilHarga,
   });
@@ -306,6 +317,7 @@ class _Baris extends StatefulWidget {
   final PartOrder pesanan;
   final String? teknisi;
   final bool tampilUnit;
+  final bool tampilCatatan;
   final bool tampilTeknisi;
   final bool tampilHarga;
 
@@ -398,6 +410,21 @@ class _BarisState extends State<_Baris> {
                   ),
                 ),
               ),
+              if (widget.tampilCatatan)
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.s),
+                    child: Text(
+                      p.catatan ?? '—',
+                      maxLines: 2,
+                      style: p.catatan == null
+                          ? _sel.copyWith(color: AppColors.grey)
+                          : _sel.copyWith(fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
               if (widget.tampilTeknisi)
                 SizedBox(
                   width: 92,
@@ -409,7 +436,6 @@ class _BarisState extends State<_Baris> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              SizedBox(width: 96, child: PartStokLabel(p.stok)),
               if (widget.tampilHarga)
                 SizedBox(
                   width: 112,
@@ -419,7 +445,7 @@ class _BarisState extends State<_Baris> {
                   ),
                 ),
               SizedBox(
-                width: 124,
+                width: 132,
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: PartTahapChip(p.tahap, compact: true),

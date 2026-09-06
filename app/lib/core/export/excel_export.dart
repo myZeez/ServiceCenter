@@ -662,15 +662,18 @@ class ExcelExport {
       totalSisa += p.sisa;
 
       baris.add([
-        _tanggal(p.tanggal),
+        // Tanggal DP kalau sudah ada, kalau belum tanggal orangnya
+        // bertanya. Kolom pertama sheet pemesanan memang Tanggal DP, dan
+        // itulah yang dipakai mengelompokkan per bulan.
+        _tanggal(p.tanggalDp ?? p.tanggal),
         TextCellValue(p.customerNama),
-        TextCellValue(p.barangType ?? ''),
+        TextCellValue(p.customerTelp ?? ''),
         TextCellValue(p.barangSn ?? ''),
+        TextCellValue(p.barangType ?? ''),
         TextCellValue(p.partReq),
-        TextCellValue((p.keterangan ?? '').toUpperCase()),
-        TextCellValue(teknisi[p.teknisiId] ?? ''),
-        TextCellValue(_stokTeks(p.stok)),
         TextCellValue(_tahapTeks(p.tahap)),
+        _tanggal(p.tanggalOrder),
+        TextCellValue(teknisi[p.teknisiId] ?? ''),
         hpp == null ? null : DoubleCellValue(hpp),
         modal[p.id]?.upPersen == null
             ? null
@@ -679,6 +682,9 @@ class ExcelExport {
         untung == null ? null : DoubleCellValue(untung),
         p.dp == 0 ? null : DoubleCellValue(p.dp),
         p.sisa == 0 ? null : DoubleCellValue(p.sisa),
+        TextCellValue(p.noPo ?? ''),
+        TextCellValue((p.keterangan ?? '').toUpperCase()),
+        TextCellValue(p.catatan ?? ''),
       ]);
     }
 
@@ -687,22 +693,27 @@ class ExcelExport {
       tabel: [
         TabelExcel(
           judul: 'LAPORAN PENJUALAN PART  ·  ${periode.toUpperCase()}',
+          // Urutannya mengikuti sheet yang selama ini dipakai, supaya yang
+          // membacanya tidak perlu mencari-cari kolom di tempat baru.
           kolom: const [
-            KolomExcel('TANGGAL', jenis: JenisKolom.tanggal),
-            KolomExcel('NAMA PELANGGAN'),
-            KolomExcel('TIPE'),
+            KolomExcel('TANGGAL DP', jenis: JenisKolom.tanggal),
+            KolomExcel('NAMA CUSTOMER'),
+            KolomExcel('NO TELP', jenis: JenisKolom.kode),
             KolomExcel('SN', jenis: JenisKolom.kode),
-            KolomExcel('PART REQ'),
-            KolomExcel('KET', jenis: JenisKolom.kode),
+            KolomExcel('MERK/TIPE'),
+            KolomExcel('PART'),
+            KolomExcel('STATUS', jenis: JenisKolom.kode),
+            KolomExcel('TANGGAL ORDER', jenis: JenisKolom.tanggal),
             KolomExcel('TEKNISI', jenis: JenisKolom.kode),
-            KolomExcel('STOK', jenis: JenisKolom.kode),
-            KolomExcel('TAHAP', jenis: JenisKolom.kode),
-            KolomExcel('HPP', jenis: JenisKolom.rupiah),
+            KolomExcel('HARGA HPP', jenis: JenisKolom.rupiah),
             KolomExcel('UP %', jenis: JenisKolom.angka),
             KolomExcel('HARGA JUAL', jenis: JenisKolom.rupiah),
             KolomExcel('UNTUNG', jenis: JenisKolom.rupiah),
             KolomExcel('DP USER', jenis: JenisKolom.rupiah),
             KolomExcel('SISA', jenis: JenisKolom.rupiah),
+            KolomExcel('NO PO', jenis: JenisKolom.kode),
+            KolomExcel('KETERANGAN', jenis: JenisKolom.kode),
+            KolomExcel('CATATAN'),
           ],
           baris: baris,
           penutup: [
@@ -721,24 +732,27 @@ class ExcelExport {
             DoubleCellValue(totalUntung),
             DoubleCellValue(totalDp),
             DoubleCellValue(totalSisa),
+            null,
+            null,
+            null,
           ],
         ),
       ],
     );
   }
 
-  static String _stokTeks(String? s) => switch (s) {
-    'ready' => 'READY STOK',
-    'kosong' => 'NO STOK',
-    _ => '',
-  };
-
+  /// Ditulis dengan kata yang dipakai di sheet lama, bukan dengan nilai
+  /// yang tersimpan di basis data. Yang membaca laporannya sudah mengenali
+  /// istilah-istilah ini bertahun-tahun.
   static String _tahapTeks(String t) => switch (t) {
-    'tanya' => 'TANYA HARGA',
-    'dipesan' => 'PART DIPESAN',
+    'foto' => 'WAIT FOTO/KODE PART',
+    'harga' => 'TUNGGU HARGA',
+    'konfirmasi' => 'WAIT CONFIRM USER DP',
+    'dipesan' => 'ORDERED',
     'dipasang' => 'PART DIPASANG',
-    'selesai' => 'SELESAI',
-    'batal' => 'BATAL',
+    'selesai' => 'CLOSE',
+    'batal' => 'CANCEL',
+    'kosong' => 'NO STOCK',
     _ => t.toUpperCase(),
   };
 

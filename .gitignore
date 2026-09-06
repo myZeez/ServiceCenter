@@ -6,3 +6,8 @@ installer/output/
 # datanya sudah masuk Supabase lewat supabase/scripts/import_klaim_2026.sql.
 # Tidak perlu terduplikasi selamanya di git history.
 SERVICE CLAIM GARANSI CELLCOM PLK - *.csv
+
+# Arsip sheet tanya harga & pemesanan part. Dipakai sekali untuk membaca
+# tahap dan kolom apa yang sebenarnya dipakai; isinya nama, telepon, dan
+# SN ribuan pelanggan.
+TANYA HARGA/

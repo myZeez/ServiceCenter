@@ -55,11 +55,17 @@ class PartTahap {
 
   static bool sudahDipesan(String tahap) => sesudahDp.contains(tahap);
 
-  /// Tahap yang tidak masuk akal tanpa harga. Dijaga juga oleh constraint
-  /// di Postgres; daftar ini supaya layar bisa menolak lebih dulu dengan
-  /// kalimat yang bisa dibaca.
+  /// Tahap yang tidak masuk akal tanpa harga: yang uangnya sudah
+  /// berpindah. Dijaga juga oleh constraint di Postgres; daftar ini supaya
+  /// layar bisa menolak lebih dulu dengan kalimat yang bisa dibaca.
+  ///
+  /// 'konfirmasi' sengaja TIDAK termasuk, walau namanya seperti menuntut
+  /// angka. Di arsipnya, penawaran sering memuat lebih dari satu part
+  /// dengan harga masing-masing ("ORI KB MODULE 1500K, BATT 1300K") dan
+  /// ditulis di catatan, bukan di kolom harga. Memaksa satu angka di situ
+  /// membuat yang tercatat lebih miskin daripada yang disampaikan.
   static bool perluHarga(String tahap) =>
-      !const [foto, harga, batal, kosong].contains(tahap);
+      const [dipesan, dipasang, selesai].contains(tahap);
 
   static const _labels = {
     foto: 'Tunggu Kode Part',

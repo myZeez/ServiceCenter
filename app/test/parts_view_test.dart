@@ -86,12 +86,19 @@ void main() {
       }
     });
 
-    test('tahap yang menunggu jawaban pelanggan menuntut harga', () {
-      // Menunggu pelanggan menyetujui angka yang belum ada tidak berarti
-      // apa-apa; ini juga dijaga constraint di Postgres.
-      expect(PartTahap.perluHarga(PartTahap.konfirmasi), isTrue);
+    test('harga baru wajib saat uangnya berpindah', () {
       expect(PartTahap.perluHarga(PartTahap.dipesan), isTrue);
+      expect(PartTahap.perluHarga(PartTahap.dipasang), isTrue);
       expect(PartTahap.perluHarga(PartTahap.selesai), isTrue);
+    });
+
+    test('menunggu konfirmasi pelanggan tidak menuntut harga', () {
+      // Sempat dituntut, karena namanya terdengar begitu. Arsipnya berkata
+      // lain: dari 783 baris "Wait Confirm User DP", 673 tidak mengisi
+      // kolom harga -- angkanya ditulis di catatan, sering untuk beberapa
+      // part sekaligus dengan harga masing-masing. Satu kolom harga tidak
+      // bisa menampung itu.
+      expect(PartTahap.perluHarga(PartTahap.konfirmasi), isFalse);
 
       expect(PartTahap.perluHarga(PartTahap.foto), isFalse);
       expect(PartTahap.perluHarga(PartTahap.harga), isFalse);

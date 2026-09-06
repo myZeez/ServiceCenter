@@ -166,7 +166,7 @@ void main() {
     );
   });
 
-  testWidgets('menolak menunggu konfirmasi DP atas harga yang belum ada', (
+  testWidgets('menunggu konfirmasi DP boleh tanpa kolom harga terisi', (
     tester,
   ) async {
     await _lukis(tester);
@@ -175,9 +175,12 @@ void main() {
 
     await _ketuk(tester, find.widgetWithText(FilledButton, 'SIMPAN'));
 
+    // Penawaran sering memuat beberapa part dengan harga masing-masing dan
+    // ditulis di catatan. Memaksa satu angka di sini akan mengunci tahap
+    // yang isinya ratusan baris.
     expect(
       find.textContaining('Tahap ini menunggu jawaban pelanggan'),
-      findsOneWidget,
+      findsNothing,
     );
   });
 

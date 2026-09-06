@@ -35,6 +35,12 @@ class Db {
   /// pertama tanpa satu pun tanda bahwa ada yang salah.
   static const _jedaSegar = Duration(seconds: 90);
 
+  /// Berapa baris diminta sekali jalan.
+  ///
+  /// Sama dengan batas yang dipasang server. Meminta lebih banyak tidak
+  /// menambah apa pun -- yang di atas batas dipotong tanpa kabar.
+  static const _seHalaman = 1000;
+
   /// Seluruh isi tabel, diperbarui sendiri saat ada perubahan di server.
   ///
   /// Sengaja tidak disaring di sisi server. Satu langganan per tabel jauh
@@ -60,11 +66,37 @@ class Db {
     List<String> kunci = const ['id'],
   }) {
     List<T> olah(List<Map<String, dynamic>> rows) => rows.map(bentuk).toList();
-    Future<List<T>> tarik() async => olah(await _c.from(tabel).select());
+
+    /// Menarik SELURUH isi tabel, halaman demi halaman.
+    ///
+    /// Server membatasi satu permintaan pada sejumlah baris tertentu --
+    /// seribu, pada pemasangan ini. Batas itu tidak menghasilkan galat
+    /// apa pun: permintaannya berhasil, isinya saja yang terpotong. Nota
+    /// ke-1001 dan seterusnya hilang dari layar tanpa satu pun tanda,
+    /// dan yang terlihat justru meyakinkan -- daftar penuh, angka
+    /// bulat, semuanya tampak wajar.
+    ///
+    /// Karena itu halamannya diminta sampai ada halaman yang tidak penuh.
+    /// Halaman terakhir yang kebetulan pas jumlahnya menghasilkan satu
+    /// permintaan tambahan yang kosong; itu harga yang jauh lebih murah
+    /// daripada diam-diam kehilangan sisanya.
+    Future<List<T>> tarik() async {
+      final semua = <Map<String, dynamic>>[];
+      for (var mulai = 0; ; mulai += _seHalaman) {
+        final halaman = await _c
+            .from(tabel)
+            .select()
+            .range(mulai, mulai + _seHalaman - 1);
+        semua.addAll(halaman);
+        if (halaman.length < _seHalaman) break;
+      }
+      return olah(semua);
+    }
 
     final keluar = StreamController<List<T>>();
     StreamSubscription<List<Map<String, dynamic>>>? langganan;
     Timer? jam;
+    Timer? tunda;
     var hidup = false;
     var pernahTerisi = false;
 
@@ -102,8 +134,19 @@ class Db {
               // tanpa catatan ini keadaan itu tidak bisa dibedakan dari
               // server yang memang sedang sepi.
               debugPrint('[realtime] $tabel: ${rows.length} baris');
-              pernahTerisi = true;
-              keluar.add(olah(rows));
+
+              // Barisnya SENGAJA tidak dipakai langsung. Langganan
+              // membawa daftarnya sendiri, dan daftar itu terkena batas
+              // baris yang sama -- memakainya berarti daftar lengkap
+              // hasil penarikan berhalaman tadi tertimpa versi terpotong
+              // setiap kali ada satu perubahan kecil di tabel.
+              //
+              // Jadi yang diambil dari sini hanya kabarnya: ada yang
+              // berubah, tarik ulang. Ditunda sesaat supaya perubahan
+              // beruntun -- menyimpan sebuah formulir menyentuh beberapa
+              // baris sekaligus -- cukup menghasilkan satu penarikan.
+              tunda?.cancel();
+              tunda = Timer(const Duration(milliseconds: 400), segarkan);
             },
             // Tidak diteruskan ke layar dengan sengaja: langganan yang
             // gagal bukan alasan mengosongkan halaman, karena penarikan
@@ -118,6 +161,7 @@ class Db {
     keluar.onCancel = () async {
       hidup = false;
       jam?.cancel();
+      tunda?.cancel();
       await langganan?.cancel();
     };
 

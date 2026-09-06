@@ -10,6 +10,7 @@ import '../parts/part_orders_view.dart';
 import '../parts/parts_view.dart';
 import '../reports/reports_view.dart';
 import '../revenue/revenue_view.dart';
+import '../service/all_notes_view.dart';
 import '../service/service_reports_view.dart';
 import '../service/service_view.dart';
 import '../settings/settings_view.dart';
@@ -43,6 +44,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
           Icons.receipt_long_outlined,
           grup: 'Pelanggan',
         ),
+        const _Section('Semua Nota', Icons.inventory_2_outlined),
         const _Section('Laporan Servis', Icons.summarize_outlined),
         // Dua layar atas satu tabel yang sama: yang pertama meja
         // tanya-jawabnya, yang kedua pesanan yang sudah berjalan.
@@ -90,6 +92,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
             Expanded(
               child: switch (sections[index].label) {
                 'Servis' => const ServiceView(),
+                'Semua Nota' => const AllNotesView(),
                 'Laporan Servis' => const ServiceReportsView(),
                 'Tanya Harga' => const PartsView(),
                 'Pemesanan Part' => const PartOrdersView(),

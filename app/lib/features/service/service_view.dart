@@ -36,6 +36,47 @@ final serviceFilterProvider = StateProvider<ServiceFilter>(
   (ref) => const ServiceFilter(),
 );
 
+/// Hari yang sedang dilihat di halaman Servis.
+final hariServisProvider = StateProvider<DateTime>((ref) {
+  final n = DateTime.now();
+  return DateTime(n.year, n.month, n.day);
+});
+
+bool _hariSama(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
+/// Nota yang tampil di halaman Servis.
+///
+/// Dibatasi pada satu hari, karena itulah yang dikerjakan di meja depan:
+/// yang masuk hari ini dan yang harus diselesaikan hari ini. Daftar tiga
+/// ribu nota sejak Januari bukan alat kerja, ia arsip -- dan arsip punya
+/// halamannya sendiri.
+///
+/// Kecuali saat mencari. Kata pencarian membuka seluruh arsip, karena
+/// orang yang mengetik "Irwan" mencari notanya, bukan notanya hari ini --
+/// dan daftar kosong karena harinya kebetulan salah adalah jawaban yang
+/// menyesatkan.
+List<ServiceOrderEntry> saringNota(
+  List<ServiceOrderEntry> semua, {
+  required DateTime hari,
+  String? status,
+  String query = '',
+}) {
+  final q = query.toLowerCase().trim();
+
+  return [
+    for (final n in semua)
+      if ((q.isNotEmpty || _hariSama(n.tanggalMasuk, hari)) &&
+          (status == null || n.status == status) &&
+          (q.isEmpty ||
+              n.noNota.toLowerCase().contains(q) ||
+              n.customerNama.toLowerCase().contains(q) ||
+              (n.barangSn ?? '').toLowerCase().contains(q) ||
+              (n.customerTelp ?? '').contains(q)))
+        n,
+  ];
+}
+
 class ServiceView extends ConsumerStatefulWidget {
   const ServiceView({super.key});
 
@@ -68,20 +109,25 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
         p.id: p.nama,
     };
 
+    final hari = ref.watch(hariServisProvider);
+    final mencari = filter.query.trim().isNotEmpty;
+
+    // Angka di kotak ikut cakupan daftarnya: saat mencari ia menghitung
+    // seluruh arsip, saat tidak ia menghitung hari itu saja. Kotak yang
+    // menghitung sesuatu yang berbeda dari daftarnya adalah cara paling
+    // mudah membuat orang mengira ada nota yang hilang.
+    final cakupan = saringNota(semua, hari: hari, query: filter.query);
     final perStatus = <String, int>{};
-    for (final n in semua) {
+    for (final n in cakupan) {
       perStatus.update(n.status, (v) => v + 1, ifAbsent: () => 1);
     }
 
-    final q = filter.query.toLowerCase().trim();
-    final tampil = semua.where((n) {
-      if (filter.status != null && n.status != filter.status) return false;
-      if (q.isEmpty) return true;
-      return n.noNota.toLowerCase().contains(q) ||
-          n.customerNama.toLowerCase().contains(q) ||
-          (n.barangSn ?? '').toLowerCase().contains(q) ||
-          (n.customerTelp ?? '').contains(q);
-    }).toList();
+    final tampil = saringNota(
+      semua,
+      hari: hari,
+      status: filter.status,
+      query: filter.query,
+    );
 
     // Ctrl+N membuka formulir tanpa memindahkan tangan ke tetikus. Fokus
     // diambil otomatis agar pintasannya hidup begitu halaman terbuka, bukan
@@ -103,9 +149,15 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
             children: [
               PageHeader(
                 title: 'Servis',
-                subtitle:
-                    '${semua.length} nota tercatat  ·  Ctrl+N untuk tambah',
+                subtitle: mencari
+                    ? 'Mencari di seluruh ${semua.length} nota  ·  '
+                          '${tampil.length} ketemu'
+                    : '${cakupan.length} nota  ·  Ctrl+N untuk tambah',
                 actions: [
+                  if (!mencari) ...[
+                    _PilihHari(hari: hari),
+                    const SizedBox(width: AppSpacing.s),
+                  ],
                   SizedBox(
                     width: 300,
                     child: TextField(
@@ -184,13 +236,18 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
                       child: tampil.isEmpty
                           ? EmptyState(
                               icon: Icons.receipt_long_outlined,
-                              title: semua.isEmpty
-                                  ? 'Belum ada nota'
-                                  : 'Tidak ada nota yang cocok',
-                              description: semua.isEmpty
-                                  ? 'Nota dibuat saat pelanggan menyerahkan '
-                                        'unitnya.'
-                                  : 'Ubah filter atau kata pencarian di atas.',
+                              title: mencari
+                                  ? 'Tidak ada nota yang cocok'
+                                  : 'Belum ada nota hari ini',
+                              // Kosong pada satu hari bukan berarti tidak
+                              // ada apa-apa; halaman ini memang cuma
+                              // memuat satu hari, dan itu perlu disebut.
+                              description: mencari
+                                  ? 'Pencarian menjangkau seluruh arsip. '
+                                        'Coba kata lain.'
+                                  : 'Halaman ini memuat satu hari saja. '
+                                        'Pindah harinya di atas, atau buka '
+                                        'Semua Nota untuk arsip lengkapnya.',
                               action: OutlinedButton(
                                 onPressed: () => showServiceDialog(context),
                                 child: const Text('TAMBAH SERVIS'),
@@ -219,6 +276,84 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Pemilih hari: mundur, maju, dan ketuk tanggalnya untuk melompat.
+///
+/// Tombol maju mati saat sudah di hari ini. Nota bertanggal besok tidak
+/// pernah ada, dan tombol yang selalu bisa ditekan menuju halaman kosong
+/// hanya membuat orang mengira datanya hilang.
+class _PilihHari extends ConsumerWidget {
+  const _PilihHari({required this.hari});
+
+  final DateTime hari;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final n = DateTime.now();
+    final iniHari = DateTime(n.year, n.month, n.day);
+    final bisaMaju = hari.isBefore(iniHari);
+
+    void pindah(int hariKe) => ref
+        .read(hariServisProvider.notifier)
+        .state = hari.add(Duration(days: hariKe));
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFFCFD5D4)),
+        borderRadius: BorderRadius.circular(AppRadius.small),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Hari sebelumnya',
+            iconSize: 17,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.chevron_left),
+            onPressed: () => pindah(-1),
+          ),
+          InkWell(
+            onTap: () async {
+              final p = await showDatePicker(
+                context: context,
+                initialDate: hari,
+                firstDate: DateTime(2020),
+                lastDate: iniHari,
+              );
+              if (p != null) {
+                ref.read(hariServisProvider.notifier).state = DateTime(
+                  p.year,
+                  p.month,
+                  p.day,
+                );
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+              child: Text(
+                _hariSama(hari, iniHari)
+                    ? 'HARI INI'
+                    : DateFormat('d MMM yyyy', 'id').format(hari).toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Hari berikutnya',
+            iconSize: 17,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.chevron_right),
+            onPressed: bisaMaju ? () => pindah(1) : null,
+          ),
+        ],
       ),
     );
   }

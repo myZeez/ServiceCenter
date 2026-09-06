@@ -63,11 +63,12 @@ List<PartOrder> saringPesanan(
   ];
 }
 
-/// Meja tanya harga: seluruh permintaan part, apa pun tahapnya.
+/// Meja tanya harga: seluruh permintaan part, apa pun tahapnya, sejak
+/// pertama kali ditanyakan sampai jauh setelah tuntas.
 ///
-/// Halaman Pemesanan Part di sebelahnya bukan salinan daftar ini melainkan
-/// saringannya -- baris yang sudah lewat DP. Satu catatan, dua sudut
-/// pandang.
+/// Inilah daftar lengkapnya, dan ia tidak pernah menyusut. Halaman
+/// Pemesanan Part di sebelahnya bukan salinan melainkan saringannya --
+/// baris yang sudah lewat DP. Satu catatan, dua sudut pandang.
 class PartsView extends ConsumerStatefulWidget {
   const PartsView({super.key});
 
@@ -98,19 +99,25 @@ class _PartsViewState extends ConsumerState<PartsView> {
         p.id: p.nama,
     };
 
-    // Halaman ini berhenti di batas DP, persis seperti sheet aslinya.
-    // Yang sudah dibayar pindah ke Pemesanan Part -- bukan disalin ke
-    // sana, melainkan keluar dari sini.
-    final belum = saringPesanan(semua, hanyaTahap: PartTahap.sebelumDp);
-
+    // Halaman ini memuat SEMUANYA, tahap apa pun -- termasuk yang sudah
+    // dibayar dan sudah tuntas.
+    //
+    // Sempat dibatasi sampai batas DP saja, meniru sheet lama yang memang
+    // berhenti di situ. Itu salah membaca sebabnya: di sheet, baris yang
+    // jadi dipesan tetap tinggal di Tanya Harga, dan yang ada di Pemesanan
+    // adalah SALINANNYA. Membuang salinannya benar; ikut membuang barisnya
+    // dari sini berarti membuang riwayatnya -- pertanyaan "dulu unit ini
+    // pernah ditanyakan harganya berapa" jadi tidak bisa dijawab.
+    //
+    // Pemesanan Part tetap saringan atas tabel yang sama; ia hanya
+    // menyempit ke yang uangnya sudah berpindah.
     final perTahap = <String, int>{};
-    for (final p in belum) {
+    for (final p in semua) {
       perTahap.update(p.tahap, (v) => v + 1, ifAbsent: () => 1);
     }
 
     final tampil = saringPesanan(
       semua,
-      hanyaTahap: PartTahap.sebelumDp,
       tahap: filter.tahap,
       query: filter.query,
     );
@@ -133,7 +140,7 @@ class _PartsViewState extends ConsumerState<PartsView> {
               PageHeader(
                 title: 'Tanya Harga',
                 subtitle:
-                    '${belum.length} permintaan berjalan  ·  Ctrl+N untuk '
+                    '${semua.length} permintaan tercatat  ·  Ctrl+N untuk '
                     'tambah',
                 actions: [
                   SizedBox(
@@ -175,7 +182,7 @@ class _PartsViewState extends ConsumerState<PartsView> {
                 children: [
                   Expanded(
                     child: StatTile(
-                      value: '${belum.length}',
+                      value: '${semua.length}',
                       label: 'Semua',
                       selected: filter.tahap == null,
                       onTap: () => ref
@@ -183,7 +190,7 @@ class _PartsViewState extends ConsumerState<PartsView> {
                           .update((s) => s.copyWith(clear: true)),
                     ),
                   ),
-                  for (final t in PartTahap.sebelumDp) ...[
+                  for (final t in PartTahap.all) ...[
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: StatTile(
@@ -212,10 +219,10 @@ class _PartsViewState extends ConsumerState<PartsView> {
                   child: tampil.isEmpty
                       ? EmptyState(
                           icon: Icons.request_quote_outlined,
-                          title: belum.isEmpty
+                          title: semua.isEmpty
                               ? 'Belum ada permintaan part'
                               : 'Tidak ada yang cocok',
-                          description: belum.isEmpty
+                          description: semua.isEmpty
                               ? 'Dicatat saat pelanggan menanyakan harga '
                                     'part unit non-garansi.'
                               : 'Ubah saringan atau kata pencarian di atas.',

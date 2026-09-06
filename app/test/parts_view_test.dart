@@ -1,9 +1,10 @@
 // Dua layar tanya harga dan pemesanan part di Windows.
 //
-// Keduanya membaca tabel yang sama; yang membedakan hanya saringannya --
-// Tanya Harga berhenti di batas DP, Pemesanan mulai dari sana. Kalau
-// saringan itu meleset, sebuah unit menghilang dari kedua layar tanpa satu
-// pun tanda bahwa ia pernah ada.
+// Keduanya membaca tabel yang sama. Tanya Harga memuat seluruhnya dan
+// tidak pernah menyusut; Pemesanan menyempit ke yang uangnya sudah
+// berpindah. Kalau batas itu meleset ke arah yang salah, sebuah unit
+// menghilang dari layar tanpa satu pun tanda bahwa ia pernah ada -- dan
+// itu pernah benar-benar terjadi di sini.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/providers.dart';
+import 'package:sc_management/core/widgets/bento.dart';
 import 'package:sc_management/features/parts/part_orders_view.dart';
 import 'package:sc_management/features/parts/part_status.dart';
 import 'package:sc_management/features/parts/parts_view.dart';
@@ -144,7 +146,7 @@ void main() {
   });
 
   group('halaman Tanya Harga', () {
-    testWidgets('menampilkan permintaan yang belum lewat DP', (tester) async {
+    testWidgets('menampilkan permintaan yang masih berjalan', (tester) async {
       await _lukis(tester, const PartsView(), [
         _pesanan(id: '1', nama: 'Jamal'),
         _pesanan(id: '2', nama: 'Soni', tahap: PartTahap.harga),
@@ -156,7 +158,7 @@ void main() {
       expect(find.text('Reza'), findsNWidgets(2));
     });
 
-    testWidgets('yang sudah dibayar DP keluar dari halaman ini', (
+    testWidgets('yang sudah dibayar DP dan yang sudah tuntas tetap terlihat', (
       tester,
     ) async {
       await _lukis(tester, const PartsView(), [
@@ -167,11 +169,39 @@ void main() {
           tahap: PartTahap.dipesan,
           harga: 120000,
         ),
+        _pesanan(
+          id: '3',
+          nama: 'Rudi',
+          tahap: PartTahap.selesai,
+          harga: 90000,
+          dp: 90000,
+        ),
       ]);
 
-      // Bukan disalin ke Pemesanan Part, melainkan pindah ke sana.
+      // Halaman ini riwayat lengkapnya dan tidak pernah menyusut. Baris
+      // yang hilang begitu DP dibayar membuat pertanyaan "dulu unit ini
+      // ditanyakan harganya berapa" tidak bisa dijawab dari mana pun.
       expect(find.text('Jamal'), findsOneWidget);
-      expect(find.text('Soni'), findsNothing);
+      expect(find.text('Soni'), findsOneWidget);
+      expect(find.text('Rudi'), findsOneWidget);
+    });
+
+    testWidgets('saringan tahap tetap bisa mempersempitnya', (tester) async {
+      await _lukis(tester, const PartsView(), [
+        _pesanan(id: '1', nama: 'Jamal'),
+        _pesanan(
+          id: '2',
+          nama: 'Soni',
+          tahap: PartTahap.dipesan,
+          harga: 120000,
+        ),
+      ]);
+
+      await tester.tap(find.widgetWithText(StatTile, 'DIPESAN'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Soni'), findsOneWidget);
+      expect(find.text('Jamal'), findsNothing);
     });
 
     testWidgets('tiga tahap awal dibedakan, bukan ditumpuk jadi satu', (

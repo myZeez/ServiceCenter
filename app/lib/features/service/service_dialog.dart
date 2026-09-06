@@ -22,6 +22,7 @@ import 'service_status.dart';
 
 const _uuid = Uuid();
 final _tglFmt = DateFormat('dd MMM yyyy');
+final _tglJamFmt = DateFormat('dd MMM yyyy · HH:mm');
 final _iso = DateFormat('yyyy-MM-dd');
 
 Future<void> showServiceDialog(
@@ -496,7 +497,10 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                 Text(
                   n == null
                       ? 'Nomor nota diberikan otomatis saat disimpan'
-                      : _tglFmt.format(n.tanggalMasuk),
+                      // Sampai jamnya, karena hari kerja berganti jam
+                      // tutup: nota ini bisa tercatat sebagai nota besok
+                      // walau tanggalnya hari ini.
+                      : _tglJamFmt.format(n.tanggalMasuk),
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
               ],

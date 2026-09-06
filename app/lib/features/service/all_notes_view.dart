@@ -10,13 +10,13 @@ import '../../core/widgets/swiss_widgets.dart';
 import '../scan/scan_page.dart';
 import 'service_dialog.dart';
 import 'service_status.dart';
+import 'waktu_masuk.dart';
 
 final _rp = NumberFormat.currency(
   locale: 'id_ID',
   symbol: 'Rp',
   decimalDigits: 0,
 );
-final _tgl = DateFormat('dd/MM/yy');
 final _bulanTahun = DateFormat('MMMM yyyy', 'id');
 
 final _filterProvider = StateProvider<String?>((ref) => null);
@@ -128,8 +128,7 @@ class _AllNotesViewState extends ConsumerState<AllNotesView> {
                       },
                     ),
                   ),
-                  onChanged: (v) =>
-                      ref.read(_cariProvider.notifier).state = v,
+                  onChanged: (v) => ref.read(_cariProvider.notifier).state = v,
                 ),
               ),
             ],
@@ -477,10 +476,7 @@ class _BarisState extends State<_Baris> {
                   ],
                 ),
               ),
-              SizedBox(
-                width: 76,
-                child: Text(_tgl.format(n.tanggalMasuk), style: _sel),
-              ),
+              SizedBox(width: 76, child: SelMasuk(n.tanggalMasuk)),
               Expanded(
                 flex: 3,
                 child: Padding(

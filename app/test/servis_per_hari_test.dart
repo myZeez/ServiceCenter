@@ -38,8 +38,17 @@ final _kemarin = DateTime(2026, 9, 5);
 final _hariIni = DateTime(2026, 9, 6);
 
 final _contoh = [
-  _nota(noNota: 'SVR-1', masuk: _hariIni, nama: 'Hari Ini A'),
-  _nota(noNota: 'SVR-2', masuk: _hariIni, nama: 'Hari Ini B', status: 'selesai'),
+  _nota(
+    noNota: 'SVR-1',
+    masuk: DateTime(2026, 9, 6, 14, 25),
+    nama: 'Hari Ini A',
+  ),
+  _nota(
+    noNota: 'SVR-2',
+    masuk: _hariIni,
+    nama: 'Hari Ini B',
+    status: 'selesai',
+  ),
   _nota(noNota: 'SVR-3', masuk: _kemarin, nama: 'Kemarin'),
   _nota(noNota: 'SVR-4', masuk: DateTime(2026, 1, 4), nama: 'Januari'),
 ];
@@ -113,6 +122,16 @@ void main() {
       expect(find.text('Hari Ini A'), findsOneWidget);
       expect(find.text('Kemarin'), findsNothing);
       expect(find.text('Januari'), findsNothing);
+    });
+
+    testWidgets('menyebut jam masuknya, bukan tanggalnya saja', (tester) async {
+      await _lukis(tester, const ServiceView());
+
+      // Sejak hari kerja berganti jam tutup, tanggal saja tidak cukup:
+      // nota bisa muncul di bawah tanggal 7 sementara kertasnya tertulis
+      // 6, dan jamnya yang menjelaskan kenapa.
+      expect(find.text('06/09/26'), findsWidgets);
+      expect(find.text('14:25'), findsOneWidget);
     });
 
     testWidgets('kosong menjelaskan bahwa halaman ini satu hari saja', (

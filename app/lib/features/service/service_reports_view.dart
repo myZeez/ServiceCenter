@@ -13,6 +13,7 @@ import '../../core/widgets/swiss_widgets.dart';
 import 'service_dialog.dart';
 import 'service_status.dart';
 import 'shipment_dialog.dart';
+import 'waktu_masuk.dart';
 
 final _rp = NumberFormat.currency(
   locale: 'id_ID',
@@ -219,7 +220,11 @@ class _Harian extends ConsumerWidget {
                 (0, 'Jenis Barang', 2),
                 (0, 'Perbaikan', 3),
                 (112, 'Biaya', 0),
-                (96, 'Tgl Masuk', 0),
+                // Cukup lebar untuk tanggal beserta jamnya. Jam masuk
+                // ikut disebut sejak hari kerja berganti jam tutup:
+                // tanpa itu, nota jam 18.30 yang muncul di tab tanggal
+                // berikutnya terbaca seperti salah tempat.
+                (120, 'Tgl Masuk', 0),
                 (104, 'Keterangan', 0),
               ],
               baris: [
@@ -232,7 +237,7 @@ class _Harian extends ConsumerWidget {
                       _barang(n),
                       n.perbaikan ?? '—',
                       n.biaya == 0 ? 'Rp0' : _rp.format(n.biaya),
-                      _tgl.format(n.tanggalMasuk),
+                      tanggalJamMasuk(n.tanggalMasuk),
                       ExcelExport.keteranganHarian(n),
                     ],
                   ),
@@ -252,6 +257,13 @@ class _Harian extends ConsumerWidget {
               kolom: const [
                 (0, 'Nama', 2),
                 (118, 'No Nota', 0),
+                // Tabel ini dulu tidak menyebut waktu sama sekali --
+                // semua barisnya toh unit yang masuk tanggal itu. Sejak
+                // hari kerja berganti jam tutup, kalimat itu tidak lagi
+                // utuh: unit yang datang jam 18.30 muncul di tab
+                // keesokan harinya, dan tanpa kolom ini kehadirannya di
+                // situ tidak bisa dijelaskan.
+                (120, 'Masuk', 0),
                 (128, 'No HP', 0),
                 (0, 'Jenis Barang', 2),
                 (0, 'Kerusakan', 3),
@@ -264,6 +276,7 @@ class _Harian extends ConsumerWidget {
                     [
                       n.customerNama,
                       n.noNota,
+                      tanggalJamMasuk(n.tanggalMasuk),
                       n.customerTelp ?? '—',
                       _barang(n),
                       n.keluhan ?? '—',

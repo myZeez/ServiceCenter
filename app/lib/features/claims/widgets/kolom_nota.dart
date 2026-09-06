@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/data/models.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/swiss_widgets.dart';
 import '../../service/service_status.dart';
+import '../../service/waktu_masuk.dart';
 import '../cari_nota.dart';
-
-final _tglFmt = DateFormat('dd/MM/yy');
 
 /// Kolom nama pelanggan pada klaim, yang sekaligus mencari notanya.
 ///
@@ -145,7 +143,7 @@ class KolomNota extends StatelessWidget {
                                     n.barangNama,
                                     ?n.barangType,
                                   ].where((s) => s.isNotEmpty).join(' '),
-                                  _tglFmt.format(n.tanggalMasuk),
+                                  tanggalJamMasuk(n.tanggalMasuk),
                                 ].join('  ·  '),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

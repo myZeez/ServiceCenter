@@ -11,14 +11,7 @@ class ServiceStatus {
   static const diambil = 'diambil';
   static const batal = 'batal';
 
-  static const all = [
-    masuk,
-    dikerjakan,
-    tungguPart,
-    selesai,
-    diambil,
-    batal,
-  ];
+  static const all = [masuk, dikerjakan, tungguPart, selesai, diambil, batal];
 
   /// Unit yang masih ada di meja: sudah diterima, belum tuntas.
   ///

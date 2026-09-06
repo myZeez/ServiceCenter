@@ -10,13 +10,13 @@ import '../../core/widgets/gagal_muat.dart';
 import '../../core/widgets/koneksi.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import 'service_status.dart';
+import 'waktu_masuk.dart';
 
 final _rp = NumberFormat.currency(
   locale: 'id_ID',
   symbol: 'Rp',
   decimalDigits: 0,
 );
-final _tgl = DateFormat('dd/MM/yy');
 
 /// Antrean servis di layar sempit.
 ///
@@ -48,7 +48,10 @@ class _ServicePageState extends ConsumerState<ServicePage> {
       appBar: AppBar(
         titleSpacing: AppSpacing.sm,
         title: const Text('Servis'),
-        actions: const [IndikatorKoneksi(), SizedBox(width: AppSpacing.xs)],
+        actions: const [
+          IndikatorKoneksi(),
+          SizedBox(width: AppSpacing.xs),
+        ],
       ),
       body: Column(
         children: [
@@ -153,7 +156,8 @@ class _Saringan extends StatelessWidget {
             for (final s in ServiceStatus.all)
               if ((jumlah[s] ?? 0) > 0)
                 _Chip(
-                  label: '${ServiceStatus.label(s).toUpperCase()}  '
+                  label:
+                      '${ServiceStatus.label(s).toUpperCase()}  '
                       '${jumlah[s]}',
                   aktif: dipilih == s,
                   onTap: () => onPilih(s),
@@ -264,7 +268,7 @@ class _KartuNota extends ConsumerWidget {
             Row(
               children: [
                 Text(
-                  '${_tgl.format(nota.tanggalMasuk)}  ·  '
+                  '${tanggalJamMasuk(nota.tanggalMasuk)}  ·  '
                   '${teknisi[nota.teknisiId] ?? 'belum ada teknisi'}',
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
@@ -349,14 +353,14 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
 
     if (!mounted) return;
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Pekerjaan diperbarui')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Pekerjaan diperbarui')));
   }
 
   @override
   Widget build(BuildContext context) {
-    final techs = ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
+    final techs =
+        ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
 
     return Padding(
       padding: EdgeInsets.only(
@@ -432,7 +436,11 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
             ),
             child: const Text(
               'Biaya, cara bayar, dan data pelanggan diubah dari meja depan.',
-              style: TextStyle(fontSize: 11, height: 1.4, color: AppColors.blue),
+              style: TextStyle(
+                fontSize: 11,
+                height: 1.4,
+                color: AppColors.blue,
+              ),
             ),
           ),
 

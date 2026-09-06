@@ -56,12 +56,12 @@ class CustomerField extends StatelessWidget {
     // ada yang dipilih. Tidak memblokir: bisa jadi memang orang berbeda.
     final kembar = terpilih == null
         ? pelanggan
-            .where(
-              (c) =>
-                  c.nama.toLowerCase() ==
-                  controller.text.trim().toLowerCase(),
-            )
-            .toList()
+              .where(
+                (c) =>
+                    c.nama.toLowerCase() ==
+                    controller.text.trim().toLowerCase(),
+              )
+              .toList()
         : const <CustomerEntry>[];
 
     return Column(
@@ -101,9 +101,8 @@ class CustomerField extends StatelessWidget {
                           onPressed: readOnly ? null : onBaru,
                         ),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Nama wajib diisi'
-                    : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Nama wajib diisi' : null,
               );
             },
             optionsViewBuilder: (context, onSelected, options) {
@@ -220,7 +219,10 @@ class CustomerField extends StatelessWidget {
                 for (final c in kembar.take(3))
                   Text(
                     '${c.kode} · ${c.telp ?? 'tanpa telepon'}',
-                    style: const TextStyle(fontSize: 10.5, color: AppColors.red),
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: AppColors.red,
+                    ),
                   ),
                 const SizedBox(height: 2),
                 const Text(

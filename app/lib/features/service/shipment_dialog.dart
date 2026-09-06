@@ -93,15 +93,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
 
   @override
   void dispose() {
-    for (final c in [
-      _dari,
-      _ke,
-      _user,
-      _barang,
-      _sn,
-      _keluhan,
-      _kelengkapan,
-    ]) {
+    for (final c in [_dari, _ke, _user, _barang, _sn, _keluhan, _kelengkapan]) {
       c.dispose();
     }
     super.dispose();
@@ -128,8 +120,9 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
         'keluhan': _kosongNull(_keluhan),
         'kelengkapan': _kosongNull(_kelengkapan),
         'status': _status,
-        'tanggal_kembali':
-            _tanggalKembali == null ? null : _iso.format(_tanggalKembali!),
+        'tanggal_kembali': _tanggalKembali == null
+            ? null
+            : _iso.format(_tanggalKembali!),
         'keterangan': _keterangan,
       };
 
@@ -139,7 +132,6 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
       } else {
         await client.from('shipments').update(data).eq('id', widget.kirim!.id);
       }
-
 
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -475,8 +467,5 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
 final _tombolTanggal = OutlinedButton.styleFrom(
   alignment: Alignment.centerLeft,
   side: const BorderSide(color: Color(0xFFCFD5D4), width: 1),
-  padding: const EdgeInsets.symmetric(
-    horizontal: AppSpacing.s,
-    vertical: 13,
-  ),
+  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s, vertical: 13),
 );

@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/hari_laporan.dart';
 import 'package:sc_management/features/service/service_view.dart';
+import 'package:sc_management/features/service/waktu_masuk.dart';
 
 ServiceOrderEntry _nota(DateTime masuk, {String id = 'n'}) => ServiceOrderEntry(
   id: id,
@@ -76,6 +77,17 @@ void main() {
         hariLaporanSama(DateTime(2026, 9, 6, 18, 0), DateTime(2026, 9, 6)),
         isFalse,
       );
+    });
+  });
+
+  group('Tanggal beserta jamnya', () {
+    test('ditulis 24 jam, dengan nol di depan', () {
+      // Jam 9 pagi yang tercetak "9:05" berdampingan dengan "18:30" akan
+      // membuat kolomnya bergerigi, dan jam 12 malam tanpa penanda AM/PM
+      // hanya jelas kalau formatnya memang 24 jam.
+      expect(tanggalJamMasuk(DateTime(2026, 9, 6, 9, 5)), '06/09/26 09:05');
+      expect(tanggalJamMasuk(DateTime(2026, 9, 6, 18, 30)), '06/09/26 18:30');
+      expect(tanggalJamMasuk(DateTime(2026, 9, 6, 0, 0)), '06/09/26 00:00');
     });
   });
 

@@ -7,7 +7,8 @@ installer/output/
 # Tidak perlu terduplikasi selamanya di git history.
 SERVICE CLAIM GARANSI CELLCOM PLK - *.csv
 
-# Arsip sheet tanya harga & pemesanan part. Dipakai sekali untuk membaca
-# tahap dan kolom apa yang sebenarnya dipakai; isinya nama, telepon, dan
-# SN ribuan pelanggan.
+# Arsip sheet dari Google Sheets. Dipakai sekali untuk menyusun skrip
+# impor di supabase/scripts/; isinya nama, telepon, dan SN puluhan ribu
+# pelanggan, dan tidak perlu terduplikasi selamanya di git history.
 TANYA HARGA/
+SERVIS/

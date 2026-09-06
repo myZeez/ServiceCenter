@@ -546,8 +546,19 @@ cross join (
   select id from profiles where role = 'admin' and aktif
   order by created_at limit 1
 ) as admin_akun
+-- Dicocokkan lewat isinya, BUKAN lewat id di berkas ini.
+--
+-- Idnya dibuat acak saat berkas ini disusun, jadi menyusun ulang
+-- berkasnya menghasilkan id yang lain -- dan penjaga yang bersandar pada
+-- id akan menganggap baris yang sama sebagai baris baru. Satu unit yang
+-- dikirim ke cabang yang sama pada hari yang sama hanya terjadi sekali,
+-- jadi keempat kolom ini cukup mengenalinya.
 where not exists (
-  select 1 from shipments s where s.id = v.id::uuid
+  select 1 from shipments s
+  where s.tanggal_kirim = v.tanggal_kirim::date
+    and s.barang_nama = v.barang
+    and s.dari_cabang = v.dari
+    and coalesce(s.serial_number, '') = coalesce(v.sn, '')
 );
 
 

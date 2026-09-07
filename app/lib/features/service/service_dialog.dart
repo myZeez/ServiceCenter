@@ -96,6 +96,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
 
   final _nama = TextEditingController();
   final _telp = TextEditingController();
+  final _email = TextEditingController();
   final _barang = TextEditingController();
   final _type = TextEditingController();
   final _sn = TextEditingController();
@@ -140,6 +141,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
 
     _nama.text = n.customerNama;
     _telp.text = n.customerTelp ?? '';
+    _email.text = n.customerEmail ?? '';
     _barang.text = n.barangNama;
     _type.text = n.barangType ?? '';
     _sn.text = n.barangSn ?? '';
@@ -161,6 +163,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     for (final c in [
       _nama,
       _telp,
+      _email,
       _barang,
       _type,
       _sn,
@@ -288,6 +291,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         'brand_id': _brandId!,
         'nama_pelanggan': _nama.text.trim(),
         'telp': _kosongNull(_telp),
+        'email': _kosongNull(_email),
         'sn': _sn.text.trim(),
         'teknisi_id': _teknisiId,
         'keluhan': _kosongNull(_keluhan),
@@ -305,6 +309,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         'estimasi_selesai': _estimasi == null ? null : _iso.format(_estimasi!),
         'customer_nama': _nama.text.trim(),
         'customer_telp': _kosongNull(_telp),
+        'customer_email': _kosongNull(_email),
         'customer_id': customerId,
         'operator_id': user?.id,
         'barang_nama': _barang.text.trim(),
@@ -612,6 +617,27 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             controller: _telp,
             keyboardType: TextInputType.phone,
             decoration: const InputDecoration(hintText: '0812-3456-7890'),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s),
+        LabeledField(
+          label: 'Email',
+          // Wajib hanya saat sebuah klaim garansi memang akan lahir dari
+          // nota ini -- portal RMA brand menuntutnya. Nota yang klaimnya
+          // sudah ada, atau nota arsip bergaransi, tidak dipaksa: tidak ada
+          // klaim baru yang dibuat, dan kolomnya memang belum ada saat itu.
+          required: _garansi && _bolehUbahGaransi,
+          hint: _garansi && _bolehUbahGaransi
+              ? 'Portal RMA sebagian brand menuntut email pelanggan.'
+              : null,
+          child: TextFormField(
+            controller: _email,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(hintText: 'nama@email.com'),
+            validator: (v) =>
+                _garansi && _bolehUbahGaransi && (v ?? '').trim().isEmpty
+                ? 'Email wajib untuk klaim garansi'
+                : null,
           ),
         ),
 

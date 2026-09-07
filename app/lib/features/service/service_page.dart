@@ -320,12 +320,16 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
   late final _perbaikan = TextEditingController(
     text: widget.nota.perbaikan ?? '',
   );
+  late final _keterangan = TextEditingController(
+    text: widget.nota.keterangan ?? '',
+  );
 
   bool _busy = false;
 
   @override
   void dispose() {
     _perbaikan.dispose();
+    _keterangan.dispose();
     super.dispose();
   }
 
@@ -338,6 +342,9 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
         'perbaikan': _perbaikan.text.trim().isEmpty
             ? null
             : _perbaikan.text.trim(),
+        'keterangan': _keterangan.text.trim().isEmpty
+            ? null
+            : _keterangan.text.trim(),
       });
     } catch (e) {
       if (!mounted) return;
@@ -423,6 +430,17 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
             child: TextField(
               controller: _perbaikan,
               maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s),
+
+          LabeledField(
+            label: 'Catatan',
+            hint: 'Hal lain yang perlu dicatat tentang unit ini.',
+            child: TextField(
+              controller: _keterangan,
+              maxLines: 2,
               textCapitalization: TextCapitalization.sentences,
             ),
           ),

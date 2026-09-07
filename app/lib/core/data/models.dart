@@ -111,6 +111,7 @@ class Claim {
     required this.brandId,
     required this.namaPelanggan,
     this.telp,
+    this.email,
     required this.sn,
     this.teknisiId,
     this.keluhan,
@@ -128,6 +129,11 @@ class Claim {
   final int brandId;
   final String namaPelanggan;
   final String? telp;
+
+  /// Email pelanggan. Dipakai brand untuk registrasi RMA; kosong pada
+  /// klaim lama yang dicatat sebelum kolom ini ada.
+  final String? email;
+
   final String sn;
   final String? teknisiId;
   final String? keluhan;
@@ -150,6 +156,7 @@ class Claim {
     brandId: r['brand_id'] as int,
     namaPelanggan: r['nama_pelanggan'] as String,
     telp: r['telp'] as String?,
+    email: r['email'] as String?,
     sn: r['sn'] as String,
     teknisiId: r['teknisi_id'] as String?,
     keluhan: r['keluhan'] as String?,
@@ -311,6 +318,7 @@ class ServiceOrderEntry {
     this.estimasiSelesai,
     required this.customerNama,
     this.customerTelp,
+    this.customerEmail,
     this.customerId,
     this.operatorId,
     required this.barangNama,
@@ -340,6 +348,11 @@ class ServiceOrderEntry {
   /// dengan kertasnya walau data pelanggannya berubah kemudian.
   final String customerNama;
   final String? customerTelp;
+
+  /// Email pelanggan. Ikut disalin ke klaim garansi yang lahir dari nota
+  /// ini; kosong pada nota lama yang dicatat sebelum kolom ini ada.
+  final String? customerEmail;
+
   final String? customerId;
 
   final String? operatorId;
@@ -376,6 +389,7 @@ class ServiceOrderEntry {
         estimasiSelesai: _tgl(r['estimasi_selesai']),
         customerNama: r['customer_nama'] as String,
         customerTelp: r['customer_telp'] as String?,
+        customerEmail: r['customer_email'] as String?,
         customerId: r['customer_id'] as String?,
         operatorId: r['operator_id'] as String?,
         barangNama: r['barang_nama'] as String,

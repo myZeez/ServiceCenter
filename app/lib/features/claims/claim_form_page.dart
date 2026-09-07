@@ -48,6 +48,7 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
 
   final _nama = TextEditingController();
   final _telp = TextEditingController();
+  final _email = TextEditingController();
   final _sn = TextEditingController();
   final _keluhan = TextEditingController();
   final _noPerbaikan = TextEditingController();
@@ -98,6 +99,7 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
     _status = c.status;
     _nama.text = c.namaPelanggan;
     _telp.text = c.telp ?? '';
+    _email.text = c.email ?? '';
     _sn.text = c.sn;
     _keluhan.text = c.keluhan ?? '';
     _noPerbaikan.text = c.noPerbaikan ?? '';
@@ -128,6 +130,7 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
   void dispose() {
     _nama.dispose();
     _telp.dispose();
+    _email.dispose();
     _sn.dispose();
     _keluhan.dispose();
     _noPerbaikan.dispose();
@@ -153,6 +156,7 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
       _nota = n;
       _nama.text = n.customerNama;
       _telp.text = n.customerTelp ?? '';
+      if (_email.text.trim().isEmpty) _email.text = n.customerEmail ?? '';
       _sn.text = n.barangSn ?? '';
       if (_keluhan.text.trim().isEmpty) _keluhan.text = n.keluhan ?? '';
       _teknisiId = n.teknisiId ?? _teknisiId;
@@ -209,6 +213,7 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
       'brand_id': _brandId!,
       'nama_pelanggan': _nama.text.trim(),
       'telp': nullIfEmpty(_telp),
+      'email': nullIfEmpty(_email),
       'sn': _sn.text.trim(),
       'teknisi_id': _teknisiId,
       'keluhan': nullIfEmpty(_keluhan),
@@ -352,6 +357,22 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
           controller: _telp,
           keyboardType: TextInputType.phone,
           decoration: const InputDecoration(hintText: '0812-3456-7890'),
+        ),
+      ),
+      const SizedBox(height: AppSpacing.s),
+      LabeledField(
+        label: 'Email',
+        // Wajib pada klaim baru: portal RMA beberapa brand menuntutnya
+        // saat unit didaftarkan. Klaim lama yang disunting tidak dipaksa
+        // -- kolomnya memang belum ada saat itu dicatat.
+        required: !widget.isEdit,
+        child: TextFormField(
+          controller: _email,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(hintText: 'nama@email.com'),
+          validator: (v) => !widget.isEdit && (v ?? '').trim().isEmpty
+              ? 'Email wajib untuk klaim garansi'
+              : null,
         ),
       ),
     ];

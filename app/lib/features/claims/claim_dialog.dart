@@ -79,6 +79,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
 
   final _nama = TextEditingController();
   final _telp = TextEditingController();
+  final _email = TextEditingController();
   final _snUnit = TextEditingController();
   final _keluhan = TextEditingController();
   final _noPerbaikan = TextEditingController();
@@ -124,6 +125,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
     _status = c.status;
     _nama.text = c.namaPelanggan;
     _telp.text = c.telp ?? '';
+    _email.text = c.email ?? '';
     _snUnit.text = c.sn;
     _keluhan.text = c.keluhan ?? '';
     _noPerbaikan.text = c.noPerbaikan ?? '';
@@ -153,6 +155,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
   void dispose() {
     _nama.dispose();
     _telp.dispose();
+    _email.dispose();
     _snUnit.dispose();
     _keluhan.dispose();
     _noPerbaikan.dispose();
@@ -179,6 +182,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
       _nota = n;
       _nama.text = n.customerNama;
       _telp.text = n.customerTelp ?? '';
+      if (_email.text.trim().isEmpty) _email.text = n.customerEmail ?? '';
       _snUnit.text = n.barangSn ?? '';
       if (_keluhan.text.trim().isEmpty) _keluhan.text = n.keluhan ?? '';
       _teknisiId = n.teknisiId ?? _teknisiId;
@@ -211,6 +215,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
       'brand_id': _brandId!,
       'nama_pelanggan': _nama.text.trim(),
       'telp': _nullIfEmpty(_telp),
+      'email': _nullIfEmpty(_email),
       'sn': _snUnit.text.trim(),
       'teknisi_id': _teknisiId,
       'keluhan': _nullIfEmpty(_keluhan),
@@ -276,20 +281,36 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
     );
   }
 
-  /// Teknisi hanya boleh menyentuh kolom teknisi. Kunci ini menyusul aturan
-  /// yang sudah ditegakkan trigger di server -- di sini agar tidak ada
-  /// kolom yang bisa diketik lalu ditolak diam-diam saat sinkron.
-  Future<void> _saveTechnicianOnly() async {
-    if (widget.claim == null || _teknisiId == null) return;
+  /// Simpan yang boleh disentuh teknisi pada klaim yang sudah ada: status,
+  /// catatan, teknisi, dan part baru. Identitas unit dan pelanggan ditolak
+  /// trigger di server, jadi sengaja tidak ikut dikirim -- kolom yang bisa
+  /// diketik lalu ditolak diam-diam lebih buruk daripada yang terkunci.
+  Future<void> _saveTeknisiScope() async {
+    final c = widget.claim;
+    if (c == null) return;
     setState(() => _busy = true);
 
+    final db = ref.read(databaseProvider);
     try {
-      await ref
-          .read(databaseProvider)
-          .gantiTeknisi(widget.claim!.id, _teknisiId!);
+      await db.ubahClaim(c.id, {
+        'teknisi_id': _teknisiId,
+        'status': _status,
+        'catatan': _nullIfEmpty(_catatan),
+      });
+
+      // Hanya baris part yang belum tersimpan. Mengubah atau menghapus
+      // part yang sudah ada tetap milik admin (cp_update / cp_delete).
+      for (final p in _parts.where(
+        (e) => e.existingId == null && e.typeId != null,
+      )) {
+        await db.simpanPart({
+          'id': _uuid.v4(),
+          'claim_id': c.id,
+          'part_type_id': p.typeId!,
+          'sn_bad_part': p.sn.text.trim().isEmpty ? null : p.sn.text.trim(),
+        });
+      }
     } catch (e) {
-      // Dulu galat di sini tidak pernah ditangkap, dan penulisan yang
-      // ditolak diam-diam tetap ditutup dengan "Teknisi diganti".
       if (!mounted) return;
       setState(() => _busy = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -304,9 +325,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
     if (!mounted) return;
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Teknisi diganti. Perubahan ini tercatat di riwayat.'),
-      ),
+      const SnackBar(content: Text('Perubahan tersimpan')),
     );
   }
 
@@ -440,7 +459,8 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
             const Padding(
               padding: EdgeInsets.only(right: AppSpacing.xs),
               child: Tooltip(
-                message: 'Hanya kolom teknisi yang bisa kamu ubah',
+                message: 'Kamu bisa ubah status, catatan, teknisi, dan '
+                    'tambah part. Data unit dan pelanggan diubah admin.',
                 child: Icon(
                   Icons.lock_outline,
                   size: 15,
@@ -503,6 +523,22 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
           readOnly: !editable,
           keyboardType: TextInputType.phone,
           decoration: const InputDecoration(hintText: '0812-3456-7890'),
+        ),
+      ),
+      const SizedBox(height: AppSpacing.s),
+      LabeledField(
+        label: 'Email',
+        // Wajib pada klaim baru: portal RMA sebagian brand menuntutnya.
+        // Klaim lama yang disunting tidak dipaksa.
+        required: widget.isNew,
+        child: TextFormField(
+          controller: _email,
+          readOnly: !editable,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(hintText: 'nama@email.com'),
+          validator: (v) => widget.isNew && (v ?? '').trim().isEmpty
+              ? 'Email wajib untuk klaim garansi'
+              : null,
         ),
       ),
     ];
@@ -640,13 +676,14 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
             const SizedBox(width: AppSpacing.s),
             Expanded(
               child: LabeledField(
+                // Selalu bisa diubah, apa pun perannya: teknisi menutup
+                // pekerjaannya sendiri dari sini, dan klaim tanpa nota
+                // tidak punya jalur lain.
                 label: 'Status',
                 child: DropdownButtonFormField<String>(
                   initialValue: _status,
                   isExpanded: true,
-                  onChanged: editable
-                      ? (v) => setState(() => _status = v!)
-                      : null,
+                  onChanged: (v) => setState(() => _status = v!),
                   items: [
                     for (final s in ClaimStatus.all)
                       DropdownMenuItem(
@@ -672,25 +709,25 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
         ),
         const SizedBox(height: AppSpacing.s),
         LabeledField(
+          // Catatan teknisi -- dibuka untuk semua peran.
           label: 'Catatan',
-          child: TextFormField(
-            controller: _catatan,
-            readOnly: !editable,
-            maxLines: 2,
-          ),
+          child: TextFormField(controller: _catatan, maxLines: 2),
         ),
 
         const SizedBox(height: AppSpacing.sm),
         SectionLabel(
+          // Menambah part terbuka untuk teknisi (server: cp_insert).
+          // Mengubah atau menghapus part yang sudah tersimpan tetap milik
+          // admin -- baris itu dikunci di bawah.
           'Part yang Diklaim',
-          trailing: editable
-              ? InlineAction(
-                  label: 'Tambah',
-                  onTap: () => setState(() => _parts.add(_PartEntry())),
-                )
-              : null,
+          trailing: InlineAction(
+            label: 'Tambah',
+            onTap: () => setState(() => _parts.add(_PartEntry())),
+          ),
         ),
         const SizedBox(height: AppSpacing.s),
+        // Baris yang belum tersimpan boleh disunting siapa pun yang
+        // menambahnya; yang sudah ada hanya admin (cp_update / cp_delete).
         for (var i = 0; i < _parts.length; i++)
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.xs),
@@ -702,7 +739,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                     initialValue: _parts[i].typeId,
                     isExpanded: true,
                     hint: const Text('Part'),
-                    onChanged: editable
+                    onChanged: (editable || _parts[i].existingId == null)
                         ? (v) => setState(() => _parts[i].typeId = v)
                         : null,
                     // Namanya yang dibaca, kodenya yang dicocokkan. Kode
@@ -731,11 +768,11 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                 Expanded(
                   child: TextFormField(
                     controller: _parts[i].sn,
-                    readOnly: !editable,
+                    readOnly: !(editable || _parts[i].existingId == null),
                     textCapitalization: TextCapitalization.characters,
                     decoration: InputDecoration(
                       hintText: 'SN bad part',
-                      suffixIcon: editable
+                      suffixIcon: (editable || _parts[i].existingId == null)
                           ? ScanFieldButton(
                               title: 'Pindai SN Bad Part',
                               onScanned: (v) =>
@@ -745,7 +782,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                     ),
                   ),
                 ),
-                if (editable)
+                if (editable || _parts[i].existingId == null)
                   IconButton(
                     iconSize: 16,
                     color: AppColors.red,
@@ -790,7 +827,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
           ),
           const SizedBox(width: AppSpacing.xs),
           FilledButton(
-            onPressed: _busy ? null : (editable ? _save : _saveTechnicianOnly),
+            onPressed: _busy ? null : (editable ? _save : _saveTeknisiScope),
             child: _busy
                 ? const SizedBox(
                     height: 14,
@@ -800,11 +837,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                       color: AppColors.white,
                     ),
                   )
-                : Text(
-                    widget.isNew
-                        ? 'SIMPAN KLAIM'
-                        : (editable ? 'SIMPAN PERUBAHAN' : 'SIMPAN TEKNISI'),
-                  ),
+                : Text(widget.isNew ? 'SIMPAN KLAIM' : 'SIMPAN PERUBAHAN'),
           ),
         ],
       ),

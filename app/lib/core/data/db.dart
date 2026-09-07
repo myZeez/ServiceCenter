@@ -231,9 +231,10 @@ class Db {
     'klaim',
   );
 
-  /// Mengganti teknisi yang mengerjakan. Ini satu-satunya perubahan yang
-  /// boleh dilakukan teknisi terhadap klaim yang sudah ada -- kolom lain
-  /// ditolak trigger di server.
+  /// Mengganti teknisi yang mengerjakan. Sejak migrasi 0024 teknisi juga
+  /// boleh mengubah status dan catatan klaim, serta menambah part lewat
+  /// [simpanPart]; identitas unit dan pelanggan tetap ditolak trigger di
+  /// server.
   Future<void> gantiTeknisi(String claimId, String teknisiId) =>
       ubahClaim(claimId, {'teknisi_id': teknisiId});
 

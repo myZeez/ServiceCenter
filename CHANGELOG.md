@@ -2,6 +2,30 @@
 
 Nomor versi mengikuti berkas installer di `installer/output/`.
 
+## 2.6.0 — 7 September 2026
+
+**Teknisi bisa menutup klaim garansinya sendiri.** Sejak status nota dan
+klaim disatukan, teknisi menutup pekerjaan dari nota dan klaimnya ikut.
+Tetapi klaim yang **tidak punya nota** — unit stok toko, kiriman cabang,
+walk-in murni garansi — tidak punya jalur itu: statusnya hanya bisa
+digerakkan admin, padahal yang tahu kapan unitnya rampung adalah
+teknisinya. Sekarang status dan catatan klaim terbuka untuk teknisi juga,
+dan ia bisa menambah part yang diklaim. Identitas unit dan pelanggan,
+brand, tanggal masuk, nomor RMA, dan tanggal tutup tetap milik admin —
+yang terakhir karena ia menentukan sebuah unit masuk Rekap Brand bulan
+yang mana.
+
+**Ada kolom email pelanggan.** Portal RMA sebagian brand menuntutnya saat
+unit didaftarkan, dan sampai sekarang tidak ada tempat menyimpannya.
+Kolomnya ada di formulir klaim garansi dan di nota servis — klaim yang
+lahir dari sebuah nota membawa emailnya ikut, sama seperti nama, telepon,
+dan nomor seri. Wajib diisi hanya saat sebuah klaim baru memang akan
+dibuat; klaim dan nota lama yang disunting tidak dipaksa.
+
+**Lembar ubah pekerjaan di HP dapat kolom catatan.** Sebelumnya hanya
+status, teknisi, dan perbaikan; catatan bebas hanya bisa diisi dari meja
+depan.
+
 ## 2.5.0 — 5 September 2026
 
 **Admin tidak lagi muncul di pilihan teknisi.** Yang memegang obeng adalah

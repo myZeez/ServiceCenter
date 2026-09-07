@@ -18,6 +18,7 @@ void main() {
         'brand_id': 3,
         'nama_pelanggan': 'Budi',
         'telp': '0812',
+        'email': 'budi@mail.com',
         'sn': 'SN123',
         'teknisi_id': 'tek-1',
         'keluhan': 'Mati total',
@@ -32,6 +33,7 @@ void main() {
       expect(c.id, 'abc');
       expect(c.brandId, 3);
       expect(c.sn, 'SN123');
+      expect(c.email, 'budi@mail.com');
       expect(c.catatan, isNull);
       // timestamptz dibawa ke waktu setempat: 01:30 UTC adalah 08:30 WIB,
       // dan yang dibaca orang di layar harus jam setempatnya.
@@ -61,6 +63,7 @@ void main() {
       });
 
       expect(c.telp, isNull);
+      expect(c.email, isNull);
       expect(c.teknisiId, isNull);
       expect(c.noPerbaikan, isNull);
       expect(c.tanggalClose, isNull);
@@ -102,6 +105,7 @@ void main() {
       'estimasi_selesai': null,
       'customer_nama': 'Budi',
       'customer_telp': null,
+      'customer_email': 'budi@mail.com',
       'customer_id': null,
       'operator_id': null,
       'barang_nama': 'Oppo',
@@ -126,6 +130,7 @@ void main() {
       final n = ServiceOrderEntry.fromMap(baris());
       expect(n.noNota, 'SRV-04092628177');
       expect(n.barangType, 'A16');
+      expect(n.customerEmail, 'budi@mail.com');
       expect(n.garansi, isFalse);
       expect(n.biaya, 150000);
     });

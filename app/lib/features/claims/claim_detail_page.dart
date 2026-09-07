@@ -236,17 +236,32 @@ class ClaimDetailPage extends ConsumerWidget {
                       build: (v) => {'telp': v},
                     ),
                   ),
+                  _Editable(
+                    label: 'Email',
+                    value: (claim.email ?? '').isEmpty ? '—' : claim.email!,
+                    editable: isAdmin,
+                    onEdit: () => _editText(
+                      context,
+                      ref,
+                      claim,
+                      label: 'Email',
+                      initial: claim.email ?? '',
+                      hint: 'nama@email.com',
+                      keyboard: TextInputType.emailAddress,
+                      build: (v) => {'email': v},
+                    ),
+                  ),
 
                   const SizedBox(height: AppSpacing.sm),
                   SectionLabel(
+                    // Menambah part terbuka untuk teknisi (server:
+                    // cp_insert). Mengubah/menghapus part yang sudah ada
+                    // tetap milik admin -- baris di bawah tetap dikunci.
                     'Part yang Diklaim',
-                    trailing: isAdmin
-                        ? InlineAction(
-                            label: 'Tambah',
-                            onTap: () =>
-                                _editPart(context, ref, claim.id, null),
-                          )
-                        : null,
+                    trailing: InlineAction(
+                      label: 'Tambah',
+                      onTap: () => _editPart(context, ref, claim.id, null),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.s),
                   if (parts.isEmpty)
@@ -300,7 +315,9 @@ class ClaimDetailPage extends ConsumerWidget {
                   _Editable(
                     label: 'Status',
                     value: ClaimStatus.label(claim.status),
-                    editable: isAdmin,
+                    // Terbuka untuk teknisi: ia menutup pekerjaannya
+                    // sendiri, dan klaim tanpa nota tidak punya jalur lain.
+                    editable: true,
                     onEdit: () => _pickStatus(context, ref, claim),
                     hint: nota == null
                         ? null
@@ -310,7 +327,8 @@ class ClaimDetailPage extends ConsumerWidget {
                   _Editable(
                     label: 'Catatan',
                     value: (claim.catatan ?? '').isEmpty ? '—' : claim.catatan!,
-                    editable: isAdmin,
+                    // Catatan teknisi -- terbuka untuk semua peran.
+                    editable: true,
                     onEdit: () => _editText(
                       context,
                       ref,
@@ -334,8 +352,8 @@ class ClaimDetailPage extends ConsumerWidget {
                     )
                   else
                     Text(
-                      'Teknisi hanya dapat mengubah nama teknisi. '
-                      'Perubahan data lain dilakukan admin.',
+                      'Teknisi dapat mengubah status, catatan, teknisi, dan '
+                      'menambah part. Data unit dan pelanggan diubah admin.',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                 ],
@@ -722,7 +740,9 @@ class _TextEditDialogState extends State<_TextEditDialog> {
             autofocus: true,
             maxLines: widget.multiline ? 4 : 1,
             keyboardType: widget.keyboard,
-            textCapitalization: widget.keyboard == TextInputType.phone
+            textCapitalization:
+                widget.keyboard == TextInputType.phone ||
+                    widget.keyboard == TextInputType.emailAddress
                 ? TextCapitalization.none
                 : TextCapitalization.characters,
             decoration: InputDecoration(

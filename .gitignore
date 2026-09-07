@@ -2,13 +2,15 @@
 # Hasil installer, dibangun ulang dari kode
 installer/output/
 
-# Ekspor CSV mentah dari Excel -- berisi nama & telepon pelanggan, dan
-# datanya sudah masuk Supabase lewat supabase/scripts/import_klaim_2026.sql.
-# Tidak perlu terduplikasi selamanya di git history.
-SERVICE CLAIM GARANSI CELLCOM PLK - *.csv
+# Workbook sumber lengkap untuk migrasi 2026 (Penerimaan, Pelunasan,
+# Kirim, Tanya Harga/Pemesanan Part, klaim garansi per brand, dan laporan
+# harian per bulan). Isinya nama, telepon, dan SN puluhan ribu pelanggan;
+# dipakai untuk menyusun supabase/scripts/migrasi_2026_{1,2,3}.sql lewat
+# supabase/scripts/gen/. Simpan selama migrasi belum final.
+DATASET/
 
-# Arsip sheet dari Google Sheets. Dipakai sekali untuk menyusun skrip
-# impor di supabase/scripts/; isinya nama, telepon, dan SN puluhan ribu
-# pelanggan, dan tidak perlu terduplikasi selamanya di git history.
-TANYA HARGA/
-SERVIS/
+# Generator migrasi 2026: dependensi npm, hasil ekstraksi antara
+# (work/*.json), dan laporan validasi -- semuanya memuat nama pelanggan.
+supabase/scripts/gen/node_modules/
+supabase/scripts/gen/work/
+supabase/scripts/gen/LAPORAN-VALIDASI.md

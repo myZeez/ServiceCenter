@@ -135,9 +135,19 @@ Tiga hal harus ikut berubah:
 Salah nama kolom tidak ketahuan saat `flutter analyze`. Penjaganya ada di
 `test/models_test.dart` — tambahkan barisnya di situ.
 
+## Impor data lama
+
+Arsip 2026 (1 Januari – 6 September) dibangun ulang dari `DATASET/*.xlsx`
+menjadi tiga berkas di `supabase/scripts/`: `migrasi_2026_1.sql` (klaim +
+kirim + part), `migrasi_2026_2.sql` (nota Jan–Apr), `migrasi_2026_3.sql`
+(nota Mei–Sep) — dipecah supaya ringan di SQL Editor. Kosongkan dulu dengan
+`kosongkan_semua.sql`. Generatornya (baca tiap workbook, normalkan,
+cocokkan nota↔klaim) ada di `supabase/scripts/gen/` — `npm run build`.
+Riwayat sebelum 2026 belum ikut.
+
 ## Belum dikerjakan
 
-- Impor data lama dari 8 tab spreadsheet
+- Impor riwayat sebelum 2026 (2019–2025)
 - Ganti password sendiri dari dalam aplikasi
 - Ekspor rekap ke Excel/PDF
 - Membaca berkas rekap brand langsung, tanpa mengetik angkanya satu per satu

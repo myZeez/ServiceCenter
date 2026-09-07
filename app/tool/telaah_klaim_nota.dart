@@ -415,7 +415,10 @@ void _tulisSkrip(List<(Klaim, Nota)> pasangan) {
     // "update ... from" yang cocok dengan dua baris memilih salah satunya
     // tanpa memberi tahu siapa pun, dan arsip klaim ini memuat empat tahun
     // -- nomor yang terpakai ulang di tahun lain cukup untuk merusaknya.
-    b.writeln('  and c.tanggal::date = ${_q(_iso(k.tanggal))}::date');
+    b.writeln(
+      "  and (c.tanggal at time zone 'Asia/Jakarta')::date = "
+      '${_q(_iso(k.tanggal))}::date',
+    );
     if (k.noPerbaikan.isNotEmpty) {
       b.writeln('  and c.no_perbaikan = ${_q(k.noPerbaikan)};');
     } else {
@@ -442,7 +445,7 @@ void _tulisSkrip(List<(Klaim, Nota)> pasangan) {
 --
 --  Klaim yang belum punya nota -- ini yang perlu ditengok satu per satu:
 --
---    select c.tanggal::date, b.nama as brand, c.nama_pelanggan, c.status
+--    select (c.tanggal at time zone 'Asia/Jakarta')::date as tanggal,|--           b.nama as brand, c.nama_pelanggan, c.status
 --    from claims c
 --    join brands b on b.id = c.brand_id
 --    where not exists (

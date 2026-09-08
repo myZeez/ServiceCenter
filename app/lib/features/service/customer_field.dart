@@ -20,6 +20,7 @@ class CustomerField extends StatelessWidget {
     required this.onPilih,
     required this.onBaru,
     this.readOnly = false,
+    this.buatKartuBaru = true,
   });
 
   final TextEditingController controller;
@@ -35,6 +36,20 @@ class CustomerField extends StatelessWidget {
   final VoidCallback onBaru;
 
   final bool readOnly;
+
+  /// Apakah nama yang tidak tertaut akan menerbitkan kartu pelanggan baru
+  /// saat disimpan.
+  ///
+  /// Benar pada nota baru. Salah saat menyunting nota yang sudah ada:
+  /// namanya sudah tersimpan sebagai teks di nota itu, dan menyimpannya
+  /// lagi tidak menerbitkan kartu siapa pun.
+  ///
+  /// Peringatan "sudah ada pelanggan bernama sama" di bawah hanya masuk
+  /// akal pada keadaan yang pertama. Pada yang kedua ia memperingatkan
+  /// penggandaan yang tidak akan pernah terjadi -- dan karena hampir
+  /// seluruh nota di arsip memang tidak punya kartu pelanggan, peringatan
+  /// itu muncul di hampir setiap nota lama yang dibuka.
+  final bool buatKartuBaru;
 
   List<CustomerEntry> _cari(String teks) {
     final q = teks.trim().toLowerCase();
@@ -52,15 +67,13 @@ class CustomerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Peringatan muncul bila ada pelanggan bernama persis sama tetapi belum
-    // ada yang dipilih. Tidak memblokir: bisa jadi memang orang berbeda.
-    final kembar = terpilih == null
+    // Peringatan muncul bila ada pelanggan bernama persis sama, belum ada
+    // yang dipilih, DAN menyimpan memang akan menerbitkan kartu baru.
+    // Tidak memblokir: bisa jadi memang orang berbeda.
+    List<CustomerEntry> kembarUntuk(String teks) =>
+        (terpilih == null && buatKartuBaru)
         ? pelanggan
-              .where(
-                (c) =>
-                    c.nama.toLowerCase() ==
-                    controller.text.trim().toLowerCase(),
-              )
+              .where((c) => c.nama.toLowerCase() == teks.trim().toLowerCase())
               .toList()
         : const <CustomerEntry>[];
 
@@ -72,7 +85,10 @@ class CustomerField extends StatelessWidget {
           required: true,
           hint: terpilih != null
               ? null
-              : 'Ketik untuk mencari pelanggan lama, atau isi nama baru.',
+              : buatKartuBaru
+              ? 'Ketik untuk mencari pelanggan lama, atau isi nama baru.'
+              : 'Namanya tersimpan di nota ini. Pilih dari daftar hanya '
+                    'kalau ingin menautkannya ke kartu pelanggan.',
           child: RawAutocomplete<CustomerEntry>(
             textEditingController: controller,
             focusNode: focusNode,
@@ -197,47 +213,65 @@ class CustomerField extends StatelessWidget {
               ),
             ],
           ),
-        ] else if (kembar.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.xs),
-            decoration: const BoxDecoration(
-              color: Color(0x0DD82C2C),
-              border: Border(left: BorderSide(color: AppColors.red, width: 3)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Sudah ada pelanggan bernama sama:',
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.red,
-                  ),
-                ),
-                for (final c in kembar.take(3))
-                  Text(
-                    '${c.kode} · ${c.telp ?? 'tanpa telepon'}',
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      color: AppColors.red,
+        ] else
+          // Didengarkan langsung dari controller-nya, bukan dihitung
+          // sekali saat induknya digambar. Kolom ini tidak memanggil
+          // setState siapa pun saat diketik, jadi peringatan yang
+          // bersandar pada gambar ulang induknya tidak pernah muncul saat
+          // orang benar-benar mengetik nama baru -- ia hanya muncul pada
+          // kolom yang sudah terisi sejak awal, yaitu justru keadaan yang
+          // TIDAK perlu diperingatkan.
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, nilai, _) {
+              final kembar = kembarUntuk(nilai.text);
+              if (kembar.isEmpty) return const SizedBox.shrink();
+
+              return Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Container(
+                  padding: const EdgeInsets.all(AppSpacing.xs),
+                  decoration: const BoxDecoration(
+                    color: Color(0x0DD82C2C),
+                    border: Border(
+                      left: BorderSide(color: AppColors.red, width: 3),
                     ),
                   ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Pilih dari daftar kalau orangnya sama. Kalau berbeda, '
-                  'lanjutkan — akan dibuat pelanggan baru.',
-                  style: TextStyle(
-                    fontSize: 10,
-                    height: 1.35,
-                    color: AppColors.red,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Sudah ada pelanggan bernama sama:',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.red,
+                        ),
+                      ),
+                      for (final c in kembar.take(3))
+                        Text(
+                          '${c.kode} · ${c.telp ?? 'tanpa telepon'}',
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            color: AppColors.red,
+                          ),
+                        ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Pilih dari daftar kalau orangnya sama. Kalau '
+                        'berbeda, lanjutkan — akan dibuat pelanggan baru.',
+                        style: TextStyle(
+                          fontSize: 10,
+                          height: 1.35,
+                          color: AppColors.red,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
-        ],
       ],
     );
   }

@@ -254,12 +254,24 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     final user = ref.read(currentUserProvider);
 
     try {
-      // Pelanggan baru dibuatkan catatannya sendiri supaya kunjungan
-      // berikutnya tinggal dipilih. Yang sudah tertaut tidak disentuh --
-      // mengubah data master dari formulir nota berarti satu koreksi ketik
-      // diam-diam mengubah riwayat pelanggan lain yang bernama sama.
-      var customerId = _pelanggan?.id;
-      if (customerId == null) {
+      // Kartu pelanggan hanya diterbitkan untuk nota BARU.
+      //
+      // Nota yang sudah ada memuat nama dan teleponnya sebagai teks, dan
+      // itu salinan yang disengaja: nota yang sudah tercetak harus tetap
+      // cocok dengan kertasnya walau data pelanggannya berubah kemudian.
+      // Menyimpannya lagi tidak perlu menerbitkan kartu siapa pun.
+      //
+      // Dulu syarat ini tidak ada, dan akibatnya keras: 3.085 nota hasil
+      // impor arsip sengaja tidak punya kartu pelanggan sama sekali, jadi
+      // SETIAP kali salah satunya disunting -- sekadar mengubah status --
+      // satu kartu pelanggan kembar lahir tanpa ada yang memintanya, dan
+      // notanya berpindah menunjuk ke kartu baru itu.
+      //
+      // Yang sudah tertaut tetap tidak disentuh: mengubah data master
+      // dari formulir nota berarti satu koreksi ketik diam-diam mengubah
+      // riwayat pelanggan lain yang bernama sama.
+      var customerId = _pelanggan?.id ?? widget.nota?.customerId;
+      if (customerId == null && widget.isNew) {
         final baru = await client
             .from('customers')
             .insert({'nama': _nama.text.trim(), 'telp': _kosongNull(_telp)})
@@ -609,6 +621,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             if ((c.telp ?? '').isNotEmpty) _telp.text = c.telp!;
           }),
           onBaru: () => setState(() => _pelanggan = null),
+          buatKartuBaru: widget.isNew,
         ),
         const SizedBox(height: AppSpacing.s),
         LabeledField(

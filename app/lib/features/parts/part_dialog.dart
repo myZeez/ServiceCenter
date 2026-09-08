@@ -276,10 +276,11 @@ class _PartDialogState extends ConsumerState<PartDialog> {
       final db = ref.read(databaseProvider);
       final user = ref.read(currentUserProvider);
 
-      // Pelanggan baru dibuatkan catatannya sendiri, sama seperti di nota
-      // servis, supaya kunjungan berikutnya tinggal dipilih.
-      var customerId = _pelanggan?.id;
-      if (customerId == null) {
+      // Hanya untuk baris BARU, sama seperti di nota servis: baris yang
+      // sudah ada memuat nama dan teleponnya sebagai teks, dan
+      // menyimpannya lagi tidak perlu menerbitkan kartu siapa pun.
+      var customerId = _pelanggan?.id ?? widget.pesanan?.customerId;
+      if (customerId == null && widget.isNew) {
         final baru = await client
             .from('customers')
             .insert({'nama': _nama.text.trim(), 'telp': _kosongNull(_telp)})
@@ -488,6 +489,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
                   if (_telp.text.trim().isEmpty) _telp.text = c.telp ?? '';
                 }),
                 onBaru: () => setState(() => _pelanggan = null),
+                buatKartuBaru: widget.isNew,
               ),
             ),
             const SizedBox(width: AppSpacing.s),

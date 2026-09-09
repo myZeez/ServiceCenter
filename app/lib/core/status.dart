@@ -25,11 +25,11 @@ class ClaimStatus {
   // besar; yang sudah selesai sengaja mundur ke belakang supaya perhatian
   // jatuh ke pekerjaan yang masih berjalan.
   static const _colors = {
-    open: AppColors.blue,
-    proses: AppColors.blue,
-    tungguPart: AppColors.red,
-    close: AppColors.black,
-    batal: AppColors.grey,
+    open: context.warna.aksen,
+    proses: context.warna.aksen,
+    tungguPart: context.warna.bahaya,
+    close: context.warna.teks,
+    batal: context.warna.teksLembut,
   };
 
   static const _filled = {
@@ -41,7 +41,7 @@ class ClaimStatus {
   };
 
   static String label(String s) => _labels[s] ?? s;
-  static Color color(String s) => _colors[s] ?? AppColors.grey;
+  static Color color(String s) => _colors[s] ?? context.warna.teksLembut;
   static bool isFilled(String s) => _filled[s] ?? false;
 }
 
@@ -66,7 +66,7 @@ class StatusChip extends StatelessWidget {
       child: Text(
         ClaimStatus.label(status).toUpperCase(),
         style: TextStyle(
-          color: filled ? AppColors.white : c,
+          color: filled ? context.warna.permukaan : c,
           fontSize: compact ? 9 : 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.7,

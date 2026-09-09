@@ -120,7 +120,7 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
               decoration: const BoxDecoration(
                 color: Color(0x0D0033A0),
                 border: Border(
-                  left: BorderSide(color: AppColors.blue, width: 3),
+                  left: BorderSide(color: context.warna.aksen, width: 3),
                 ),
               ),
               child: Column(
@@ -131,7 +131,7 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
                     style: const TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.blue,
+                      color: context.warna.aksen,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -145,7 +145,7 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
                     style: const TextStyle(
                       fontSize: 11,
                       height: 1.4,
-                      color: AppColors.blue,
+                      color: context.warna.aksen,
                     ),
                   ),
                 ],

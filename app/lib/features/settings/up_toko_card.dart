@@ -113,7 +113,7 @@ class _UpTokoCardState extends ConsumerState<UpTokoCard> {
               decoration: const BoxDecoration(
                 color: Color(0x0D0033A0),
                 border: Border(
-                  left: BorderSide(color: AppColors.blue, width: 3),
+                  left: BorderSide(color: context.warna.aksen, width: 3),
                 ),
               ),
               child: const Text(
@@ -122,7 +122,7 @@ class _UpTokoCardState extends ConsumerState<UpTokoCard> {
                 style: TextStyle(
                   fontSize: 11,
                   height: 1.4,
-                  color: AppColors.blue,
+                  color: context.warna.aksen,
                 ),
               ),
             ),
@@ -199,7 +199,7 @@ class _UpTokoCardState extends ConsumerState<UpTokoCard> {
                         width: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.white,
+                          color: context.warna.permukaan,
                         ),
                       )
                     : const Text('SIMPAN'),
@@ -232,9 +232,9 @@ class _Chip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(AppSpacing.s, 6, 4, 6),
         decoration: BoxDecoration(
-          color: bawaan ? AppColors.black : Colors.transparent,
+          color: bawaan ? context.warna.teks : Colors.transparent,
           border: Border.all(
-            color: bawaan ? AppColors.black : const Color(0xFFCFD5D4),
+            color: bawaan ? context.warna.teks : const Color(0xFFCFD5D4),
           ),
           borderRadius: BorderRadius.circular(AppRadius.small),
         ),
@@ -246,7 +246,7 @@ class _Chip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: bawaan ? AppColors.white : AppColors.black,
+                color: bawaan ? context.warna.permukaan : context.warna.teks,
               ),
             ),
             if (bawaan) ...[
@@ -257,7 +257,7 @@ class _Chip extends StatelessWidget {
                   fontSize: 8.5,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.8,
-                  color: AppColors.white,
+                  color: context.warna.permukaan,
                 ),
               ),
             ],
@@ -267,7 +267,7 @@ class _Chip extends StatelessWidget {
               visualDensity: VisualDensity.compact,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
               padding: EdgeInsets.zero,
-              color: bawaan ? AppColors.white : AppColors.grey,
+              color: bawaan ? context.warna.permukaan : context.warna.teksLembut,
               icon: const Icon(Icons.close),
               onPressed: onHapus,
             ),

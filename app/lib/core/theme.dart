@@ -1,18 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Palet Swiss/International Typographic Style.
-///
-/// Hitamnya sengaja bukan #000000 -- hitam murni terasa keras di layar dan
-/// menghilangkan kesan tinta di atas kertas.
-class AppColors {
-  static const red = Color(0xFFD82C2C); // Signal Red - butuh perhatian
-  static const black = Color(0xFF1A1A1A); // teks dan elemen utama
-  static const white = Color(0xFFFFFFFF);
-  static const grey = Color(0xFFA9B2B1); // teks sekunder, garis
-  static const blue = Color(0xFF0033A0); // aksen kedua
-  static const lightGrey = Color(0xFFF2F2F2); // latar teredam
-}
+import 'warna.dart';
+
+export 'warna.dart';
 
 /// Ritme spasi. Basis 8px, dengan tiga langkah besar dari spesifikasi.
 class AppSpacing {
@@ -35,89 +26,132 @@ const kSwissShadow = [
   BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 2)),
 ];
 
+/// Huruf untuk angka dan kode: nomor nota, rupiah, tanggal, nomor seri.
+///
+/// Monospace hanya di tempat yang angkanya dibandingkan menurun. 28292 dan
+/// 28293 bedanya satu digit di tengah, dan dengan lebar huruf yang sama
+/// digit itu berdiri persis di atas pasangannya -- selisihnya terlihat
+/// tanpa dibaca.
+///
+/// Sengaja tidak dipakai untuk nama pelanggan dan keluhan. Monospace lebih
+/// lebar dan lebih lambat dibaca untuk kalimat, dan layar terpadat di sini
+/// justru daftar nama.
+///
+/// Belum ada berkas fontnya di repo, jadi yang dipakai monospace bawaan
+/// sistem. Taruh JetBrains Mono di `fonts/` dan daftarkan di pubspec kalau
+/// ingin rupanya persis sama di Windows dan Android.
+const kFontAngka = 'monospace';
+const kFontAngkaCadangan = [
+  'JetBrains Mono',
+  'Cascadia Mono',
+  'Consolas',
+  'Roboto Mono',
+  'monospace',
+];
+
+/// Gaya untuk sel yang isinya angka atau kode.
+TextStyle gayaAngka(BuildContext context, {double? ukuran, FontWeight? tebal}) {
+  final dasar = DefaultTextStyle.of(context).style;
+  return dasar.copyWith(
+    fontFamily: kFontAngka,
+    fontFamilyFallback: kFontAngkaCadangan,
+    fontSize: ukuran ?? dasar.fontSize,
+    fontWeight: tebal,
+    letterSpacing: 0,
+  );
+}
+
 class AppTheme {
-  static ThemeData build() {
-    const scheme = ColorScheme.light(
-      primary: AppColors.black,
-      onPrimary: AppColors.white,
-      secondary: AppColors.blue,
-      onSecondary: AppColors.white,
-      error: AppColors.red,
-      onError: AppColors.white,
-      surface: AppColors.white,
-      onSurface: AppColors.black,
-      outline: AppColors.grey,
-      surfaceContainerHighest: AppColors.lightGrey,
+  /// Siang: Swiss/International Typographic Style, seperti sejak awal.
+  static ThemeData terang() => _susun(WarnaApp.terang, Brightness.light);
+
+  /// Malam: blueprint -- garis terang di atas biru tua.
+  static ThemeData gelap() => _susun(WarnaApp.gelap, Brightness.dark);
+
+  static ThemeData _susun(WarnaApp w, Brightness terang) {
+    final scheme = ColorScheme(
+      brightness: terang,
+      primary: w.teks,
+      onPrimary: w.latar,
+      secondary: w.aksen,
+      onSecondary: w.diAksen,
+      error: w.bahaya,
+      onError: w.diAksen,
+      surface: w.permukaan,
+      onSurface: w.teks,
+      outline: w.garis,
+      surfaceContainerHighest: w.teredam,
     );
 
     // Kontras bobot adalah inti gaya ini: judul tebal dan rapat, label kecil
     // dengan tracking longgar, teks isi netral.
-    const text = TextTheme(
+    final text = TextTheme(
       displayLarge: TextStyle(
         fontSize: 40,
         fontWeight: FontWeight.w700,
         letterSpacing: -1.2,
         height: 1.05,
-        color: AppColors.black,
+        color: w.teks,
       ),
       headlineMedium: TextStyle(
         fontSize: 28,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.8,
         height: 1.1,
-        color: AppColors.black,
+        color: w.teks,
       ),
       titleLarge: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.4,
-        color: AppColors.black,
+        color: w.teks,
       ),
       titleMedium: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.1,
-        color: AppColors.black,
+        color: w.teks,
       ),
-      bodyLarge: TextStyle(fontSize: 16, height: 1.6, color: AppColors.black),
-      bodyMedium: TextStyle(fontSize: 14, height: 1.5, color: AppColors.black),
+      bodyLarge: TextStyle(fontSize: 16, height: 1.6, color: w.teks),
+      bodyMedium: TextStyle(fontSize: 14, height: 1.5, color: w.teks),
       // Label dipakai untuk kaption dan judul kolom. Tracking positif dan
       // huruf besar membuatnya terbaca sebagai penanda, bukan isi.
       labelLarge: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.2,
-        color: AppColors.black,
+        color: w.teks,
       ),
       labelMedium: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.8,
-        color: AppColors.black,
+        color: w.teks,
       ),
       labelSmall: TextStyle(
         fontSize: 10,
         fontWeight: FontWeight.w600,
         letterSpacing: 1.0,
-        color: AppColors.grey,
+        color: w.teksLembut,
       ),
     );
 
-    OutlineInputBorder border(Color c, double w) => OutlineInputBorder(
+    OutlineInputBorder border(Color c, double t) => OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadius.base),
-      borderSide: BorderSide(color: c, width: w),
+      borderSide: BorderSide(color: c, width: t),
     );
 
     return ThemeData(
       colorScheme: scheme,
       useMaterial3: true,
-      scaffoldBackgroundColor: AppColors.white,
+      extensions: [w],
+      scaffoldBackgroundColor: w.latar,
       textTheme: text,
       splashFactory: InkSparkle.splashFactory,
 
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.white,
-        foregroundColor: AppColors.black,
+      appBarTheme: AppBarTheme(
+        backgroundColor: w.latar,
+        foregroundColor: w.teks,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -126,45 +160,49 @@ class AppTheme {
           fontSize: 22,
           fontWeight: FontWeight.w700,
           letterSpacing: -0.6,
-          color: AppColors.black,
+          color: w.teks,
         ),
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        // Ikon baterai dan jam di Android ikut membalik, kalau tidak
+        // yang di atas layar jadi abu di atas abu.
+        systemOverlayStyle: terang == Brightness.light
+            ? SystemUiOverlayStyle.dark
+            : SystemUiOverlayStyle.light,
       ),
 
       // Garis 1px mengerjakan tugas yang biasanya diserahkan ke bayangan.
       cardTheme: CardThemeData(
-        color: AppColors.white,
+        color: w.permukaan,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.base),
-          side: const BorderSide(color: Color(0xFFE4E7E7)),
+          side: BorderSide(color: w.garisHalus),
         ),
       ),
 
-      dividerTheme: const DividerThemeData(
-        color: Color(0xFFE4E7E7),
+      dividerTheme: DividerThemeData(
+        color: w.garisHalus,
         thickness: 1,
         space: 1,
       ),
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.white,
+        fillColor: w.permukaan,
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.s,
           vertical: 14,
         ),
-        border: border(AppColors.grey, 1),
-        enabledBorder: border(const Color(0xFFCFD5D4), 1),
-        focusedBorder: border(AppColors.black, 2),
-        errorBorder: border(AppColors.red, 1),
-        focusedErrorBorder: border(AppColors.red, 2),
-        hintStyle: const TextStyle(color: AppColors.grey, fontSize: 15),
-        errorStyle: const TextStyle(
-          color: AppColors.red,
+        border: border(w.garis, 1),
+        enabledBorder: border(w.garisIsian, 1),
+        focusedBorder: border(w.teks, 2),
+        errorBorder: border(w.bahaya, 1),
+        focusedErrorBorder: border(w.bahaya, 2),
+        hintStyle: TextStyle(color: w.teksLembut, fontSize: 15),
+        errorStyle: TextStyle(
+          color: w.bahaya,
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
@@ -172,8 +210,8 @@ class AppTheme {
 
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.black,
-          foregroundColor: AppColors.white,
+          backgroundColor: w.teks,
+          foregroundColor: w.latar,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
@@ -189,9 +227,9 @@ class AppTheme {
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.black,
+          foregroundColor: w.teks,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          side: const BorderSide(color: AppColors.black, width: 1.5),
+          side: BorderSide(color: w.teks, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.base),
           ),
@@ -201,22 +239,22 @@ class AppTheme {
 
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.blue,
+          foregroundColor: w.aksen,
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
 
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.red,
-        foregroundColor: AppColors.white,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: w.bahaya,
+        foregroundColor: w.diAksen,
         elevation: 0,
         focusElevation: 0,
         hoverElevation: 0,
         highlightElevation: 0,
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(AppRadius.base)),
         ),
-        extendedTextStyle: TextStyle(
+        extendedTextStyle: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.2,
@@ -224,21 +262,21 @@ class AppTheme {
       ),
 
       chipTheme: ChipThemeData(
-        backgroundColor: AppColors.white,
-        selectedColor: AppColors.black,
-        checkmarkColor: AppColors.white,
-        side: const BorderSide(color: Color(0xFFCFD5D4)),
-        labelStyle: const TextStyle(
+        backgroundColor: w.permukaan,
+        selectedColor: w.teks,
+        checkmarkColor: w.latar,
+        side: BorderSide(color: w.garisIsian),
+        labelStyle: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.2,
-          color: AppColors.black,
+          color: w.teks,
         ),
-        secondaryLabelStyle: const TextStyle(
+        secondaryLabelStyle: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.2,
-          color: AppColors.white,
+          color: w.latar,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.small),
@@ -248,20 +286,20 @@ class AppTheme {
       ),
 
       dialogTheme: DialogThemeData(
-        backgroundColor: AppColors.white,
+        backgroundColor: w.permukaan,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.base),
-          side: const BorderSide(color: Color(0xFFE4E7E7)),
+          side: BorderSide(color: w.garisHalus),
         ),
         titleTextStyle: text.titleLarge,
       ),
 
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AppColors.black,
-        contentTextStyle: const TextStyle(
-          color: AppColors.white,
+        backgroundColor: w.teks,
+        contentTextStyle: TextStyle(
+          color: w.latar,
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
@@ -271,27 +309,27 @@ class AppTheme {
         ),
       ),
 
-      listTileTheme: const ListTileThemeData(
+      listTileTheme: ListTileThemeData(
         titleTextStyle: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w600,
-          color: AppColors.black,
+          color: w.teks,
         ),
-        subtitleTextStyle: TextStyle(fontSize: 13, color: AppColors.grey),
+        subtitleTextStyle: TextStyle(fontSize: 13, color: w.teksLembut),
       ),
 
-      tabBarTheme: const TabBarThemeData(
-        labelColor: AppColors.black,
-        unselectedLabelColor: AppColors.grey,
-        indicatorColor: AppColors.red,
+      tabBarTheme: TabBarThemeData(
+        labelColor: w.teks,
+        unselectedLabelColor: w.teksLembut,
+        indicatorColor: w.bahaya,
         indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Color(0xFFE4E7E7),
-        labelStyle: TextStyle(
+        dividerColor: w.garisHalus,
+        labelStyle: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.3,
         ),
-        unselectedLabelStyle: TextStyle(
+        unselectedLabelStyle: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.3,

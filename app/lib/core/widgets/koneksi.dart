@@ -34,7 +34,7 @@ class IndikatorKoneksi extends ConsumerWidget {
             Icon(
               tersambung ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
               size: 18,
-              color: tersambung ? AppColors.grey : AppColors.red,
+              color: tersambung ? context.warna.teksLembut : context.warna.bahaya,
             ),
             if (!tersambung) ...[
               const SizedBox(width: 6),
@@ -44,7 +44,7 @@ class IndikatorKoneksi extends ConsumerWidget {
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
-                  color: AppColors.red,
+                  color: context.warna.bahaya,
                 ),
               ),
             ],

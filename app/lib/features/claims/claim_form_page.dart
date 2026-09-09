@@ -599,7 +599,7 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                             ),
                             IconButton(
                               iconSize: 18,
-                              color: AppColors.red,
+                              color: context.warna.bahaya,
                               icon: const Icon(Icons.close),
                               onPressed: () => _removePart(i),
                             ),

@@ -64,7 +64,7 @@ class _PrinterCardState extends ConsumerState<PrinterCard> {
         child: Text(
           'Cetak nota hanya tersedia di aplikasi Windows, tempat printernya '
           'terpasang.',
-          style: TextStyle(fontSize: 12, color: AppColors.grey),
+          style: TextStyle(fontSize: 12, color: context.warna.teksLembut),
         ),
       );
     }
@@ -85,7 +85,7 @@ class _PrinterCardState extends ConsumerState<PrinterCard> {
             if (daftar.isEmpty)
               const Text(
                 'Tidak ada printer terdeteksi di komputer ini.',
-                style: TextStyle(fontSize: 12, color: AppColors.red),
+                style: TextStyle(fontSize: 12, color: context.warna.bahaya),
               )
             else
               LabeledField(
@@ -120,9 +120,9 @@ class _PrinterCardState extends ConsumerState<PrinterCard> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.xs),
                 decoration: BoxDecoration(
-                  color: AppColors.blue.withValues(alpha: 0.06),
+                  color: context.warna.aksen.withValues(alpha: 0.06),
                   border: const Border(
-                    left: BorderSide(color: AppColors.blue, width: 3),
+                    left: BorderSide(color: context.warna.aksen, width: 3),
                   ),
                 ),
                 child: Text(
@@ -130,7 +130,7 @@ class _PrinterCardState extends ConsumerState<PrinterCard> {
                   style: const TextStyle(
                     fontSize: 11,
                     height: 1.4,
-                    color: AppColors.blue,
+                    color: context.warna.aksen,
                   ),
                 ),
               ),

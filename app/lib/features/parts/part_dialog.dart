@@ -395,7 +395,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.sm),
         child: Material(
-          color: AppColors.white,
+          color: context.warna.permukaan,
           borderRadius: BorderRadius.circular(AppRadius.base),
           clipBehavior: Clip.antiAlias,
           child: Container(
@@ -435,7 +435,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
         AppSpacing.s,
       ),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.black, width: 1.5)),
+        border: Border(bottom: BorderSide(color: context.warna.teks, width: 1.5)),
       ),
       child: Row(
         children: [
@@ -463,7 +463,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
           const SizedBox(width: AppSpacing.xs),
           IconButton(
             iconSize: 18,
-            color: AppColors.grey,
+            color: context.warna.teksLembut,
             icon: const Icon(Icons.close),
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -705,9 +705,9 @@ class _PartDialogState extends ConsumerState<PartDialog> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.xs),
             decoration: const BoxDecoration(
-              color: AppColors.lightGrey,
+              color: context.warna.teredam,
               border: Border(
-                left: BorderSide(color: AppColors.black, width: 3),
+                left: BorderSide(color: context.warna.teks, width: 3),
               ),
             ),
             child: Text(
@@ -717,7 +717,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
               style: const TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.black,
+                color: context.warna.teks,
               ),
             ),
           ),
@@ -825,7 +825,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
                   alignment: Alignment.centerLeft,
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s),
                   decoration: BoxDecoration(
-                    color: AppColors.lightGrey,
+                    color: context.warna.teredam,
                     border: Border.all(color: const Color(0xFFCFD5D4)),
                     borderRadius: BorderRadius.circular(AppRadius.small),
                   ),
@@ -835,8 +835,8 @@ class _PartDialogState extends ConsumerState<PartDialog> {
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: (!belumAdaHarga && sisaTagihan(harga, dp) > 0)
-                          ? AppColors.red
-                          : AppColors.black,
+                          ? context.warna.bahaya
+                          : context.warna.teks,
                     ),
                   ),
                 ),
@@ -980,7 +980,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w400,
-          color: nilai == null ? AppColors.grey : AppColors.black,
+          color: nilai == null ? context.warna.teksLembut : context.warna.teks,
         ),
       ),
     ),
@@ -995,7 +995,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
         AppSpacing.s,
       ),
       decoration: const BoxDecoration(
-        color: AppColors.lightGrey,
+        color: context.warna.teredam,
         border: Border(top: BorderSide(color: Color(0xFFE4E7E7))),
       ),
       child: Row(
@@ -1005,7 +1005,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
                 ? Text(
                     _error!,
                     style: const TextStyle(
-                      color: AppColors.red,
+                      color: context.warna.bahaya,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1028,7 +1028,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
                     width: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: AppColors.white,
+                      color: context.warna.permukaan,
                     ),
                   )
                 : Text(widget.isNew ? 'SIMPAN' : 'SIMPAN PERUBAHAN'),

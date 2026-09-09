@@ -48,7 +48,7 @@ class ClaimsPage extends ConsumerWidget {
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.8,
-                  color: AppColors.grey,
+                  color: context.warna.teksLembut,
                 ),
               ),
           ],
@@ -197,7 +197,7 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
 
     return Container(
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.black)),
+        border: Border(bottom: BorderSide(color: context.warna.teks)),
       ),
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.sm,
@@ -214,7 +214,7 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
               prefixIcon: const Icon(
                 Icons.search,
                 size: 18,
-                color: AppColors.grey,
+                color: context.warna.teksLembut,
               ),
               prefixIconConstraints: const BoxConstraints(minWidth: 38),
               suffixIcon: Row(
@@ -223,7 +223,7 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
                   if (filter.query.isNotEmpty)
                     IconButton(
                       iconSize: 18,
-                      color: AppColors.grey,
+                      color: context.warna.teksLembut,
                       icon: const Icon(Icons.close),
                       onPressed: () {
                         _search.clear();
@@ -310,7 +310,7 @@ class _FilterDropdown<T> extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       decoration: BoxDecoration(
         border: Border.all(
-          color: value == null ? const Color(0xFFCFD5D4) : AppColors.black,
+          color: value == null ? const Color(0xFFCFD5D4) : context.warna.teks,
         ),
         borderRadius: BorderRadius.circular(AppRadius.small),
       ),
@@ -328,7 +328,7 @@ class _FilterDropdown<T> extends StatelessWidget {
             fontSize: 10.5,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.4,
-            color: AppColors.black,
+            color: context.warna.teks,
           ),
           onChanged: (v) => onChanged(v as T),
           items: [
@@ -421,7 +421,7 @@ class _ClaimCard extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
                       letterSpacing: 0.4,
-                      color: AppColors.grey,
+                      color: context.warna.teksLembut,
                     ),
                   ),
                   const Spacer(),
@@ -440,7 +440,7 @@ class _ClaimCard extends StatelessWidget {
                 claim.sn,
                 style: const TextStyle(
                   fontSize: 12,
-                  color: AppColors.grey,
+                  color: context.warna.teksLembut,
                   letterSpacing: 0.3,
                 ),
                 maxLines: 1,
@@ -469,8 +469,8 @@ class _ClaimCard extends StatelessWidget {
                             ? FontWeight.w400
                             : FontWeight.w600,
                         color: technician == null
-                            ? AppColors.grey
-                            : AppColors.black,
+                            ? context.warna.teksLembut
+                            : context.warna.teks,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -481,7 +481,7 @@ class _ClaimCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 11,
                         letterSpacing: 0.5,
-                        color: AppColors.grey,
+                        color: context.warna.teksLembut,
                       ),
                     ),
                 ],

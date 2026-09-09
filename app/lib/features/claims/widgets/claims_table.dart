@@ -117,7 +117,7 @@ class _HeaderRow extends StatelessWidget {
       // Garis tebal di bawah kepala tabel: pembatas paling kuat di halaman,
       // menandai awal data.
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.black, width: 1.5)),
+        border: Border(bottom: BorderSide(color: context.warna.teks, width: 1.5)),
       ),
       padding: EdgeInsets.fromLTRB(pad, AppSpacing.s, pad, AppSpacing.xs),
       child: Row(
@@ -133,7 +133,7 @@ class _HeaderRow extends StatelessWidget {
                   fontSize: 9.5,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1,
-                  color: AppColors.black,
+                  color: context.warna.teks,
                 ),
               ),
             ),
@@ -180,13 +180,13 @@ class _DataRowState extends State<_DataRow> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           decoration: BoxDecoration(
-            color: _hover ? AppColors.lightGrey : AppColors.white,
+            color: _hover ? context.warna.teredam : context.warna.permukaan,
             border: Border(
               bottom: const BorderSide(color: Color(0xFFE4E7E7)),
               // Penanda merah di tepi kiri saat kursor lewat -- menggantikan
               // arsiran baris, dan tetap terbaca di layar apa pun.
               left: BorderSide(
-                color: _hover ? AppColors.red : Colors.transparent,
+                color: _hover ? context.warna.bahaya : Colors.transparent,
                 width: 3,
               ),
             ),
@@ -242,7 +242,7 @@ class _DataRowState extends State<_DataRow> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
-                border: Border.all(color: AppColors.grey),
+                border: Border.all(color: context.warna.teksLembut),
                 borderRadius: BorderRadius.circular(2),
               ),
               child: const Text(
@@ -251,7 +251,7 @@ class _DataRowState extends State<_DataRow> {
                   fontSize: 8.5,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
-                  color: AppColors.grey,
+                  color: context.warna.teksLembut,
                   height: 1.3,
                 ),
               ),
@@ -277,7 +277,7 @@ class _DataRowState extends State<_DataRow> {
       _ColId.teknisi => Text(
         widget.technician ?? '—',
         style: widget.technician == null
-            ? _cell.copyWith(color: AppColors.grey)
+            ? _cell.copyWith(color: context.warna.teksLembut)
             : _cell,
         overflow: TextOverflow.ellipsis,
       ),
@@ -288,7 +288,7 @@ class _DataRowState extends State<_DataRow> {
       ),
       _ColId.rma => Text(
         c.noPerbaikan ?? '—',
-        style: _cell.copyWith(color: AppColors.grey),
+        style: _cell.copyWith(color: context.warna.teksLembut),
         overflow: TextOverflow.ellipsis,
       ),
       _ColId.status => Align(
@@ -299,7 +299,7 @@ class _DataRowState extends State<_DataRow> {
   }
 }
 
-const _cell = TextStyle(fontSize: 13, color: AppColors.black);
+const _cell = TextStyle(fontSize: 13, color: context.warna.teks);
 
 class _Cell extends StatelessWidget {
   const _Cell({required this.col, required this.child});

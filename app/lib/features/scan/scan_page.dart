@@ -69,7 +69,7 @@ class _ScanPageState extends State<ScanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.black,
+      backgroundColor: context.warna.teks,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -124,7 +124,7 @@ class _Corner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const side = BorderSide(color: AppColors.red, width: 3);
+    const side = BorderSide(color: context.warna.bahaya, width: 3);
     final top = alignment.y < 0;
     final left = alignment.x < 0;
 
@@ -160,14 +160,14 @@ class _TopBar extends StatelessWidget {
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.close, color: AppColors.white),
+              icon: const Icon(Icons.close, color: context.warna.permukaan),
               onPressed: () => Navigator.of(context).pop(),
             ),
             Expanded(
               child: Text(
                 title.toUpperCase(),
                 style: const TextStyle(
-                  color: AppColors.white,
+                  color: context.warna.permukaan,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1,
@@ -185,7 +185,7 @@ class _TopBar extends StatelessWidget {
                   tooltip: 'Senter',
                   icon: Icon(
                     on ? Icons.flashlight_on : Icons.flashlight_off,
-                    color: on ? AppColors.red : AppColors.white,
+                    color: on ? context.warna.bahaya : context.warna.permukaan,
                   ),
                   onPressed: controller.toggleTorch,
                 );
@@ -212,7 +212,7 @@ class _BottomHint extends StatelessWidget {
             'Arahkan ke barcode serial number',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: AppColors.white.withValues(alpha: 0.75),
+              color: context.warna.permukaan.withValues(alpha: 0.75),
               fontSize: 12,
               letterSpacing: 0.3,
             ),
@@ -233,7 +233,7 @@ class _ScannerError extends StatelessWidget {
     final denied = error.errorCode == MobileScannerErrorCode.permissionDenied;
 
     return ColoredBox(
-      color: AppColors.black,
+      color: context.warna.teks,
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -243,14 +243,14 @@ class _ScannerError extends StatelessWidget {
             children: [
               const Icon(
                 Icons.no_photography_outlined,
-                color: AppColors.white,
+                color: context.warna.permukaan,
                 size: 32,
               ),
               const SizedBox(height: AppSpacing.s),
               Text(
                 denied ? 'Izin kamera ditolak' : 'Kamera tidak bisa dibuka',
                 style: const TextStyle(
-                  color: AppColors.white,
+                  color: context.warna.permukaan,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -263,7 +263,7 @@ class _ScannerError extends StatelessWidget {
                           'diketik manual.'
                     : error.errorDetails?.message ?? error.errorCode.name,
                 style: TextStyle(
-                  color: AppColors.white.withValues(alpha: 0.75),
+                  color: context.warna.permukaan.withValues(alpha: 0.75),
                   fontSize: 13,
                   height: 1.5,
                 ),
@@ -272,8 +272,8 @@ class _ScannerError extends StatelessWidget {
               OutlinedButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.white,
-                  side: const BorderSide(color: AppColors.white, width: 1.5),
+                  foregroundColor: context.warna.permukaan,
+                  side: const BorderSide(color: context.warna.permukaan, width: 1.5),
                 ),
                 child: const Text('KETIK MANUAL'),
               ),
@@ -300,7 +300,7 @@ class ScanFieldButton extends StatelessWidget {
     return IconButton(
       tooltip: 'Pindai barcode',
       iconSize: 20,
-      color: AppColors.black,
+      color: context.warna.teks,
       icon: const Icon(Icons.qr_code_scanner),
       onPressed: () async {
         final value = await scanBarcode(context, title: title);

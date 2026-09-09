@@ -76,11 +76,11 @@ class KolomNota extends StatelessWidget {
               onFieldSubmitted: (_) => onSubmit(),
               decoration: InputDecoration(
                 suffixIcon: terpilih == null
-                    ? const Icon(Icons.search, size: 17, color: AppColors.grey)
+                    ? const Icon(Icons.search, size: 17, color: context.warna.teksLembut)
                     : IconButton(
                         tooltip: 'Lepas tautan nota',
                         iconSize: 16,
-                        color: AppColors.red,
+                        color: context.warna.bahaya,
                         icon: const Icon(Icons.link_off),
                         onPressed: readOnly ? null : onLepas,
                       ),
@@ -92,10 +92,10 @@ class KolomNota extends StatelessWidget {
               alignment: Alignment.topLeft,
               child: Material(
                 elevation: 0,
-                color: AppColors.white,
+                color: context.warna.permukaan,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.base),
-                  side: const BorderSide(color: AppColors.black),
+                  side: const BorderSide(color: context.warna.teks),
                 ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(
@@ -149,7 +149,7 @@ class KolomNota extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontSize: 11,
-                                  color: AppColors.grey,
+                                  color: context.warna.teksLembut,
                                 ),
                               ),
                             ],
@@ -169,14 +169,14 @@ class KolomNota extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.xs),
             decoration: const BoxDecoration(
               color: Color(0x0D0033A0),
-              border: Border(left: BorderSide(color: AppColors.blue, width: 3)),
+              border: Border(left: BorderSide(color: context.warna.aksen, width: 3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.link, size: 12, color: AppColors.blue),
+                    const Icon(Icons.link, size: 12, color: context.warna.aksen),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -185,7 +185,7 @@ class KolomNota extends StatelessWidget {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.4,
-                          color: AppColors.blue,
+                          color: context.warna.aksen,
                         ),
                       ),
                     ),
@@ -201,7 +201,7 @@ class KolomNota extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10.5,
                     height: 1.35,
-                    color: AppColors.blue,
+                    color: context.warna.aksen,
                   ),
                 ),
               ],

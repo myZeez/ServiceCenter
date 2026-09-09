@@ -263,7 +263,7 @@ class _Ringkasan extends ConsumerWidget {
           child: StatTile(
             value: '$belum',
             label: 'Belum Cocok',
-            accent: AppColors.red,
+            accent: context.warna.bahaya,
             selected: hanyaBelum,
             // Ringkasan sekaligus kendali: menyentuhnya menyisakan yang
             // masih harus dikerjakan saja.
@@ -291,7 +291,7 @@ class _NilaiTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.s),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.base),
         border: Border.all(color: const Color(0xFFE4E7E7)),
       ),
@@ -408,7 +408,7 @@ class _Tabel extends StatelessWidget {
             Container(
               decoration: const BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(color: AppColors.black, width: 1.5),
+                  bottom: BorderSide(color: context.warna.teks, width: 1.5),
                 ),
               ),
               padding: const EdgeInsets.fromLTRB(
@@ -470,7 +470,7 @@ class _Kepala extends StatelessWidget {
           fontSize: 9.5,
           fontWeight: FontWeight.w700,
           letterSpacing: 1,
-          color: AppColors.black,
+          color: context.warna.teks,
         ),
       ),
     );
@@ -525,7 +525,7 @@ class _Baris extends StatelessWidget {
                       fontSize: 9.5,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,
-                      color: AppColors.red,
+                      color: context.warna.bahaya,
                     ),
                   )
                 : Text(
@@ -576,8 +576,8 @@ class _Baris extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   color: unit.teknisi == null
-                      ? AppColors.grey
-                      : AppColors.black,
+                      ? context.warna.teksLembut
+                      : context.warna.teks,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -586,7 +586,7 @@ class _Baris extends StatelessWidget {
           sel(
             Text(
               c.tanggalClose == null ? '—' : _tglFmt.format(c.tanggalClose!),
-              style: const TextStyle(fontSize: 13, color: AppColors.grey),
+              style: const TextStyle(fontSize: 13, color: context.warna.teksLembut),
             ),
             width: 70,
           ),
@@ -629,7 +629,7 @@ class _NilaiSel extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: unit.dikoreksi ? FontWeight.w700 : FontWeight.w400,
-                color: unit.dikoreksi ? AppColors.black : AppColors.grey,
+                color: unit.dikoreksi ? context.warna.teks : context.warna.teksLembut,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -715,7 +715,7 @@ class _KartuBaris extends StatelessWidget {
                           fontSize: rma.isEmpty ? 9.5 : 12,
                           fontWeight: FontWeight.w700,
                           letterSpacing: rma.isEmpty ? 0.8 : 0.3,
-                          color: rma.isEmpty ? AppColors.red : AppColors.black,
+                          color: rma.isEmpty ? context.warna.bahaya : context.warna.teks,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -816,7 +816,7 @@ class _Dropdown<T> extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       decoration: BoxDecoration(
         border: Border.all(
-          color: value == null ? const Color(0xFFCFD5D4) : AppColors.black,
+          color: value == null ? const Color(0xFFCFD5D4) : context.warna.teks,
         ),
         borderRadius: BorderRadius.circular(AppRadius.small),
       ),
@@ -834,7 +834,7 @@ class _Dropdown<T> extends StatelessWidget {
             fontSize: 10.5,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.4,
-            color: AppColors.black,
+            color: context.warna.teks,
           ),
           onChanged: onChanged,
           items: [

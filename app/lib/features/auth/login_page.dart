@@ -87,7 +87,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           child: Container(
                             width: 48,
                             height: 8,
-                            color: AppColors.red,
+                            color: context.warna.bahaya,
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
@@ -99,7 +99,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         Text(
                           'CELLCOM PLK',
                           style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(color: AppColors.grey),
+                              ?.copyWith(color: context.warna.teksLembut),
                         ),
                         const SizedBox(height: AppSpacing.md),
 
@@ -128,7 +128,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             decoration: InputDecoration(
                               suffixIcon: IconButton(
                                 iconSize: 18,
-                                color: AppColors.grey,
+                                color: context.warna.teksLembut,
                                 icon: Icon(
                                   _obscure
                                       ? Icons.visibility_off_outlined
@@ -151,7 +151,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             decoration: const BoxDecoration(
                               border: Border(
                                 left: BorderSide(
-                                  color: AppColors.red,
+                                  color: context.warna.bahaya,
                                   width: 3,
                                 ),
                               ),
@@ -160,7 +160,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             child: Text(
                               _error!,
                               style: const TextStyle(
-                                color: AppColors.red,
+                                color: context.warna.bahaya,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 height: 1.4,
@@ -178,7 +178,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   width: 16,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: AppColors.white,
+                                    color: context.warna.permukaan,
                                   ),
                                 )
                               : const Text('MASUK'),

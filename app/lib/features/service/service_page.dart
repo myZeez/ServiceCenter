@@ -139,7 +139,7 @@ class _Saringan extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.black)),
+        border: Border(bottom: BorderSide(color: context.warna.teks)),
       ),
       padding: const EdgeInsets.only(bottom: AppSpacing.s),
       child: SizedBox(
@@ -186,8 +186,8 @@ class _Chip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: aktif ? AppColors.black : AppColors.white,
-            border: Border.all(color: AppColors.black),
+            color: aktif ? context.warna.teks : context.warna.permukaan,
+            border: Border.all(color: context.warna.teks),
             borderRadius: BorderRadius.circular(AppRadius.small),
           ),
           child: Text(
@@ -196,7 +196,7 @@ class _Chip extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.4,
-              color: aktif ? AppColors.white : AppColors.black,
+              color: aktif ? context.warna.permukaan : context.warna.teks,
             ),
           ),
         ),
@@ -253,7 +253,7 @@ class _KartuNota extends ConsumerWidget {
               ].join(' '),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12.5, color: AppColors.grey),
+              style: const TextStyle(fontSize: 12.5, color: context.warna.teksLembut),
             ),
             if ((nota.keluhan ?? '').isNotEmpty) ...[
               const SizedBox(height: 2),
@@ -300,7 +300,7 @@ Future<void> _bukaUbah(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: AppColors.white,
+    backgroundColor: context.warna.permukaan,
     builder: (_) => _UbahKerjaan(nota: nota),
   );
 }
@@ -450,14 +450,14 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
             padding: const EdgeInsets.all(AppSpacing.xs),
             decoration: const BoxDecoration(
               color: Color(0x0D0033A0),
-              border: Border(left: BorderSide(color: AppColors.blue, width: 3)),
+              border: Border(left: BorderSide(color: context.warna.aksen, width: 3)),
             ),
             child: const Text(
               'Biaya, cara bayar, dan data pelanggan diubah dari meja depan.',
               style: TextStyle(
                 fontSize: 11,
                 height: 1.4,
-                color: AppColors.blue,
+                color: context.warna.aksen,
               ),
             ),
           ),

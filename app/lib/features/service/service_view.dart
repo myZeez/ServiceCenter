@@ -193,7 +193,7 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
                         prefixIcon: const Icon(
                           Icons.search,
                           size: 17,
-                          color: AppColors.grey,
+                          color: context.warna.teksLembut,
                         ),
                         prefixIconConstraints: const BoxConstraints(
                           minWidth: 36,
@@ -254,7 +254,7 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
                   builder: (context, c) {
                     final daftarNota = Container(
                       decoration: BoxDecoration(
-                        color: AppColors.white,
+                        color: context.warna.permukaan,
                         borderRadius: BorderRadius.circular(AppRadius.base),
                         border: Border.all(color: const Color(0xFFE4E7E7)),
                       ),
@@ -414,7 +414,7 @@ class _PanelTeknisi extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.base),
         border: Border.all(color: const Color(0xFFE4E7E7)),
       ),
@@ -431,7 +431,7 @@ class _PanelTeknisi extends ConsumerWidget {
             ),
             decoration: const BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: AppColors.black, width: 1.5),
+                bottom: BorderSide(color: context.warna.teks, width: 1.5),
               ),
             ),
             child: Row(
@@ -513,7 +513,7 @@ class _BarisTeknisi extends StatelessWidget {
                   '${_rp.format(r.omset)}  ·  ${r.notaSelesai} selesai',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: AppColors.grey),
+                  style: const TextStyle(fontSize: 11, color: context.warna.teksLembut),
                 ),
               ],
             ),
@@ -534,7 +534,7 @@ class _BarisTeknisi extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     height: 1,
                     letterSpacing: -0.5,
-                    color: penuh ? AppColors.red : AppColors.black,
+                    color: penuh ? context.warna.bahaya : context.warna.teks,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -569,7 +569,7 @@ class _Tabel extends StatelessWidget {
             Container(
               decoration: const BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(color: AppColors.black, width: 1.5),
+                  bottom: BorderSide(color: context.warna.teks, width: 1.5),
                 ),
               ),
               padding: const EdgeInsets.fromLTRB(
@@ -649,11 +649,11 @@ class _BarisState extends State<_Baris> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           decoration: BoxDecoration(
-            color: _hover ? AppColors.lightGrey : AppColors.white,
+            color: _hover ? context.warna.teredam : context.warna.permukaan,
             border: Border(
               bottom: const BorderSide(color: Color(0xFFE4E7E7)),
               left: BorderSide(
-                color: _hover ? AppColors.red : Colors.transparent,
+                color: _hover ? context.warna.bahaya : Colors.transparent,
                 width: 3,
               ),
             ),
@@ -676,7 +676,7 @@ class _BarisState extends State<_Baris> {
                         child: Icon(
                           Icons.verified_outlined,
                           size: 12,
-                          color: AppColors.blue,
+                          color: context.warna.aksen,
                         ),
                       ),
                     Flexible(
@@ -733,7 +733,7 @@ class _BarisState extends State<_Baris> {
                   child: Text(
                     widget.teknisi ?? '—',
                     style: widget.teknisi == null
-                        ? _sel.copyWith(color: AppColors.grey)
+                        ? _sel.copyWith(color: context.warna.teksLembut)
                         : _sel,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -757,7 +757,7 @@ class _BarisState extends State<_Baris> {
                             fontSize: 8.5,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.6,
-                            color: AppColors.red,
+                            color: context.warna.bahaya,
                           ),
                         ),
                     ],
@@ -778,7 +778,7 @@ class _BarisState extends State<_Baris> {
   }
 }
 
-const _sel = TextStyle(fontSize: 13, color: AppColors.black);
+const _sel = TextStyle(fontSize: 13, color: context.warna.teks);
 
 class _H extends StatelessWidget {
   const _H(this.text);
@@ -794,7 +794,7 @@ class _H extends StatelessWidget {
       fontSize: 9.5,
       fontWeight: FontWeight.w700,
       letterSpacing: 1,
-      color: AppColors.black,
+      color: context.warna.teks,
     ),
   );
 }

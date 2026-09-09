@@ -34,12 +34,12 @@ class ServiceStatus {
   // Mengikuti pola yang sama dengan status klaim: yang menuntut tindakan
   // diberi bobot visual paling besar, yang sudah tuntas mundur ke belakang.
   static const _colors = {
-    masuk: AppColors.blue,
-    dikerjakan: AppColors.blue,
-    tungguPart: AppColors.red,
-    selesai: AppColors.red,
-    diambil: AppColors.black,
-    batal: AppColors.grey,
+    masuk: context.warna.aksen,
+    dikerjakan: context.warna.aksen,
+    tungguPart: context.warna.bahaya,
+    selesai: context.warna.bahaya,
+    diambil: context.warna.teks,
+    batal: context.warna.teksLembut,
   };
 
   static const _filled = {
@@ -54,7 +54,7 @@ class ServiceStatus {
   };
 
   static String label(String s) => _labels[s] ?? s;
-  static Color color(String s) => _colors[s] ?? AppColors.grey;
+  static Color color(String s) => _colors[s] ?? context.warna.teksLembut;
   static bool isFilled(String s) => _filled[s] ?? false;
 }
 
@@ -79,7 +79,7 @@ class ServiceStatusChip extends StatelessWidget {
       child: Text(
         ServiceStatus.label(status).toUpperCase(),
         style: TextStyle(
-          color: filled ? AppColors.white : c,
+          color: filled ? context.warna.permukaan : c,
           fontSize: compact ? 9 : 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.7,

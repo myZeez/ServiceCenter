@@ -269,7 +269,7 @@ class ClaimDetailPage extends ConsumerWidget {
                       padding: EdgeInsets.only(bottom: AppSpacing.s),
                       child: Text(
                         'Tidak ada part yang diklaim.',
-                        style: TextStyle(color: AppColors.grey),
+                        style: TextStyle(color: context.warna.teksLembut),
                       ),
                     )
                   else
@@ -291,7 +291,7 @@ class ClaimDetailPage extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.s),
                     decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.black, width: 1.5),
+                      border: Border.all(color: context.warna.teks, width: 1.5),
                       borderRadius: BorderRadius.circular(AppRadius.base),
                     ),
                     child: Row(
@@ -492,7 +492,7 @@ class ClaimDetailPage extends ConsumerWidget {
             child: const Text('BATAL'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.red),
+            style: FilledButton.styleFrom(backgroundColor: context.warna.bahaya),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('HAPUS'),
           ),
@@ -847,7 +847,7 @@ class _PartEditDialogState extends State<_PartEditDialog> {
               const SizedBox(height: AppSpacing.xs),
               Text(
                 _error!,
-                style: const TextStyle(color: AppColors.red, fontSize: 12),
+                style: const TextStyle(color: context.warna.bahaya, fontSize: 12),
               ),
             ],
           ],
@@ -914,7 +914,7 @@ class _PickerDialog extends StatelessWidget {
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(
-                    color: o.selected ? AppColors.red : Colors.transparent,
+                    color: o.selected ? context.warna.bahaya : Colors.transparent,
                     width: 3,
                   ),
                 ),

@@ -66,7 +66,7 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
                     prefixIcon: const Icon(
                       Icons.search,
                       size: 17,
-                      color: AppColors.grey,
+                      color: context.warna.teksLembut,
                     ),
                     prefixIconConstraints: const BoxConstraints(minWidth: 36),
                     suffixIcon: Row(
@@ -75,7 +75,7 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
                         if (filter.query.isNotEmpty)
                           IconButton(
                             iconSize: 16,
-                            color: AppColors.grey,
+                            color: context.warna.teksLembut,
                             icon: const Icon(Icons.close),
                             onPressed: () {
                               _search.clear();
@@ -198,7 +198,7 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: context.warna.permukaan,
                 borderRadius: BorderRadius.circular(AppRadius.base),
                 border: Border.all(color: const Color(0xFFE4E7E7)),
               ),
@@ -264,11 +264,11 @@ class _BrandChipState extends State<_BrandChip> {
           curve: Curves.easeOut,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: active ? AppColors.black : AppColors.white,
+            color: active ? context.warna.teks : context.warna.permukaan,
             border: Border.all(
               color: active
-                  ? AppColors.black
-                  : (_hover ? AppColors.black : const Color(0xFFCFD5D4)),
+                  ? context.warna.teks
+                  : (_hover ? context.warna.teks : const Color(0xFFCFD5D4)),
             ),
             borderRadius: BorderRadius.circular(AppRadius.small),
           ),
@@ -278,7 +278,7 @@ class _BrandChipState extends State<_BrandChip> {
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.6,
-              color: active ? AppColors.white : AppColors.black,
+              color: active ? context.warna.permukaan : context.warna.teks,
             ),
           ),
         ),

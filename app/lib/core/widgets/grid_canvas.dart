@@ -654,14 +654,14 @@ class _PelukisPegangan extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final cat = Paint()
-      ..color = AppColors.red
+      ..color = context.warna.bahaya
       ..strokeWidth = 1.6
       ..strokeCap = StrokeCap.round;
 
     switch (bentuk) {
       case _Bentuk.pindah:
         // Titik-titik bertumpuk, lambang umum untuk "seret aku".
-        final titik = Paint()..color = AppColors.red;
+        final titik = Paint()..color = context.warna.bahaya;
         final tengah = size.height / 2;
         for (var i = -2; i <= 2; i++) {
           canvas.drawCircle(Offset(size.width / 2, tengah + i * 6), 1.6, titik);
@@ -707,13 +707,13 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
     decoration: BoxDecoration(
-      color: AppColors.black,
+      color: context.warna.teks,
       borderRadius: BorderRadius.circular(3),
     ),
     child: Text(
       text,
       style: const TextStyle(
-        color: AppColors.white,
+        color: context.warna.permukaan,
         fontSize: 10,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.5,

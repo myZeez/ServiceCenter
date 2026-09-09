@@ -97,12 +97,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             padding: const EdgeInsets.all(AppSpacing.s),
             decoration: const BoxDecoration(
               color: Color(0x0D0033A0),
-              border: Border(left: BorderSide(color: AppColors.blue, width: 3)),
+              border: Border(left: BorderSide(color: context.warna.aksen, width: 3)),
             ),
             child: const Text(
               'Perubahan di halaman ini berlaku untuk semua perangkat dan '
               'membutuhkan koneksi internet.',
-              style: TextStyle(fontSize: 12, color: AppColors.blue),
+              style: TextStyle(fontSize: 12, color: context.warna.aksen),
             ),
           ),
           const SizedBox(height: AppSpacing.s),
@@ -303,8 +303,8 @@ class _UserRow extends ConsumerWidget {
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: profile.aktif
-                              ? AppColors.black
-                              : AppColors.grey,
+                              ? context.warna.teks
+                              : context.warna.teksLembut,
                           decoration: profile.aktif
                               ? null
                               : TextDecoration.lineThrough,
@@ -341,7 +341,7 @@ class _UserRow extends ConsumerWidget {
             // tidak punya admin sama sekali.
             const Tooltip(
               message: 'Akun sendiri tidak bisa diubah dari sini',
-              child: Icon(Icons.lock_outline, size: 15, color: AppColors.grey),
+              child: Icon(Icons.lock_outline, size: 15, color: context.warna.teksLembut),
             )
           else ...[
             InlineAction(
@@ -594,14 +594,14 @@ class _MasterRow extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.3,
-                    color: aktif ? AppColors.black : AppColors.grey,
+                    color: aktif ? context.warna.teks : context.warna.teksLembut,
                     decoration: aktif ? null : TextDecoration.lineThrough,
                   ),
                 ),
                 if (subtitle != null)
                   Text(
                     subtitle!,
-                    style: const TextStyle(fontSize: 12, color: AppColors.grey),
+                    style: const TextStyle(fontSize: 12, color: context.warna.teksLembut),
                     overflow: TextOverflow.ellipsis,
                   ),
               ],
@@ -630,8 +630,8 @@ class _Tag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
-        color: filled ? AppColors.black : Colors.transparent,
-        border: Border.all(color: filled ? AppColors.black : AppColors.grey),
+        color: filled ? context.warna.teks : Colors.transparent,
+        border: Border.all(color: filled ? context.warna.teks : context.warna.teksLembut),
         borderRadius: BorderRadius.circular(3),
       ),
       child: Text(
@@ -640,7 +640,7 @@ class _Tag extends StatelessWidget {
           fontSize: 8.5,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.7,
-          color: filled ? AppColors.white : AppColors.grey,
+          color: filled ? context.warna.permukaan : context.warna.teksLembut,
         ),
       ),
     );
@@ -659,7 +659,7 @@ class _CardEmpty extends StatelessWidget {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: const TextStyle(color: AppColors.grey, fontSize: 13),
+        style: const TextStyle(color: context.warna.teksLembut, fontSize: 13),
       ),
     ),
   );
@@ -860,7 +860,7 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
                     decoration: InputDecoration(
                       suffixIcon: IconButton(
                         iconSize: 18,
-                        color: AppColors.grey,
+                        color: context.warna.teksLembut,
                         icon: Icon(
                           _obscure
                               ? Icons.visibility_off_outlined
@@ -919,7 +919,7 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
                   width: 14,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: AppColors.white,
+                    color: context.warna.permukaan,
                   ),
                 )
               : const Text('TAMBAH'),
@@ -939,11 +939,11 @@ class _Notice extends StatelessWidget {
     padding: const EdgeInsets.all(AppSpacing.xs),
     decoration: const BoxDecoration(
       color: Color(0x0DD82C2C),
-      border: Border(left: BorderSide(color: AppColors.red, width: 3)),
+      border: Border(left: BorderSide(color: context.warna.bahaya, width: 3)),
     ),
     child: Text(
       text,
-      style: const TextStyle(color: AppColors.red, fontSize: 12, height: 1.4),
+      style: const TextStyle(color: context.warna.bahaya, fontSize: 12, height: 1.4),
     ),
   );
 }

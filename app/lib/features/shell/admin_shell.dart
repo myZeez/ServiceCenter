@@ -81,7 +81,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     final index = _index.clamp(0, sections.length - 1);
 
     return Scaffold(
-      backgroundColor: AppColors.lightGrey,
+      backgroundColor: context.warna.teredam,
       body: Padding(
         // Jarak di keempat sisi membuat sidebar tampak mengambang di atas
         // bidang, bukan menempel pada tepi jendela.
@@ -146,7 +146,7 @@ class _Sidebar extends ConsumerWidget {
       width: 228,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.base),
         border: Border.all(color: const Color(0xFFE4E7E7)),
       ),
@@ -159,7 +159,7 @@ class _Sidebar extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             child: Row(
               children: [
-                Container(width: 22, height: 22, color: AppColors.red),
+                Container(width: 22, height: 22, color: context.warna.bahaya),
                 const SizedBox(width: AppSpacing.xs),
                 const Expanded(
                   child: Text(
@@ -169,7 +169,7 @@ class _Sidebar extends ConsumerWidget {
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
                       height: 1.25,
-                      color: AppColors.black,
+                      color: context.warna.teks,
                     ),
                   ),
                 ),
@@ -193,7 +193,7 @@ class _Sidebar extends ConsumerWidget {
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.2,
-                    color: AppColors.grey,
+                    color: context.warna.teksLembut,
                   ),
                 ),
               ),
@@ -233,7 +233,7 @@ class _Sidebar extends ConsumerWidget {
                 IconButton(
                   tooltip: 'Keluar',
                   iconSize: 18,
-                  color: AppColors.grey,
+                  color: context.warna.teksLembut,
                   icon: const Icon(Icons.logout),
                   onPressed: () => ref.read(supabaseProvider).auth.signOut(),
                 ),
@@ -281,12 +281,12 @@ class _NavItemState extends State<_NavItem> {
           ),
           decoration: BoxDecoration(
             color: active
-                ? AppColors.lightGrey
+                ? context.warna.teredam
                 : (_hover ? const Color(0xFFF8F9F9) : Colors.transparent),
             // Batang merah menandai bagian yang sedang dibuka.
             border: Border(
               left: BorderSide(
-                color: active ? AppColors.red : Colors.transparent,
+                color: active ? context.warna.bahaya : Colors.transparent,
                 width: 3,
               ),
             ),
@@ -296,7 +296,7 @@ class _NavItemState extends State<_NavItem> {
               Icon(
                 widget.section.icon,
                 size: 17,
-                color: active ? AppColors.black : AppColors.grey,
+                color: active ? context.warna.teks : context.warna.teksLembut,
               ),
               const SizedBox(width: AppSpacing.s),
               Text(
@@ -305,7 +305,7 @@ class _NavItemState extends State<_NavItem> {
                   fontSize: 11,
                   fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                   letterSpacing: 0.9,
-                  color: active ? AppColors.black : AppColors.grey,
+                  color: active ? context.warna.teks : context.warna.teksLembut,
                 ),
               ),
             ],

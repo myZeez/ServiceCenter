@@ -210,7 +210,7 @@ class _BrandMoneyRow extends StatelessWidget {
                   fontSize: belum ? 10 : 14,
                   fontWeight: FontWeight.w700,
                   letterSpacing: belum ? 0.8 : 0,
-                  color: belum ? AppColors.red : AppColors.black,
+                  color: belum ? context.warna.bahaya : context.warna.teks,
                 ),
               ),
               const SizedBox(width: AppSpacing.s),
@@ -809,7 +809,7 @@ class _Remaining extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pas = sisa == 0;
-    final warna = pas ? AppColors.blue : AppColors.red;
+    final warna = pas ? context.warna.aksen : context.warna.bahaya;
 
     return Container(
       margin: const EdgeInsets.only(top: 4),
@@ -851,7 +851,7 @@ class _SisaTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pas = sisa == 0;
-    final warna = pas ? AppColors.blue : AppColors.red;
+    final warna = pas ? context.warna.aksen : context.warna.bahaya;
 
     return Text(
       pas ? 'PAS 100%' : 'SISA ${sisa.toStringAsFixed(0)}%',
@@ -892,9 +892,9 @@ class _MethodOption extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 5),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: active ? AppColors.lightGrey : Colors.transparent,
+          color: active ? context.warna.teredam : Colors.transparent,
           border: Border.all(
-            color: active ? AppColors.black : const Color(0xFFE4E7E7),
+            color: active ? context.warna.teks : const Color(0xFFE4E7E7),
           ),
           borderRadius: BorderRadius.circular(AppRadius.small),
         ),
@@ -908,7 +908,7 @@ class _MethodOption extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: active ? AppColors.red : AppColors.grey,
+                  color: active ? context.warna.bahaya : context.warna.teksLembut,
                   width: active ? 4 : 1.5,
                 ),
               ),
@@ -934,14 +934,14 @@ class _MethodOption extends StatelessWidget {
                             horizontal: 4,
                             vertical: 1,
                           ),
-                          color: AppColors.red,
+                          color: context.warna.bahaya,
                           child: const Text(
                             'SARAN',
                             style: TextStyle(
                               fontSize: 8,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.6,
-                              color: AppColors.white,
+                              color: context.warna.permukaan,
                             ),
                           ),
                         ),
@@ -954,7 +954,7 @@ class _MethodOption extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 11,
                       height: 1.35,
-                      color: AppColors.grey,
+                      color: context.warna.teksLembut,
                     ),
                   ),
                 ],
@@ -979,7 +979,7 @@ class _CardMessage extends StatelessWidget {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: const TextStyle(color: AppColors.grey, fontSize: 12),
+        style: const TextStyle(color: context.warna.teksLembut, fontSize: 12),
       ),
     ),
   );

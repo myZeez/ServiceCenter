@@ -29,7 +29,7 @@ class BentoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.base),
         border: Border.all(color: const Color(0xFFE4E7E7)),
       ),
@@ -95,7 +95,7 @@ class _StatTileState extends State<StatTile> {
 
   @override
   Widget build(BuildContext context) {
-    final accent = widget.accent ?? AppColors.black;
+    final accent = widget.accent ?? context.warna.teks;
     final active = widget.selected;
 
     return MouseRegion(
@@ -116,7 +116,7 @@ class _StatTileState extends State<StatTile> {
             AppSpacing.s,
           ),
           decoration: BoxDecoration(
-            color: active ? accent : AppColors.white,
+            color: active ? accent : context.warna.permukaan,
             borderRadius: BorderRadius.circular(AppRadius.base),
             border: Border.all(
               color: active
@@ -136,7 +136,7 @@ class _StatTileState extends State<StatTile> {
                   fontWeight: FontWeight.w700,
                   letterSpacing: -1,
                   height: 1,
-                  color: active ? AppColors.white : AppColors.black,
+                  color: active ? context.warna.permukaan : context.warna.teks,
                 ),
               ),
               const SizedBox(height: 6),
@@ -148,7 +148,7 @@ class _StatTileState extends State<StatTile> {
                   fontSize: 9.5,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.9,
-                  color: active ? AppColors.white : AppColors.grey,
+                  color: active ? context.warna.permukaan : context.warna.teksLembut,
                 ),
               ),
             ],
@@ -186,7 +186,7 @@ class PageHeader extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle!,
-                  style: const TextStyle(fontSize: 13, color: AppColors.grey),
+                  style: const TextStyle(fontSize: 13, color: context.warna.teksLembut),
                 ),
               ],
             ],
@@ -244,10 +244,10 @@ class BentoBarRow extends StatelessWidget {
           // berubah menjadi grafik yang menuntut perhatian sendiri.
           Stack(
             children: [
-              Container(height: 3, color: AppColors.lightGrey),
+              Container(height: 3, color: context.warna.teredam),
               FractionallySizedBox(
                 widthFactor: fraction.clamp(0.0, 1.0),
-                child: Container(height: 3, color: color ?? AppColors.black),
+                child: Container(height: 3, color: color ?? context.warna.teks),
               ),
             ],
           ),

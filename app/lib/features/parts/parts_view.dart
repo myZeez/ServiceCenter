@@ -152,7 +152,7 @@ class _PartsViewState extends ConsumerState<PartsView> {
                         prefixIcon: const Icon(
                           Icons.search,
                           size: 17,
-                          color: AppColors.grey,
+                          color: context.warna.teksLembut,
                         ),
                         prefixIconConstraints: const BoxConstraints(
                           minWidth: 36,
@@ -211,7 +211,7 @@ class _PartsViewState extends ConsumerState<PartsView> {
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.white,
+                    color: context.warna.permukaan,
                     borderRadius: BorderRadius.circular(AppRadius.base),
                     border: Border.all(color: const Color(0xFFE4E7E7)),
                   ),
@@ -264,7 +264,7 @@ class _Tabel extends StatelessWidget {
             Container(
               decoration: const BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(color: AppColors.black, width: 1.5),
+                  bottom: BorderSide(color: context.warna.teks, width: 1.5),
                 ),
               ),
               padding: const EdgeInsets.fromLTRB(
@@ -348,11 +348,11 @@ class _BarisState extends State<_Baris> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           decoration: BoxDecoration(
-            color: _hover ? AppColors.lightGrey : AppColors.white,
+            color: _hover ? context.warna.teredam : context.warna.permukaan,
             border: Border(
               bottom: const BorderSide(color: Color(0xFFE4E7E7)),
               left: BorderSide(
-                color: _hover ? AppColors.red : Colors.transparent,
+                color: _hover ? context.warna.bahaya : Colors.transparent,
                 width: 3,
               ),
             ),
@@ -426,7 +426,7 @@ class _BarisState extends State<_Baris> {
                       p.catatan ?? '—',
                       maxLines: 2,
                       style: p.catatan == null
-                          ? _sel.copyWith(color: AppColors.grey)
+                          ? _sel.copyWith(color: context.warna.teksLembut)
                           : _sel.copyWith(fontSize: 12),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -438,7 +438,7 @@ class _BarisState extends State<_Baris> {
                   child: Text(
                     widget.teknisi ?? '—',
                     style: widget.teknisi == null
-                        ? _sel.copyWith(color: AppColors.grey)
+                        ? _sel.copyWith(color: context.warna.teksLembut)
                         : _sel,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -466,4 +466,4 @@ class _BarisState extends State<_Baris> {
   }
 }
 
-const _sel = TextStyle(fontSize: 13, color: AppColors.black);
+const _sel = TextStyle(fontSize: 13, color: context.warna.teks);

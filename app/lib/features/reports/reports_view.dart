@@ -152,7 +152,7 @@ class _SummaryCard extends ConsumerWidget {
 
     return BentoCard(
       title: 'Ringkasan',
-      accent: AppColors.red,
+      accent: context.warna.bahaya,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -306,7 +306,7 @@ class _ReassignCard extends ConsumerWidget {
                           '${r['dari_teknisi'] ?? 'Belum ditugaskan'}',
                           style: const TextStyle(
                             fontSize: 13,
-                            color: AppColors.grey,
+                            color: context.warna.teksLembut,
                             decoration: TextDecoration.lineThrough,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -317,7 +317,7 @@ class _ReassignCard extends ConsumerWidget {
                         child: Icon(
                           Icons.arrow_forward,
                           size: 12,
-                          color: AppColors.red,
+                          color: context.warna.bahaya,
                         ),
                       ),
                       Flexible(
@@ -335,7 +335,7 @@ class _ReassignCard extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(
                     'oleh ${r['diubah_oleh']} · ${at.day}/${at.month}/${at.year}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.grey),
+                    style: const TextStyle(fontSize: 11, color: context.warna.teksLembut),
                   ),
                 ],
               ),
@@ -381,7 +381,7 @@ class _AsyncBody extends StatelessWidget {
             const Icon(
               Icons.cloud_off_outlined,
               size: 22,
-              color: AppColors.grey,
+              color: context.warna.teksLembut,
             ),
             const SizedBox(height: AppSpacing.xs),
             const Text(
@@ -404,7 +404,7 @@ class _AsyncBody extends StatelessWidget {
               child: Text(
                 emptyText,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.grey, fontSize: 13),
+                style: const TextStyle(color: context.warna.teksLembut, fontSize: 13),
               ),
             ),
           )
@@ -437,7 +437,7 @@ class _PivotTable extends StatelessWidget {
         fontSize: head ? 9.5 : 13,
         fontWeight: head || bold ? FontWeight.w700 : FontWeight.w400,
         letterSpacing: head ? 0.9 : 0,
-        color: head ? AppColors.grey : AppColors.black,
+        color: head ? context.warna.teksLembut : context.warna.teks,
       ),
     );
 

@@ -121,7 +121,7 @@ class _TotalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return BentoCard(
       title: 'Total Pendapatan',
-      accent: AppColors.red,
+      accent: context.warna.bahaya,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -188,9 +188,9 @@ class _SplitCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          baris('Toko', hasil.bagianToko, AppColors.black),
-          baris('Admin', hasil.bagianAdmin, AppColors.blue),
-          baris('Teknisi', hasil.bagianTeknisi, AppColors.red),
+          baris('Toko', hasil.bagianToko, context.warna.teks),
+          baris('Admin', hasil.bagianAdmin, context.warna.aksen),
+          baris('Teknisi', hasil.bagianTeknisi, context.warna.bahaya),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Diatur di Pengaturan → Bagi Hasil',
@@ -225,7 +225,7 @@ class _TechCard extends ConsumerWidget {
               style: const TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: AppColors.red,
+                color: context.warna.bahaya,
               ),
             )
           : null,
@@ -236,7 +236,7 @@ class _TechCard extends ConsumerWidget {
                 child: Text(
                   'Belum ada klaim selesai atas nama teknisi di periode ini.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.grey, fontSize: 13),
+                  style: TextStyle(color: context.warna.teksLembut, fontSize: 13),
                 ),
               ),
             )
@@ -338,7 +338,7 @@ class _BrandCard extends ConsumerWidget {
                 child: Text(
                   'Belum ada klaim selesai di periode ini.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.grey, fontSize: 13),
+                  style: TextStyle(color: context.warna.teksLembut, fontSize: 13),
                 ),
               ),
             )
@@ -401,7 +401,7 @@ class _PeriodeDropdown extends ConsumerWidget {
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.black),
+        border: Border.all(color: context.warna.teks),
         borderRadius: BorderRadius.circular(AppRadius.small),
       ),
       child: DropdownButtonHideUnderline(
@@ -415,7 +415,7 @@ class _PeriodeDropdown extends ConsumerWidget {
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.6,
-            color: AppColors.black,
+            color: context.warna.teks,
           ),
           onChanged: (v) => ref.read(periodeProvider.notifier).state = list
               .firstWhere((e) => e.label == v),
@@ -439,11 +439,11 @@ class _Warning extends StatelessWidget {
     padding: const EdgeInsets.all(AppSpacing.xs),
     decoration: const BoxDecoration(
       color: Color(0x0DD82C2C),
-      border: Border(left: BorderSide(color: AppColors.red, width: 3)),
+      border: Border(left: BorderSide(color: context.warna.bahaya, width: 3)),
     ),
     child: Text(
       text,
-      style: const TextStyle(fontSize: 11, height: 1.4, color: AppColors.red),
+      style: const TextStyle(fontSize: 11, height: 1.4, color: context.warna.bahaya),
     ),
   );
 }
@@ -462,7 +462,7 @@ class _Head extends StatelessWidget {
       fontSize: 9.5,
       fontWeight: FontWeight.w700,
       letterSpacing: 0.9,
-      color: AppColors.grey,
+      color: context.warna.teksLembut,
     ),
   );
 }
@@ -481,7 +481,7 @@ class _Num extends StatelessWidget {
     style: TextStyle(
       fontSize: 13,
       fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
-      color: muted ? AppColors.grey : AppColors.black,
+      color: muted ? context.warna.teksLembut : context.warna.teks,
     ),
   );
 }

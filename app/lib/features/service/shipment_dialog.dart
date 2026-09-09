@@ -155,7 +155,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.sm),
         child: Material(
-          color: AppColors.white,
+          color: context.warna.permukaan,
           borderRadius: BorderRadius.circular(AppRadius.base),
           clipBehavior: Clip.antiAlias,
           child: Container(
@@ -179,7 +179,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
                     ),
                     decoration: const BoxDecoration(
                       border: Border(
-                        bottom: BorderSide(color: AppColors.black, width: 1.5),
+                        bottom: BorderSide(color: context.warna.teks, width: 1.5),
                       ),
                     ),
                     child: Row(
@@ -194,7 +194,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
                         ),
                         IconButton(
                           iconSize: 18,
-                          color: AppColors.grey,
+                          color: context.warna.teksLembut,
                           icon: const Icon(Icons.close),
                           onPressed: () => Navigator.of(context).pop(),
                         ),
@@ -403,8 +403,8 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
                 style: TextStyle(
                   fontSize: 14,
                   color: _tanggalKembali == null
-                      ? AppColors.red
-                      : AppColors.black,
+                      ? context.warna.bahaya
+                      : context.warna.teks,
                 ),
               ),
             ),
@@ -423,7 +423,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
         AppSpacing.s,
       ),
       decoration: const BoxDecoration(
-        color: AppColors.lightGrey,
+        color: context.warna.teredam,
         border: Border(top: BorderSide(color: Color(0xFFE4E7E7))),
       ),
       child: Row(
@@ -434,7 +434,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
                 : Text(
                     _error!,
                     style: const TextStyle(
-                      color: AppColors.red,
+                      color: context.warna.bahaya,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -453,7 +453,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
                     width: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: AppColors.white,
+                      color: context.warna.permukaan,
                     ),
                   )
                 : const Text('SIMPAN'),

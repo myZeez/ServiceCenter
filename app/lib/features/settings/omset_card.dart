@@ -98,7 +98,7 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
               decoration: const BoxDecoration(
                 color: Color(0x0D0033A0),
                 border: Border(
-                  left: BorderSide(color: AppColors.blue, width: 3),
+                  left: BorderSide(color: context.warna.aksen, width: 3),
                 ),
               ),
               child: const Text(
@@ -107,7 +107,7 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
                 style: TextStyle(
                   fontSize: 11,
                   height: 1.4,
-                  color: AppColors.blue,
+                  color: context.warna.aksen,
                 ),
               ),
             ),
@@ -127,7 +127,7 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
                   helperText: _n(_target) == 0 ? null : _rp.format(_n(_target)),
                   helperStyle: const TextStyle(
                     fontSize: 10.5,
-                    color: AppColors.grey,
+                    color: context.warna.teksLembut,
                   ),
                 ),
                 onChanged: (_) => setState(() {}),
@@ -152,7 +152,7 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
                             '${_rp.format(_n(_feeAdmin) * 40)}',
                   helperStyle: const TextStyle(
                     fontSize: 10.5,
-                    color: AppColors.grey,
+                    color: context.warna.teksLembut,
                   ),
                 ),
                 onChanged: (_) => setState(() {}),

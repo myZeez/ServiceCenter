@@ -39,7 +39,7 @@ class MetodeBayarCard extends ConsumerWidget {
               decoration: const BoxDecoration(
                 color: Color(0x0D0033A0),
                 border: Border(
-                  left: BorderSide(color: AppColors.blue, width: 3),
+                  left: BorderSide(color: context.warna.aksen, width: 3),
                 ),
               ),
               child: const Text(
@@ -49,7 +49,7 @@ class MetodeBayarCard extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 11,
                   height: 1.4,
-                  color: AppColors.blue,
+                  color: context.warna.aksen,
                 ),
               ),
             ),
@@ -92,7 +92,7 @@ class MetodeBayarCard extends ConsumerWidget {
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          backgroundColor: AppColors.white,
+          backgroundColor: context.warna.permukaan,
           title: Text(
             m == null ? 'TAMBAH CARA BAYAR' : 'UBAH CARA BAYAR',
             style: Theme.of(context).textTheme.titleMedium,
@@ -194,13 +194,13 @@ class _Baris extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: m.aktif ? AppColors.black : AppColors.grey,
+                    color: m.aktif ? context.warna.teks : context.warna.teksLembut,
                   ),
                 ),
                 Text(
                   m.piutang ? 'PIUTANG' : m.kode,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: m.piutang ? AppColors.red : AppColors.grey,
+                    color: m.piutang ? context.warna.bahaya : context.warna.teksLembut,
                   ),
                 ),
               ],
@@ -209,7 +209,7 @@ class _Baris extends ConsumerWidget {
           IconButton(
             tooltip: 'Ubah',
             iconSize: 16,
-            color: AppColors.grey,
+            color: context.warna.teksLembut,
             icon: const Icon(Icons.edit_outlined),
             onPressed: onUbah,
           ),
@@ -218,7 +218,7 @@ class _Baris extends ConsumerWidget {
           IconButton(
             tooltip: m.aktif ? 'Nonaktifkan' : 'Aktifkan lagi',
             iconSize: 16,
-            color: m.aktif ? AppColors.grey : AppColors.blue,
+            color: m.aktif ? context.warna.teksLembut : context.warna.aksen,
             icon: Icon(
               m.aktif ? Icons.visibility_off_outlined : Icons.visibility,
             ),

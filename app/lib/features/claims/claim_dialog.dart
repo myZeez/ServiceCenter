@@ -356,7 +356,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.sm),
         child: Material(
-          color: AppColors.white,
+          color: context.warna.permukaan,
           borderRadius: BorderRadius.circular(AppRadius.base),
           clipBehavior: Clip.antiAlias,
           child: Container(
@@ -424,7 +424,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
         AppSpacing.s,
       ),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.black, width: 1.5)),
+        border: Border(bottom: BorderSide(color: context.warna.teks, width: 1.5)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -467,13 +467,13 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                 child: Icon(
                   Icons.lock_outline,
                   size: 15,
-                  color: AppColors.grey,
+                  color: context.warna.teksLembut,
                 ),
               ),
             ),
           IconButton(
             iconSize: 18,
-            color: AppColors.grey,
+            color: context.warna.teksLembut,
             icon: const Icon(Icons.close),
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -817,7 +817,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                 if (editable || _parts[i].existingId == null)
                   IconButton(
                     iconSize: 16,
-                    color: AppColors.red,
+                    color: context.warna.bahaya,
                     icon: const Icon(Icons.close),
                     onPressed: () => _removePart(i),
                   ),
@@ -840,7 +840,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
         AppSpacing.s,
       ),
       decoration: const BoxDecoration(
-        color: AppColors.lightGrey,
+        color: context.warna.teredam,
         border: Border(top: BorderSide(color: Color(0xFFE4E7E7))),
       ),
       child: Row(
@@ -866,7 +866,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                     width: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: AppColors.white,
+                      color: context.warna.permukaan,
                     ),
                   )
                 : Text(widget.isNew ? 'SIMPAN KLAIM' : 'SIMPAN PERUBAHAN'),

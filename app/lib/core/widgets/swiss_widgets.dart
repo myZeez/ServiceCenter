@@ -36,7 +36,7 @@ class LabeledField extends StatelessWidget {
               const Text(
                 ' *',
                 style: TextStyle(
-                  color: AppColors.red,
+                  color: context.warna.bahaya,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
@@ -79,7 +79,7 @@ class SectionLabel extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.xs),
-        Container(height: 1, color: AppColors.black),
+        Container(height: 1, color: context.warna.teks),
       ],
     );
   }
@@ -142,10 +142,10 @@ class EmptyState extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                border: Border.all(color: AppColors.black, width: 1.5),
+                border: Border.all(color: context.warna.teks, width: 1.5),
                 borderRadius: BorderRadius.circular(AppRadius.small),
               ),
-              child: Icon(icon, size: 22, color: AppColors.black),
+              child: Icon(icon, size: 22, color: context.warna.teks),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(title, style: Theme.of(context).textTheme.titleLarge),
@@ -155,7 +155,7 @@ class EmptyState extends StatelessWidget {
                 constraints: const BoxConstraints(maxWidth: 320),
                 child: Text(
                   description!,
-                  style: const TextStyle(color: AppColors.grey, height: 1.5),
+                  style: const TextStyle(color: context.warna.teksLembut, height: 1.5),
                 ),
               ),
             ],
@@ -243,9 +243,9 @@ class InlineAction extends StatelessWidget {
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.8,
-            color: AppColors.blue,
+            color: context.warna.aksen,
             decoration: TextDecoration.underline,
-            decorationColor: AppColors.blue,
+            decorationColor: context.warna.aksen,
           ),
         ),
       ),
@@ -272,7 +272,7 @@ class TableHeader extends StatelessWidget {
       fontSize: 9.5,
       fontWeight: FontWeight.w700,
       letterSpacing: 1,
-      color: AppColors.black,
+      color: context.warna.teks,
     ),
   );
 }

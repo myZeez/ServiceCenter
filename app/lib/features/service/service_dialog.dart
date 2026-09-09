@@ -522,7 +522,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.sm),
         child: Material(
-          color: AppColors.white,
+          color: context.warna.permukaan,
           borderRadius: BorderRadius.circular(AppRadius.base),
           clipBehavior: Clip.antiAlias,
           child: Container(
@@ -576,7 +576,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         AppSpacing.s,
       ),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.black, width: 1.5)),
+        border: Border(bottom: BorderSide(color: context.warna.teks, width: 1.5)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -608,7 +608,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
           ],
           IconButton(
             iconSize: 18,
-            color: AppColors.grey,
+            color: context.warna.teksLembut,
             icon: const Icon(Icons.close),
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -998,8 +998,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
                         color: _tanggalLunas == null
-                            ? AppColors.red
-                            : AppColors.black,
+                            ? context.warna.bahaya
+                            : context.warna.teks,
                       ),
                     ),
                   ),
@@ -1119,7 +1119,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.s),
       decoration: BoxDecoration(
-        color: AppColors.lightGrey,
+        color: context.warna.teredam,
         borderRadius: BorderRadius.circular(AppRadius.small),
       ),
       child: Row(
@@ -1180,7 +1180,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         AppSpacing.s,
       ),
       decoration: const BoxDecoration(
-        color: AppColors.lightGrey,
+        color: context.warna.teredam,
         border: Border(top: BorderSide(color: Color(0xFFE4E7E7))),
       ),
       child: Row(
@@ -1190,7 +1190,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                 ? Text(
                     _error!,
                     style: const TextStyle(
-                      color: AppColors.red,
+                      color: context.warna.bahaya,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1228,7 +1228,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                     width: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: AppColors.white,
+                      color: context.warna.permukaan,
                     ),
                   )
                 : Text(widget.isNew ? 'SIMPAN NOTA' : 'SIMPAN PERUBAHAN'),

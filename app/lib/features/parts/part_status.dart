@@ -98,14 +98,14 @@ class PartTahap {
   // keadaan di seluruh alur ini yang benar-benar bisa merugikan toko
   // kalau terlewat.
   static const _colors = {
-    foto: AppColors.grey,
-    harga: AppColors.blue,
-    konfirmasi: AppColors.blue,
-    dipesan: AppColors.blue,
-    dipasang: AppColors.red,
-    selesai: AppColors.black,
-    batal: AppColors.grey,
-    kosong: AppColors.red,
+    foto: context.warna.teksLembut,
+    harga: context.warna.aksen,
+    konfirmasi: context.warna.aksen,
+    dipesan: context.warna.aksen,
+    dipasang: context.warna.bahaya,
+    selesai: context.warna.teks,
+    batal: context.warna.teksLembut,
+    kosong: context.warna.bahaya,
   };
 
   static const _filled = {
@@ -121,7 +121,7 @@ class PartTahap {
 
   static String label(String t) => _labels[t] ?? t;
   static String pendek(String t) => _pendek[t] ?? _labels[t] ?? t;
-  static Color color(String t) => _colors[t] ?? AppColors.grey;
+  static Color color(String t) => _colors[t] ?? context.warna.teksLembut;
   static bool isFilled(String t) => _filled[t] ?? false;
 }
 
@@ -149,7 +149,7 @@ class PartTahapChip extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: filled ? AppColors.white : c,
+          color: filled ? context.warna.permukaan : c,
           fontSize: compact ? 9 : 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.7,

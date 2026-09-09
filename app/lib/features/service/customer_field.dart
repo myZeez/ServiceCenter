@@ -107,12 +107,12 @@ class CustomerField extends StatelessWidget {
                       ? const Icon(
                           Icons.search,
                           size: 17,
-                          color: AppColors.grey,
+                          color: context.warna.teksLembut,
                         )
                       : IconButton(
                           tooltip: 'Lepas tautan pelanggan',
                           iconSize: 16,
-                          color: AppColors.red,
+                          color: context.warna.bahaya,
                           icon: const Icon(Icons.link_off),
                           onPressed: readOnly ? null : onBaru,
                         ),
@@ -126,10 +126,10 @@ class CustomerField extends StatelessWidget {
                 alignment: Alignment.topLeft,
                 child: Material(
                   elevation: 0,
-                  color: AppColors.white,
+                  color: context.warna.permukaan,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppRadius.base),
-                    side: const BorderSide(color: AppColors.black),
+                    side: const BorderSide(color: context.warna.teks),
                   ),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(
@@ -160,7 +160,7 @@ class CustomerField extends StatelessWidget {
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: 0.5,
-                                      color: AppColors.grey,
+                                      color: context.warna.teksLembut,
                                     ),
                                   ),
                                 ),
@@ -179,7 +179,7 @@ class CustomerField extends StatelessWidget {
                                   c.telp ?? '—',
                                   style: const TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.grey,
+                                    color: context.warna.teksLembut,
                                   ),
                                 ),
                               ],
@@ -198,7 +198,7 @@ class CustomerField extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.link, size: 12, color: AppColors.blue),
+              const Icon(Icons.link, size: 12, color: context.warna.aksen),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -207,7 +207,7 @@ class CustomerField extends StatelessWidget {
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.4,
-                    color: AppColors.blue,
+                    color: context.warna.aksen,
                   ),
                 ),
               ),
@@ -234,7 +234,7 @@ class CustomerField extends StatelessWidget {
                   decoration: const BoxDecoration(
                     color: Color(0x0DD82C2C),
                     border: Border(
-                      left: BorderSide(color: AppColors.red, width: 3),
+                      left: BorderSide(color: context.warna.bahaya, width: 3),
                     ),
                   ),
                   child: Column(
@@ -245,7 +245,7 @@ class CustomerField extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.red,
+                          color: context.warna.bahaya,
                         ),
                       ),
                       for (final c in kembar.take(3))
@@ -253,7 +253,7 @@ class CustomerField extends StatelessWidget {
                           '${c.kode} · ${c.telp ?? 'tanpa telepon'}',
                           style: const TextStyle(
                             fontSize: 10.5,
-                            color: AppColors.red,
+                            color: context.warna.bahaya,
                           ),
                         ),
                       const SizedBox(height: 2),
@@ -263,7 +263,7 @@ class CustomerField extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 10,
                           height: 1.35,
-                          color: AppColors.red,
+                          color: context.warna.bahaya,
                         ),
                       ),
                     ],

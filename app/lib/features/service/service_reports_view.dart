@@ -87,7 +87,7 @@ class ServiceReportsView extends ConsumerWidget {
             const SizedBox(height: AppSpacing.s),
             Container(
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: context.warna.permukaan,
                 borderRadius: BorderRadius.circular(AppRadius.base),
                 border: Border.all(color: const Color(0xFFE4E7E7)),
               ),
@@ -225,7 +225,7 @@ class _Harian extends ConsumerWidget {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color: AppColors.white,
+                    color: context.warna.permukaan,
                     borderRadius: BorderRadius.circular(AppRadius.base),
                     border: Border.all(color: const Color(0xFFE4E7E7)),
                   ),
@@ -434,8 +434,8 @@ class _TabelHarian extends StatelessWidget {
                               ? FontWeight.w700
                               : FontWeight.w400,
                           color: isi[k] == '—'
-                              ? AppColors.grey
-                              : AppColors.black,
+                              ? context.warna.teksLembut
+                              : context.warna.teks,
                         ),
                       ),
                     ),
@@ -495,7 +495,7 @@ class _Omset extends ConsumerWidget {
                   judul: 'Omset Toko',
                   nilai: _rp.format(hasil.omsetToko),
                   catatan: '${hasil.jumlahNota} nota selesai ${bulan.label}',
-                  aksen: AppColors.red,
+                  aksen: context.warna.bahaya,
                   rincian: [
                     ('Sudah masuk', _rp.format(hasil.sudahMasuk)),
                     ('Masih piutang', _rp.format(hasil.piutang)),
@@ -511,7 +511,7 @@ class _Omset extends ConsumerWidget {
                       ? 'Fee admin belum diatur di Pengaturan'
                       : '${_rp.format(aturan.feeAdminPerNota)} × '
                             '${hasil.jumlahNota} nota',
-                  aksen: AppColors.blue,
+                  aksen: context.warna.aksen,
                 ),
               ),
             ],
@@ -565,7 +565,7 @@ class _Omset extends ConsumerWidget {
                           '${t.jumlahNota} nota',
                           style: const TextStyle(
                             fontSize: 11,
-                            color: AppColors.grey,
+                            color: context.warna.teksLembut,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.s),
@@ -584,12 +584,12 @@ class _Omset extends ConsumerWidget {
                     // meluber keluar kolom.
                     Stack(
                       children: [
-                        Container(height: 4, color: AppColors.lightGrey),
+                        Container(height: 4, color: context.warna.teredam),
                         FractionallySizedBox(
                           widthFactor: (persen / 100).clamp(0.0, 1.0),
                           child: Container(
                             height: 4,
-                            color: tercapai ? AppColors.blue : AppColors.red,
+                            color: tercapai ? context.warna.aksen : context.warna.bahaya,
                           ),
                         ),
                       ],
@@ -603,7 +603,7 @@ class _Omset extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
-                        color: tercapai ? AppColors.blue : AppColors.grey,
+                        color: tercapai ? context.warna.aksen : context.warna.teksLembut,
                       ),
                     ),
                   ],
@@ -619,7 +619,7 @@ class _Omset extends ConsumerWidget {
             padding: const EdgeInsets.all(AppSpacing.s),
             decoration: const BoxDecoration(
               color: Color(0x0DD82C2C),
-              border: Border(left: BorderSide(color: AppColors.red, width: 3)),
+              border: Border(left: BorderSide(color: context.warna.bahaya, width: 3)),
             ),
             child: Text(
               '${hasil.notaTanpaTeknisi} nota selesai belum ada teknisinya. '
@@ -627,7 +627,7 @@ class _Omset extends ConsumerWidget {
               style: const TextStyle(
                 fontSize: 12,
                 height: 1.4,
-                color: AppColors.red,
+                color: context.warna.bahaya,
               ),
             ),
           ),
@@ -773,7 +773,7 @@ class _Pelunasan extends ConsumerWidget {
           for (final hari in perTanggal.keys) ...[
             Container(
               width: double.infinity,
-              color: AppColors.lightGrey,
+              color: context.warna.teredam,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.sm,
                 vertical: 7,
@@ -909,7 +909,7 @@ class _Keseluruhan extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (n.garansi)
-                  const _Tanda('GARANSI', warna: AppColors.blue)
+                  const _Tanda('GARANSI', warna: context.warna.aksen)
                 else
                   const _Tanda('NON GARANSI'),
                 const SizedBox(width: 4),
@@ -1003,8 +1003,8 @@ class _Kirim extends ConsumerWidget {
                     _Tanda(
                       k.status == 'ship' ? 'DIKIRIM' : 'DITERIMA',
                       warna: k.status == 'ship'
-                          ? AppColors.red
-                          : AppColors.black,
+                          ? context.warna.bahaya
+                          : context.warna.teks,
                     ),
                     if (k.keterangan != null) ...[
                       const SizedBox(width: 4),
@@ -1086,7 +1086,7 @@ class _TombolExportState extends State<_TombolExport> {
       label: Text(widget.label),
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        side: const BorderSide(color: AppColors.black, width: 1.5),
+        side: const BorderSide(color: context.warna.teks, width: 1.5),
       ),
     );
   }
@@ -1134,7 +1134,7 @@ class _Kartu extends StatelessWidget {
               child: Text(
                 pesanKosong,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.grey, fontSize: 13),
+                style: const TextStyle(color: context.warna.teksLembut, fontSize: 13),
               ),
             ),
           )
@@ -1146,7 +1146,7 @@ class _Kartu extends StatelessWidget {
       height: null,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: context.warna.permukaan,
           borderRadius: BorderRadius.circular(AppRadius.base),
           border: Border.all(color: const Color(0xFFE4E7E7)),
         ),
@@ -1164,7 +1164,7 @@ class _Kartu extends StatelessWidget {
               ),
               decoration: const BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(color: AppColors.black, width: 1.5),
+                  bottom: BorderSide(color: context.warna.teks, width: 1.5),
                 ),
               ),
               child: Row(
@@ -1254,11 +1254,11 @@ class _BarisKlikState extends State<_BarisKlik> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           decoration: BoxDecoration(
-            color: _hover ? AppColors.lightGrey : AppColors.white,
+            color: _hover ? context.warna.teredam : context.warna.permukaan,
             border: Border(
               bottom: const BorderSide(color: Color(0xFFE4E7E7)),
               left: BorderSide(
-                color: _hover ? AppColors.red : Colors.transparent,
+                color: _hover ? context.warna.bahaya : Colors.transparent,
                 width: 3,
               ),
             ),
@@ -1294,7 +1294,7 @@ class _Sel extends StatelessWidget {
         style: TextStyle(
           fontSize: 12.5,
           fontWeight: tebal ? FontWeight.w700 : FontWeight.w400,
-          color: teks == '—' ? AppColors.grey : AppColors.black,
+          color: teks == '—' ? context.warna.teksLembut : context.warna.teks,
         ),
       ),
     );
@@ -1304,7 +1304,7 @@ class _Sel extends StatelessWidget {
 }
 
 class _Tanda extends StatelessWidget {
-  const _Tanda(this.teks, {this.warna = AppColors.grey});
+  const _Tanda(this.teks, {this.warna = context.warna.teksLembut});
 
   final String teks;
   final Color warna;
@@ -1342,7 +1342,7 @@ class _BulanDropdown extends ConsumerWidget {
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.black),
+        border: Border.all(color: context.warna.teks),
         borderRadius: BorderRadius.circular(AppRadius.small),
       ),
       child: DropdownButtonHideUnderline(
@@ -1356,7 +1356,7 @@ class _BulanDropdown extends ConsumerWidget {
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.6,
-            color: AppColors.black,
+            color: context.warna.teks,
           ),
           onChanged: (v) => ref.read(bulanProvider.notifier).state = daftar
               .firstWhere((b) => b.label == v),

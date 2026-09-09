@@ -70,7 +70,7 @@ class GagalMuatRingkas extends StatelessWidget {
         child: Text(
           pesanGalat(galat),
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13, color: AppColors.grey),
+          style: const TextStyle(fontSize: 13, color: context.warna.teksLembut),
         ),
       ),
     );

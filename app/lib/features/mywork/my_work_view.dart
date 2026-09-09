@@ -122,7 +122,7 @@ class _Isi extends StatelessWidget {
 
         BentoCard(
           title: 'Unit Selesai',
-          accent: AppColors.red,
+          accent: context.warna.bahaya,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -229,7 +229,7 @@ class _OmsetServis extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.s),
       child: BentoCard(
         title: 'Omset Servis Bulan Ini',
-        accent: AppColors.blue,
+        accent: context.warna.aksen,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -259,9 +259,9 @@ class _OmsetServis extends ConsumerWidget {
               child: LinearProgressIndicator(
                 value: persen,
                 minHeight: 8,
-                backgroundColor: AppColors.lightGrey,
+                backgroundColor: context.warna.teredam,
                 valueColor: AlwaysStoppedAnimation(
-                  persen >= 1 ? AppColors.blue : AppColors.black,
+                  persen >= 1 ? context.warna.aksen : context.warna.teks,
                 ),
               ),
             ),
@@ -271,7 +271,7 @@ class _OmsetServis extends ConsumerWidget {
                   ? 'Target ${_rpOmset.format(r.target)} sudah tercapai'
                   : 'Kurang ${_rpOmset.format(r.kurang)} dari target '
                         '${_rpOmset.format(r.target)}',
-              style: const TextStyle(fontSize: 11.5, color: AppColors.grey),
+              style: const TextStyle(fontSize: 11.5, color: context.warna.teksLembut),
             ),
           ],
         ),
@@ -292,7 +292,7 @@ class _PeriodeDropdown extends ConsumerWidget {
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.black),
+        border: Border.all(color: context.warna.teks),
         borderRadius: BorderRadius.circular(AppRadius.small),
       ),
       child: DropdownButtonHideUnderline(
@@ -306,7 +306,7 @@ class _PeriodeDropdown extends ConsumerWidget {
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.6,
-            color: AppColors.black,
+            color: context.warna.teks,
           ),
           onChanged: (v) => ref.read(periodeProvider.notifier).state = list
               .firstWhere((e) => e.label == v),

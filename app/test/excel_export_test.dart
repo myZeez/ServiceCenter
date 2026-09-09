@@ -491,6 +491,75 @@ void main() {
       expect(_latar(sheet, 1, 5), ExcelColor.red300);
     });
 
+    // -----------------------------------------------------------------
+    // Urutan baris. Laporan ini dibaca dari kolom pertamanya, dan
+    // sebelum ini urutannya diserahkan apa adanya ke urutan yang datang
+    // dari server -- tanggal masuk terbaru dulu, dan di dalam satu
+    // tanggal tidak ditentukan apa pun. Di kolom nomor nota hasilnya
+    // terbaca acak.
+    // -----------------------------------------------------------------
+
+    ServiceOrderEntry m(String noNota, {bool garansi = false}) =>
+        ServiceOrderEntry(
+          id: noNota,
+          noNota: noNota,
+          tanggalMasuk: DateTime(2026, 9, 1, 9, 0),
+          customerNama: noNota,
+          barangNama: 'Laptop Asus',
+          garansi: garansi,
+          status: 'diambil',
+          biaya: 100000,
+          updatedAt: DateTime(2026, 9, 1),
+        );
+
+    test('barisnya urut nomor nota, bukan urutan datangnya data', () {
+      final lembar = ExcelExport.lembarKeseluruhan(
+        nota: [
+          m('SRV-09092628265'),
+          m('SVR-08092628271'),
+          m('SRV-08092628249'),
+          m('SVR-07092628259'),
+        ],
+        teknisi: const {},
+        periode: 'September 2026',
+      );
+
+      expect(
+        lembar.tabel.single.baris
+            .map((r) => (r.first as TextCellValue).value.text)
+            .toList(),
+        [
+          'SRV-08092628249',
+          'SVR-07092628259',
+          'SRV-09092628265',
+          'SVR-08092628271',
+        ],
+      );
+    });
+
+    test('warnanya ikut pindah bersama barisnya', () {
+      // Warna disimpan sebagai daftar terpisah yang sejajar dengan
+      // barisnya. Kalau yang satu diurutkan dan yang lain tidak, hijau
+      // menempel pada nota yang salah -- dan tidak ada yang tampak keliru
+      // sampai seseorang membaca kolom STATUS-nya.
+      final lembar = ExcelExport.lembarKeseluruhan(
+        nota: [
+          m('SRV-09092628265'),
+          m('SRV-08092628249', garansi: true),
+          m('SVR-08092628271'),
+        ],
+        teknisi: const {},
+        periode: 'September 2026',
+      );
+      final t = lembar.tabel.single;
+
+      final iHijau = t.warnaBaris!.indexOf(ExcelColor.green300);
+      expect(
+        (t.baris[iHijau].first as TextCellValue).value.text,
+        'SRV-08092628249',
+      );
+    });
+
     test('seluruh sel di baris berwarna ikut berwarna', () {
       // Mewarnai sebagian kolom saja menghasilkan baris belang yang
       // terbaca sebagai dua baris berbeda saat dicetak.

@@ -16,3 +16,40 @@ final _tglNota = DateFormat('ddMMyy');
 /// terpotong diam-diam berubah arti.
 String contohNomorNota(int nomor, DateTime tanggal) =>
     'SRV-${_tglNota.format(tanggal)}${nomor.toString().padLeft(5, '0')}';
+
+/// Angka urut di ujung sebuah nomor nota, atau null kalau bentuknya tidak
+/// dikenal.
+///
+/// Bentuknya `SRV-DDMMYY` lalu angka urut, jadi enam angka pertama sesudah
+/// tanda hubung adalah tanggalnya, bukan urutannya.
+int? urutanNota(String noNota) {
+  final pisah = noNota.indexOf('-');
+  final angka = pisah < 0 ? noNota : noNota.substring(pisah + 1);
+  if (angka.length <= 6) return null;
+  return int.tryParse(angka.substring(6));
+}
+
+/// Membandingkan dua nomor nota menurut angka urutnya -- urutan buku toko.
+///
+/// Membandingkan seluruh teksnya begitu saja salah dua kali. Pertama,
+/// bagian tanggal di tengah ditulis DDMMYY, jadi tanggal 30 September
+/// berdiri sebelum 1 Oktober karena "30" mendahului "01". Kedua,
+/// awalannya tidak seragam: 3.009 nota lama dari buku toko memakai `SVR-`
+/// sementara yang diterbitkan aplikasi memakai `SRV-`, dan 'R' mendahului
+/// 'V' -- seluruh nota buatan aplikasi berbaris duluan, berapa pun
+/// nomornya.
+///
+/// Nomor yang tidak terbaca bentuknya ditaruh di belakang, diurutkan
+/// menurut teksnya sendiri. Nomor kembar -- ada beberapa, sisa dari saat
+/// penghitung aplikasi tertinggal dari buku -- juga jatuh ke situ, supaya
+/// urutannya tetap sama setiap kali laporannya dibuat.
+int bandingNomorNota(String a, String b) {
+  final ua = urutanNota(a);
+  final ub = urutanNota(b);
+
+  if (ua == null && ub != null) return 1;
+  if (ua != null && ub == null) return -1;
+  if (ua != null && ub != null && ua != ub) return ua.compareTo(ub);
+
+  return a.compareTo(b);
+}

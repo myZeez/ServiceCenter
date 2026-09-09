@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/export/excel_export.dart';
 import '../../core/data/models.dart';
 import '../../core/hari_laporan.dart';
+import '../../core/nota/nomor_nota.dart';
 import '../../core/omset/omset_providers.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
@@ -153,12 +154,12 @@ class _Harian extends ConsumerWidget {
     // sini.
     final keluar =
         semua.where((n) => _hariSama(n.tanggalSelesai, tanggal)).toList()
-          ..sort((a, b) => a.noNota.compareTo(b.noNota));
+          ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
     final masuk =
         semua
             .where((n) => hariLaporanSama(n.tanggalMasuk, tanggal, jamTutup))
             .toList()
-          ..sort((a, b) => a.noNota.compareTo(b.noNota));
+          ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
 
     final total = keluar.fold<double>(0, (a, n) => a + n.biaya);
 
@@ -841,7 +842,12 @@ class _Keseluruhan extends ConsumerWidget {
         p.id: p.nama,
     };
 
-    final nota = semua.where((n) => bulan.memuat(n.tanggalMasuk)).toList();
+    // Urut nomor nota, sama dengan berkas yang diekspor dari tombol di
+    // kanan atas. Layar dan berkasnya harus menampilkan baris yang sama
+    // pada urutan yang sama, kalau tidak yang mencocokkan keduanya
+    // membandingkan dua daftar yang tidak pernah sejajar.
+    final nota = semua.where((n) => bulan.memuat(n.tanggalMasuk)).toList()
+      ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
 
     final kodePiutang = {
       for (final m

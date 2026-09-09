@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../data/models.dart';
 import '../hari_laporan.dart';
+import '../nota/nomor_nota.dart';
 
 final _tgl = DateFormat('dd/MM/yyyy');
 final _bulanTahun = DateFormat('MMMM yyyy', 'id');
@@ -448,7 +449,13 @@ class ExcelExport {
     required Map<String, String> teknisi,
     required String periode,
   }) {
-    final total = nota.fold<double>(0, (a, n) => a + n.biaya);
+    // Urut nomor nota, seperti buku toko. Sebelumnya laporan ini
+    // memakai urutan apa adanya dari server -- tanggal masuk terbaru di
+    // atas -- dan di dalam satu tanggal urutannya tidak ditentukan apa
+    // pun, jadi nomornya tampak acak persis di kolom pertama.
+    final urut = [...nota]
+      ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
+    final total = urut.fold<double>(0, (a, n) => a + n.biaya);
 
     return LembarExcel(
       nama: 'Penerimaan Servis',
@@ -483,7 +490,7 @@ class ExcelExport {
             KolomExcel('STATUS'),
           ],
           baris: [
-            for (final n in nota)
+            for (final n in urut)
               [
                 TextCellValue(n.noNota),
                 TextCellValue(n.customerNama),
@@ -502,16 +509,16 @@ class ExcelExport {
                 TextCellValue(statusServis(n)),
               ],
           ],
-          warnaBaris: [for (final n in nota) warnaServis(n)],
+          warnaBaris: [for (final n in urut) warnaServis(n)],
           penutup: [
             for (var i = 0; i < 7; i++) null,
             DoubleCellValue(
-              nota
+              urut
                   .where((n) => n.tanggalLunas != null)
                   .fold<double>(0, (a, n) => a + n.biaya),
             ),
             DoubleCellValue(
-              nota
+              urut
                   .where((n) => n.tanggalLunas == null)
                   .fold<double>(0, (a, n) => a + n.biaya),
             ),
@@ -665,12 +672,12 @@ class ExcelExport {
   }) {
     final keluar =
         semua.where((n) => _hariSama(n.tanggalSelesai, tanggal)).toList()
-          ..sort((a, b) => a.noNota.compareTo(b.noNota));
+          ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
     final masuk =
         semua
             .where((n) => hariLaporanSama(n.tanggalMasuk, tanggal, jamTutup))
             .toList()
-          ..sort((a, b) => a.noNota.compareTo(b.noNota));
+          ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
 
     final judul = 'LAPORAN PERHARI TGL ${_tgl.format(tanggal)}';
     final total = keluar.fold<double>(0, (a, n) => a + n.biaya);

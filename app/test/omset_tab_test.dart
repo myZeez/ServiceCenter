@@ -38,7 +38,9 @@ List<ServiceOrderEntry> _nota() => [
     ),
 ];
 
-Future<void> _bukaTabOmset(WidgetTester tester) async {
+Future<void> _bukaTabOmset(WidgetTester tester) => _bukaTab(tester, 'OMSET');
+
+Future<void> _bukaTab(WidgetTester tester, String tab) async {
   await tester.binding.setSurfaceSize(const Size(1366, 768));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -61,15 +63,29 @@ Future<void> _bukaTabOmset(WidgetTester tester) async {
             ),
           ),
         ),
-        // Bulannya diikat supaya hasilnya tidak berubah bulan depan.
+        shipmentsProvider.overrideWith(
+          (ref) => Stream.value([
+            ShipmentEntry(
+              id: 'k1',
+              tanggalKirim: DateTime(2026, 9, 3),
+              dariCabang: 'CC PLK',
+              keCabang: 'CC PBUN',
+              barangNama: 'Laptop Asus X441',
+              status: 'ship',
+              updatedAt: DateTime(2026, 9, 3),
+            ),
+          ]),
+        ),
+        // Bulan dan tanggalnya diikat supaya hasilnya tidak berubah besok.
         bulanProvider.overrideWith((ref) => const Bulan(2026, 9)),
+        tanggalHarianProvider.overrideWith((ref) => DateTime(2026, 9, 5)),
       ],
       child: const MaterialApp(home: Scaffold(body: ServiceReportsView())),
     ),
   );
   await tester.pumpAndSettle();
 
-  await tester.tap(find.text('OMSET'));
+  await tester.tap(find.text(tab));
   await tester.pumpAndSettle();
 }
 
@@ -98,4 +114,40 @@ void main() {
     expect(find.text('Rp600.000'), findsOneWidget);
     expect(find.text('Rp350.000'), findsOneWidget);
   });
+
+  // -------------------------------------------------------------------
+  // Kelima tab dilukis satu per satu, dan isinya dituntut benar-benar
+  // tergambar -- bukan sekadar kepalanya.
+  //
+  // Ini pernah rusak sungguhan: satu perubahan pada kartu pembungkusnya
+  // membuat Pelunasan, Keseluruhan, dan Kirim kehilangan seluruh ruang
+  // vertikalnya. Kepala kartunya tetap menyebut "87 nota · Rp13.445.000",
+  // jadi dari luar tampak berisi; yang hilang justru tabelnya. Test OMSET
+  // di atas lulus terus, karena tab itulah satu-satunya yang diuji.
+  // -------------------------------------------------------------------
+  // Tiap tab punya penanda isinya sendiri: yang mendaftar nota memakai
+  // nama pelanggan, Omset memakai nama teknisi, Kirim memakai nama barang
+  // karena baris kirim tidak punya pelanggan.
+  const penanda = {
+    'HARIAN': 'Pelanggan',
+    'OMSET': 'Aris',
+    'PELUNASAN': 'Pelanggan',
+    'KESELURUHAN': 'Pelanggan',
+    'KIRIM': 'Laptop Asus',
+  };
+
+  for (final e in penanda.entries) {
+    testWidgets('tab ${e.key} menggambar isinya, bukan cuma kepalanya', (
+      tester,
+    ) async {
+      await _bukaTab(tester, e.key);
+
+      expect(tester.takeException(), isNull);
+      expect(
+        find.textContaining(e.value),
+        findsWidgets,
+        reason: 'isi tab ${e.key} tidak tergambar',
+      );
+    });
+  }
 }

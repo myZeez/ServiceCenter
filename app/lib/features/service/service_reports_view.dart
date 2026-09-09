@@ -271,7 +271,6 @@ class _KartuHarianKeluar extends StatelessWidget {
       ringkas: '${keluar.length} nota  ·  ${_rp.format(total)}',
       kosong: keluar.isEmpty,
       pesanKosong: 'Belum ada unit yang selesai pada tanggal ini.',
-      tinggi: double.infinity,
       child: _TabelHarian(
         kolom: const [
           (0, 'Nama', 2),
@@ -324,7 +323,6 @@ class _KartuHarianMasuk extends StatelessWidget {
       ringkas: '${masuk.length} unit diterima',
       kosong: masuk.isEmpty,
       pesanKosong: 'Belum ada unit yang masuk pada tanggal ini.',
-      tinggi: double.infinity,
       child: _TabelHarian(
         kolom: const [
           (0, 'Nama', 2),
@@ -526,10 +524,12 @@ class _Omset extends ConsumerWidget {
           kosong: hasil.teknisi.isEmpty,
           pesanKosong:
               'Belum ada pekerjaan selesai atas nama teknisi di bulan ini.',
-          // Tanpa tinggi tetap: daftarnya sepanjang jumlah orangnya.
-          // Dipotong pada 320 piksel, teknisi keempat dan seterusnya tidak
-          // terlihat sama sekali -- dan tidak ada tanda apa pun bahwa
-          // mereka ada di bawah sana. Yang menggulir halamannya.
+          // Satu-satunya kartu yang setinggi isinya, karena satu-satunya
+          // yang dipasang di dalam daftar bergulir. Daftarnya sepanjang
+          // jumlah orangnya: dipotong pada tinggi tetap, teknisi keempat
+          // dan seterusnya tidak tergambar sama sekali, dan tidak ada
+          // tanda apa pun bahwa mereka ada di bawah sana.
+          padat: true,
           child: ListView.separated(
             padding: EdgeInsets.zero,
             shrinkWrap: true,
@@ -1092,7 +1092,7 @@ class _Kartu extends StatelessWidget {
     required this.kosong,
     required this.pesanKosong,
     this.aksi,
-    this.tinggi,
+    this.padat = false,
   });
 
   final String judul;
@@ -1102,14 +1102,20 @@ class _Kartu extends StatelessWidget {
   final String pesanKosong;
   final Widget? aksi;
 
-  /// Tinggi tetap, dipakai hanya saat kartunya HARUS setinggi itu.
+  /// Kartunya setinggi isinya, bukan setinggi ruang yang tersedia.
   ///
-  /// Dibiarkan kosong berarti kartunya tumbuh mengikuti isinya. Itu yang
-  /// benar untuk daftar yang panjangnya ditentukan data -- daftar teknisi
-  /// yang dipotong pada tinggi tetap membuat orang terakhir tidak terlihat
-  /// sama sekali, dan tidak ada tanda apa pun bahwa ia ada di bawah sana.
-  /// Yang menggulir cukup halamannya, bukan kotak di dalam halaman.
-  final double? tinggi;
+  /// Hanya untuk kartu yang dipasang DI DALAM daftar bergulir -- di sana
+  /// tidak ada ruang tersisa untuk dibagi, dan isinya tidak boleh
+  /// dibungkus Expanded.
+  ///
+  /// Bawaannya memenuhi ruang, dan itu yang benar untuk sebagian besar
+  /// pemakainya. Sempat dibalik -- "tinggi kosong berarti setinggi isi" --
+  /// dan tiga tab sekaligus jadi kosong melompong: Pelunasan, Keseluruhan,
+  /// dan Kirim memasang kartunya langsung sebagai isi tab tanpa menyebut
+  /// tinggi, lalu daftarnya kehilangan seluruh ruang vertikalnya. Dua
+  /// keadaan yang berbeda ini tidak bisa dibedakan dari satu kolom yang
+  /// kebetulan kosong; ia harus disebut sendiri.
+  final bool padat;
 
   @override
   Widget build(BuildContext context) {
@@ -1127,7 +1133,9 @@ class _Kartu extends StatelessWidget {
         : child;
 
     return SizedBox(
-      height: tinggi,
+      // Tanpa tinggi tetap: kartu yang dipasang sebagai isi tab sudah
+      // menerima batas tingginya dari sana.
+      height: null,
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.white,
@@ -1137,10 +1145,7 @@ class _Kartu extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          // Tanpa tinggi tetap, kolomnya hanya setinggi isinya -- dan
-          // isinya TIDAK boleh dibungkus Expanded, karena tidak ada ruang
-          // tersisa untuk dibagi.
-          mainAxisSize: tinggi == null ? MainAxisSize.min : MainAxisSize.max,
+          mainAxisSize: padat ? MainAxisSize.min : MainAxisSize.max,
           children: [
             Container(
               padding: const EdgeInsets.fromLTRB(
@@ -1179,7 +1184,7 @@ class _Kartu extends StatelessWidget {
                 ],
               ),
             ),
-            if (tinggi == null) isi else Expanded(child: isi),
+            if (padat) isi else Expanded(child: isi),
           ],
         ),
       ),

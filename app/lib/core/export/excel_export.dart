@@ -395,7 +395,15 @@ class ExcelExport {
             KolomExcel('CASH', jenis: JenisKolom.rupiah),
             KolomExcel('PIUTANG', jenis: JenisKolom.rupiah),
             KolomExcel('PELUNASAN', jenis: JenisKolom.tanggal),
+            // Dua kolom, dua pertanyaan yang berbeda. Keterangan menjawab
+            // "apa yang dikerjakan", status menjawab "ditanggung siapa,
+            // dan unitnya sudah diambil belum". Keduanya sempat tertukar:
+            // kolom keterangan diisi "Service Garansi" dan "Biaya
+            // Service" -- jawaban atas pertanyaan yang kedua -- sementara
+            // perbaikan yang benar-benar dikerjakan tidak muncul di mana
+            // pun, padahal itulah yang dicari saat membaca ulang notanya.
             KolomExcel('KETERANGAN'),
+            KolomExcel('STATUS'),
           ],
           baris: [
             for (final n in nota)
@@ -413,7 +421,8 @@ class ExcelExport {
                 else
                   null,
                 _tanggal(n.tanggalLunas),
-                TextCellValue(_keteranganServis(n)),
+                TextCellValue(n.perbaikan ?? ''),
+                TextCellValue(statusServis(n)),
               ],
           ],
           penutup: [
@@ -436,11 +445,25 @@ class ExcelExport {
     );
   }
 
-  static String _keteranganServis(ServiceOrderEntry n) {
-    if (n.status == 'batal') return 'Service Cancel';
-    if (n.garansi) return 'Service Garansi';
-    if ((n.keterangan ?? '').isNotEmpty) return n.keterangan!;
-    return 'Biaya Service';
+  /// Kolom STATUS pada laporan penerimaan: ditanggung siapa, dan apakah
+  /// unitnya sudah diambil.
+  ///
+  /// Keduanya digabung dalam satu kalimat karena begitulah bentuknya di
+  /// lembar yang dipakai toko selama ini -- "Non Garansi (Barang Sudah
+  /// Diambil)".
+  ///
+  /// Nota batal berhenti di kata itu saja. Statusnya bukan 'diambil',
+  /// tetapi unitnya hampir selalu sudah dikembalikan; menuliskan "Barang
+  /// Belum Diambil" di sana berarti menyatakan sesuatu yang tidak
+  /// diketahui aplikasi ini.
+  static String statusServis(ServiceOrderEntry n) {
+    if (n.status == 'batal') return 'Cancel';
+
+    final tanggungan = n.garansi ? 'Garansi' : 'Non Garansi';
+    final diambil = n.status == 'diambil'
+        ? 'Barang Sudah Diambil'
+        : 'Barang Belum Diambil';
+    return '$tanggungan ($diambil)';
   }
 
   // ------------------------------------------------------------------

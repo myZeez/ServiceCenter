@@ -895,7 +895,9 @@ class _Keseluruhan extends ConsumerWidget {
               (0.0, n.keluhan ?? '—', false),
               (92.0, teknisi[n.teknisiId] ?? '—', false),
               (116.0, _bayar(n, kodePiutang), false),
-              (0.0, n.keterangan ?? '—', false),
+              // Perbaikan yang dikerjakan, bukan catatan status. Yang di
+              // ujung baris sudah menjawab garansi dan sudah-diambil.
+              (0.0, n.perbaikan ?? '—', false),
             ],
             akhiran: Row(
               mainAxisSize: MainAxisSize.min,

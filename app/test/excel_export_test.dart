@@ -351,4 +351,84 @@ void main() {
       expect(ExcelExport.keteranganHarian(n), 'Cancel');
     });
   });
+
+  // -------------------------------------------------------------------
+  // Laporan penerimaan punya DUA kolom yang menjawab dua pertanyaan
+  // berbeda, dan keduanya sempat tertukar: kolom keterangan diisi
+  // "Service Garansi" dan "Biaya Service" -- jawaban atas pertanyaan
+  // status -- sementara perbaikan yang benar-benar dikerjakan tidak
+  // muncul di mana pun.
+  // -------------------------------------------------------------------
+  group('Laporan penerimaan', () {
+    ServiceOrderEntry n({
+      String status = 'diambil',
+      bool garansi = false,
+      String? perbaikan = 'Biaya Pasang Keyboard',
+    }) => ServiceOrderEntry(
+      id: 'n1',
+      noNota: 'SVR-01092628100',
+      tanggalMasuk: DateTime(2026, 9, 1, 9, 0),
+      customerNama: 'Budi',
+      barangNama: 'Laptop Asus',
+      keluhan: 'Keyboard tidak fungsi',
+      perbaikan: perbaikan,
+      garansi: garansi,
+      status: status,
+      biaya: garansi ? 0 : 200000,
+      tanggalSelesai: DateTime(2026, 9, 3),
+      updatedAt: DateTime(2026, 9, 3),
+    );
+
+    test('status menyebut tanggungan dan apakah sudah diambil', () {
+      expect(
+        ExcelExport.statusServis(n()),
+        'Non Garansi (Barang Sudah Diambil)',
+      );
+      expect(
+        ExcelExport.statusServis(n(garansi: true)),
+        'Garansi (Barang Sudah Diambil)',
+      );
+      expect(
+        ExcelExport.statusServis(n(status: 'selesai')),
+        'Non Garansi (Barang Belum Diambil)',
+      );
+      expect(
+        ExcelExport.statusServis(n(status: 'dikerjakan', garansi: true)),
+        'Garansi (Barang Belum Diambil)',
+      );
+    });
+
+    test('nota batal berhenti di kata itu saja', () {
+      // Statusnya bukan 'diambil', tetapi unitnya hampir selalu sudah
+      // dikembalikan. Menuliskan "Barang Belum Diambil" berarti
+      // menyatakan sesuatu yang tidak diketahui aplikasi ini.
+      expect(ExcelExport.statusServis(n(status: 'batal')), 'Cancel');
+    });
+
+    test('keterangan berisi perbaikannya, status berdiri sendiri', () {
+      final lembar = ExcelExport.lembarKeseluruhan(
+        nota: [n()],
+        teknisi: const {},
+        periode: 'September 2026',
+      );
+      final t = lembar.tabel.single;
+
+      expect(
+        t.kolom.map((k) => k.judul),
+        containsAll(['KETERANGAN', 'STATUS']),
+      );
+
+      final iKet = t.kolom.indexWhere((k) => k.judul == 'KETERANGAN');
+      final iSts = t.kolom.indexWhere((k) => k.judul == 'STATUS');
+
+      expect(
+        (t.baris.single[iKet] as TextCellValue).value.text,
+        'Biaya Pasang Keyboard',
+      );
+      expect(
+        (t.baris.single[iSts] as TextCellValue).value.text,
+        'Non Garansi (Barang Sudah Diambil)',
+      );
+    });
+  });
 }

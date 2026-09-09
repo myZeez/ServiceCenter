@@ -110,9 +110,10 @@ void main() {
       expect(sel.cellStyle?.isBold, isTrue);
     });
 
-    test('tidak ada warna latar sama sekali', () {
-      // Laporan ini dicetak dan difoto. Warna latar yang bagus di layar
-      // jadi abu-abu kotor di kertas.
+    test('tidak berwarna kalau tidak diminta', () {
+      // Laporan ini dicetak dan difoto, dan warna yang bagus di layar jadi
+      // abu-abu kotor di kertas -- jadi warna hanya muncul di tabel yang
+      // memang memintanya lewat warnaBaris, tidak pernah sebagai bawaan.
       final sheet = _bolakBalik(_contoh());
       for (final baris in sheet.rows) {
         for (final sel in baris) {
@@ -430,5 +431,105 @@ void main() {
         'Non Garansi (Barang Sudah Diambil)',
       );
     });
+
+    // -----------------------------------------------------------------
+    // Bentuk yang diminta: satu kepala BIAYA menaungi Cash, Piutang, dan
+    // Pelunasan, dan baris bergaransi maupun batal diberi warna.
+    // -----------------------------------------------------------------
+
+    test('baris bergaransi hijau, batal merah, sisanya polos', () {
+      expect(ExcelExport.warnaServis(n()), isNull);
+      expect(ExcelExport.warnaServis(n(garansi: true)), ExcelColor.green300);
+      expect(ExcelExport.warnaServis(n(status: 'batal')), ExcelColor.red300);
+
+      // Nota garansi yang dibatalkan tetap merah, sama seperti kolom
+      // STATUS yang berhenti di kata "Cancel".
+      expect(
+        ExcelExport.warnaServis(n(status: 'batal', garansi: true)),
+        ExcelColor.red300,
+      );
+    });
+
+    LembarExcel lembar() => ExcelExport.lembarKeseluruhan(
+      nota: [n(), n(garansi: true), n(status: 'batal')],
+      teknisi: const {},
+      periode: 'September 2026',
+    );
+
+    test('BIAYA jadi satu kepala di atas Cash, Piutang, Pelunasan', () {
+      final sheet = _bolakBalik(lembar());
+
+      // Baris 0 judul lembar, 1 kepala grup, 2 nama kolom.
+      expect(_teks(sheet, 7, 1), 'BIAYA');
+      expect(_teks(sheet, 7, 2), 'CASH');
+      expect(_teks(sheet, 8, 2), 'PIUTANG');
+      expect(_teks(sheet, 9, 2), 'PELUNASAN');
+
+      expect(
+        _digabung(sheet, 7, 1, 9, 1),
+        isTrue,
+        reason: 'BIAYA tidak menaungi ketiga kolomnya',
+      );
+    });
+
+    test('kolom tanpa grup memakai kedua baris kepalanya', () {
+      final sheet = _bolakBalik(lembar());
+
+      // Kalau tidak digabung menurun, di bawah "NO NOTA" menganga kotak
+      // kosong sepanjang tabel.
+      expect(_teks(sheet, 0, 1), 'NO NOTA');
+      expect(_digabung(sheet, 0, 1, 0, 2), isTrue, reason: 'NO NOTA');
+      expect(_digabung(sheet, 11, 1, 11, 2), isTrue, reason: 'STATUS');
+    });
+
+    test('warnanya sampai ke dalam berkasnya', () {
+      final sheet = _bolakBalik(lembar());
+
+      // Data mulai di baris 3: judul, kepala grup, nama kolom.
+      expect(_latar(sheet, 1, 3), anyOf(isNull, ExcelColor.none));
+      expect(_latar(sheet, 1, 4), ExcelColor.green300);
+      expect(_latar(sheet, 1, 5), ExcelColor.red300);
+    });
+
+    test('seluruh sel di baris berwarna ikut berwarna', () {
+      // Mewarnai sebagian kolom saja menghasilkan baris belang yang
+      // terbaca sebagai dua baris berbeda saat dicetak.
+      final sheet = _bolakBalik(lembar());
+      for (var c = 0; c < 12; c++) {
+        expect(_latar(sheet, c, 4), ExcelColor.green300, reason: 'kolom $c');
+      }
+    });
   });
 }
+
+String? _teks(Sheet sheet, int kolom, int baris) {
+  final v = sheet
+      .cell(CellIndex.indexByColumnRow(columnIndex: kolom, rowIndex: baris))
+      .value;
+  return v is TextCellValue ? v.value.text : null;
+}
+
+ExcelColor? _latar(Sheet sheet, int kolom, int baris) => sheet
+    .cell(CellIndex.indexByColumnRow(columnIndex: kolom, rowIndex: baris))
+    .cellStyle
+    ?.backgroundColor;
+
+/// Apakah berkasnya benar-benar memuat penggabungan sel itu.
+///
+/// Dibaca ulang dari berkas hasilnya, bukan dari niat kodenya: penggabungan
+/// yang gagal tersimpan tidak menimbulkan galat apa pun -- hanya kepala
+/// tabel yang berantakan saat dibuka.
+bool _digabung(
+  Sheet sheet,
+  int kolomAwal,
+  int barisAwal,
+  int kolomAkhir,
+  int barisAkhir,
+) => sheet.spannedItems.map((e) => e.split(':')).any((e) {
+  final awal = CellIndex.indexByString(e.first);
+  final akhir = CellIndex.indexByString(e.last);
+  return awal.columnIndex == kolomAwal &&
+      awal.rowIndex == barisAwal &&
+      akhir.columnIndex == kolomAkhir &&
+      akhir.rowIndex == barisAkhir;
+});

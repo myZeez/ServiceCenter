@@ -73,11 +73,12 @@ class ExcelExport {
     bottomBorder: _garis,
   );
 
-  static CellStyle _gayaIsi(JenisKolom j) => CellStyle(
+  static CellStyle _gayaIsi(JenisKolom j, [ExcelColor? latar]) => CellStyle(
     fontSize: 9,
     horizontalAlign: _rata(j),
     verticalAlign: VerticalAlign.Center,
     numberFormat: _format(j),
+    backgroundColorHex: latar ?? ExcelColor.none,
     leftBorder: _garis,
     rightBorder: _garis,
     topBorder: _garis,
@@ -114,6 +115,19 @@ class ExcelExport {
     sel.cellStyle = gaya;
   }
 
+  /// Menempelkan gaya tanpa menyentuh isi selnya.
+  ///
+  /// Sel yang tertutup penggabungan tidak boleh diberi nilai -- termasuk
+  /// null. Menulis ke dalam rentang gabungan selalu dialihkan ke sel
+  /// jangkarnya, jadi satu null di sel yang tertutup menghapus judul yang
+  /// baru saja ditulis di sudut kirinya. Yang tersisa kepala tabel kosong,
+  /// tanpa galat apa pun -- dan itu baru terlihat saat berkasnya dibuka.
+  static void _gaya(Sheet sheet, int kolom, int baris, CellStyle gaya) {
+    sheet
+        .cell(CellIndex.indexByColumnRow(columnIndex: kolom, rowIndex: baris))
+        .cellStyle = gaya;
+  }
+
   /// Berapa karakter yang ditempati sebuah nilai saat ditampilkan. Dipakai
   /// untuk menentukan lebar kolom, supaya tidak ada yang muncul sebagai
   /// "#####" atau terpotong saat berkasnya dibuka.
@@ -124,6 +138,56 @@ class ExcelExport {
     DateCellValue _ => 10,
     _ => 0,
   };
+
+  static void _gabung(
+    Sheet sheet,
+    int kolomAwal,
+    int barisAwal,
+    int kolomAkhir,
+    int barisAkhir,
+  ) => sheet.merge(
+    CellIndex.indexByColumnRow(columnIndex: kolomAwal, rowIndex: barisAwal),
+    CellIndex.indexByColumnRow(columnIndex: kolomAkhir, rowIndex: barisAkhir),
+  );
+
+  /// Kepala kolom dua tingkat: baris atas untuk nama grup, baris bawah
+  /// untuk nama kolomnya sendiri.
+  ///
+  /// Penggabungannya dilakukan lebih dulu, baru selnya diisi. Urutan itu
+  /// bukan selera: merge menghapus seluruh sel di dalam rentangnya, jadi
+  /// kalau dibalik, sel yang tertutup kehilangan garisnya dan kotak
+  /// gabungannya tampak bocor di sisi kanan bawah saat dicetak.
+  static void _kepalaBertingkat(Sheet sheet, TabelExcel t, int atas) {
+    final bawah = atas + 1;
+    var c = 0;
+
+    while (c < t.kolom.length) {
+      final grup = t.kolom[c].grup;
+
+      if (grup == null) {
+        // Tanpa grup, judulnya menempati kedua baris sekaligus supaya
+        // tidak ada kotak kosong menggantung di bawahnya.
+        _gabung(sheet, c, atas, c, bawah);
+        _sel(sheet, c, atas, TextCellValue(t.kolom[c].judul), _gayaKepala());
+        _gaya(sheet, c, bawah, _gayaKepala());
+        c++;
+        continue;
+      }
+
+      var akhir = c;
+      while (akhir + 1 < t.kolom.length && t.kolom[akhir + 1].grup == grup) {
+        akhir++;
+      }
+
+      _gabung(sheet, c, atas, akhir, atas);
+      _sel(sheet, c, atas, TextCellValue(grup), _gayaKepala());
+      for (var k = c; k <= akhir; k++) {
+        if (k > c) _gaya(sheet, k, atas, _gayaKepala());
+        _sel(sheet, k, bawah, TextCellValue(t.kolom[k].judul), _gayaKepala());
+      }
+      c = akhir + 1;
+    }
+  }
 
   /// Menulis satu tabel mulai dari [mulai], mengembalikan baris kosong
   /// pertama sesudahnya.
@@ -148,20 +212,30 @@ class ExcelExport {
     }
 
     final barisKepala = baris;
-    for (var c = 0; c < t.kolom.length; c++) {
-      _sel(sheet, c, baris, TextCellValue(t.kolom[c].judul), _gayaKepala());
+    if (t.kolom.any((k) => k.grup != null)) {
+      _kepalaBertingkat(sheet, t, baris);
+      sheet.setRowHeight(baris, 18);
+      sheet.setRowHeight(baris + 1, 26);
+      baris += 2;
+    } else {
+      for (var c = 0; c < t.kolom.length; c++) {
+        _sel(sheet, c, baris, TextCellValue(t.kolom[c].judul), _gayaKepala());
+      }
+      sheet.setRowHeight(baris, 26);
+      baris++;
     }
-    sheet.setRowHeight(baris, 26);
-    baris++;
 
-    for (final r in t.baris) {
+    for (var r = 0; r < t.baris.length; r++) {
+      final isi = t.baris[r];
+      final warna = t.warnaBaris;
+      final latar = warna != null && r < warna.length ? warna[r] : null;
       for (var c = 0; c < t.kolom.length; c++) {
         _sel(
           sheet,
           c,
           baris,
-          c < r.length ? r[c] : null,
-          _gayaIsi(t.kolom[c].jenis),
+          c < isi.length ? isi[c] : null,
+          _gayaIsi(t.kolom[c].jenis, latar),
         );
       }
       baris++;
@@ -392,9 +466,12 @@ class ExcelExport {
             KolomExcel('KERUSAKAN'),
             KolomExcel('TEKNISI', jenis: JenisKolom.kode),
             KolomExcel('TGL SELESAI', jenis: JenisKolom.tanggal),
-            KolomExcel('CASH', jenis: JenisKolom.rupiah),
-            KolomExcel('PIUTANG', jenis: JenisKolom.rupiah),
-            KolomExcel('PELUNASAN', jenis: JenisKolom.tanggal),
+            // Ketiganya satu pertanyaan yang dipecah tiga -- berapa,
+            // sudah masuk atau belum, dan kapan masuknya -- jadi
+            // dinaungi satu kepala bersama seperti di lembar toko.
+            KolomExcel('CASH', jenis: JenisKolom.rupiah, grup: 'BIAYA'),
+            KolomExcel('PIUTANG', jenis: JenisKolom.rupiah, grup: 'BIAYA'),
+            KolomExcel('PELUNASAN', jenis: JenisKolom.tanggal, grup: 'BIAYA'),
             // Dua kolom, dua pertanyaan yang berbeda. Keterangan menjawab
             // "apa yang dikerjakan", status menjawab "ditanggung siapa,
             // dan unitnya sudah diambil belum". Keduanya sempat tertukar:
@@ -425,6 +502,7 @@ class ExcelExport {
                 TextCellValue(statusServis(n)),
               ],
           ],
+          warnaBaris: [for (final n in nota) warnaServis(n)],
           penutup: [
             for (var i = 0; i < 7; i++) null,
             DoubleCellValue(
@@ -456,6 +534,25 @@ class ExcelExport {
   /// tetapi unitnya hampir selalu sudah dikembalikan; menuliskan "Barang
   /// Belum Diambil" di sana berarti menyatakan sesuatu yang tidak
   /// diketahui aplikasi ini.
+  /// Warna latar satu baris laporan penerimaan.
+  ///
+  /// Merah untuk nota batal, hijau untuk unit bergaransi, sisanya polos --
+  /// bentuk yang sudah dipakai lembar toko selama ini. Yang membacanya
+  /// mencari baris berwarna lebih dulu, sebelum membaca satu kata pun,
+  /// karena keduanyalah baris yang uangnya tidak masuk.
+  ///
+  /// Batal diperiksa duluan: nota garansi yang dibatalkan tetap merah,
+  /// sama seperti kolom STATUS yang berhenti di kata "Cancel".
+  ///
+  /// Nadanya sengaja satu tingkat lebih muda dari hijau dan merah penuh.
+  /// Laporan ini dicetak lalu difoto, dan tulisan hitam 9pt di atas warna
+  /// pekat lebih sering hilang daripada terbaca.
+  static ExcelColor? warnaServis(ServiceOrderEntry n) {
+    if (n.status == 'batal') return ExcelColor.red300;
+    if (n.garansi) return ExcelColor.green300;
+    return null;
+  }
+
   static String statusServis(ServiceOrderEntry n) {
     if (n.status == 'batal') return 'Cancel';
 
@@ -838,13 +935,29 @@ enum JenisKolom {
 
 /// Satu kolom pada tabel.
 class KolomExcel {
-  const KolomExcel(this.judul, {this.jenis = JenisKolom.teks, this.lebar});
+  const KolomExcel(
+    this.judul, {
+    this.jenis = JenisKolom.teks,
+    this.lebar,
+    this.grup,
+  });
 
   final String judul;
   final JenisKolom jenis;
 
   /// Lebar tetap. Kosongkan agar dihitung dari isi terpanjangnya.
   final double? lebar;
+
+  /// Nama kepala gabungan di atas kolom ini.
+  ///
+  /// Kolom berurutan yang grupnya sama dinaungi satu kotak bersama --
+  /// "BIAYA" di atas Cash, Piutang, dan Pelunasan. Ketiganya memang satu
+  /// pertanyaan yang dipecah tiga, dan dibaca begitu di lembar yang
+  /// dipakai toko.
+  ///
+  /// Kolom tanpa grup kepalanya digabung menurun melintasi kedua baris,
+  /// supaya tingginya sama dan tidak ada kotak kosong menggantung.
+  final String? grup;
 }
 
 /// Satu tabel: judul, kepala kolom, isi, dan baris penutupnya.
@@ -854,11 +967,21 @@ class TabelExcel {
     required this.baris,
     this.judul,
     this.penutup,
+    this.warnaBaris,
   });
 
   final String? judul;
   final List<KolomExcel> kolom;
   final List<List<CellValue?>> baris;
+
+  /// Warna latar tiap baris, sejajar dengan [baris]. Null berarti tanpa
+  /// warna.
+  ///
+  /// Dipakai laporan penerimaan: hijau untuk unit garansi, merah untuk
+  /// yang dibatalkan. Bentuk itu datang dari lembar yang sudah dipakai
+  /// toko bertahun-tahun -- yang membacanya mencari baris berwarna lebih
+  /// dulu, sebelum membaca satu kata pun.
+  final List<ExcelColor?>? warnaBaris;
 
   /// Baris penutup, biasanya total. Menempel langsung di bawah data.
   final List<CellValue?>? penutup;

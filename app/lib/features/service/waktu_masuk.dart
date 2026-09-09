@@ -36,11 +36,11 @@ class SelMasuk extends StatelessWidget {
     children: [
       Text(
         _tgl.format(saat),
-        style: const TextStyle(fontSize: 13, color: context.warna.teks),
+        style: TextStyle(fontSize: 13, color: context.warna.teks),
       ),
       Text(
         _jam.format(saat),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           height: 1.35,
           color: context.warna.teksLembut,

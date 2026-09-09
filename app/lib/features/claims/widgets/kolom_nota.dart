@@ -76,7 +76,7 @@ class KolomNota extends StatelessWidget {
               onFieldSubmitted: (_) => onSubmit(),
               decoration: InputDecoration(
                 suffixIcon: terpilih == null
-                    ? const Icon(Icons.search, size: 17, color: context.warna.teksLembut)
+                    ? Icon(Icons.search, size: 17, color: context.warna.teksLembut)
                     : IconButton(
                         tooltip: 'Lepas tautan nota',
                         iconSize: 16,
@@ -95,7 +95,7 @@ class KolomNota extends StatelessWidget {
                 color: context.warna.permukaan,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.base),
-                  side: const BorderSide(color: context.warna.teks),
+                  side: BorderSide(color: context.warna.teks),
                 ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(
@@ -147,7 +147,7 @@ class KolomNota extends StatelessWidget {
                                 ].join('  ·  '),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
                                   color: context.warna.teksLembut,
                                 ),
@@ -167,8 +167,8 @@ class KolomNota extends StatelessWidget {
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.all(AppSpacing.xs),
-            decoration: const BoxDecoration(
-              color: Color(0x0D0033A0),
+            decoration: BoxDecoration(
+              color: const Color(0x0D0033A0),
               border: Border(left: BorderSide(color: context.warna.aksen, width: 3)),
             ),
             child: Column(
@@ -176,12 +176,12 @@ class KolomNota extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.link, size: 12, color: context.warna.aksen),
+                    Icon(Icons.link, size: 12, color: context.warna.aksen),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         'Tertaut ke nota ${terpilih!.noNota}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.4,
@@ -195,7 +195,7 @@ class KolomNota extends StatelessWidget {
                 // Disebutkan sebelum disimpan, bukan sesudah. Perubahan
                 // yang merembet ke layar lain harus terbaca di tempat
                 // orang memutuskannya.
-                const Text(
+                Text(
                   'Begitu klaim ini disimpan, nota itu ditandai bergaransi '
                   'dan statusnya berjalan bersama klaim ini.',
                   style: TextStyle(

@@ -95,11 +95,11 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           const SizedBox(height: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.all(AppSpacing.s),
-            decoration: const BoxDecoration(
-              color: Color(0x0D0033A0),
+            decoration: BoxDecoration(
+              color: const Color(0x0D0033A0),
               border: Border(left: BorderSide(color: context.warna.aksen, width: 3)),
             ),
-            child: const Text(
+            child: Text(
               'Perubahan di halaman ini berlaku untuk semua perangkat dan '
               'membutuhkan koneksi internet.',
               style: TextStyle(fontSize: 12, color: context.warna.aksen),
@@ -339,7 +339,7 @@ class _UserRow extends ConsumerWidget {
             // Admin tidak boleh menonaktifkan atau menurunkan dirinya
             // sendiri. Tanpa ini, satu klik keliru bisa membuat sistem
             // tidak punya admin sama sekali.
-            const Tooltip(
+            Tooltip(
               message: 'Akun sendiri tidak bisa diubah dari sini',
               child: Icon(Icons.lock_outline, size: 15, color: context.warna.teksLembut),
             )
@@ -601,7 +601,7 @@ class _MasterRow extends StatelessWidget {
                 if (subtitle != null)
                   Text(
                     subtitle!,
-                    style: const TextStyle(fontSize: 12, color: context.warna.teksLembut),
+                    style: TextStyle(fontSize: 12, color: context.warna.teksLembut),
                     overflow: TextOverflow.ellipsis,
                   ),
               ],
@@ -659,7 +659,7 @@ class _CardEmpty extends StatelessWidget {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: const TextStyle(color: context.warna.teksLembut, fontSize: 13),
+        style: TextStyle(color: context.warna.teksLembut, fontSize: 13),
       ),
     ),
   );
@@ -914,7 +914,7 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
         FilledButton(
           onPressed: _busy ? null : _submit,
           child: _busy
-              ? const SizedBox(
+              ? SizedBox(
                   height: 14,
                   width: 14,
                   child: CircularProgressIndicator(
@@ -937,13 +937,13 @@ class _Notice extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(AppSpacing.xs),
-    decoration: const BoxDecoration(
-      color: Color(0x0DD82C2C),
+    decoration: BoxDecoration(
+      color: const Color(0x0DD82C2C),
       border: Border(left: BorderSide(color: context.warna.bahaya, width: 3)),
     ),
     child: Text(
       text,
-      style: const TextStyle(color: context.warna.bahaya, fontSize: 12, height: 1.4),
+      style: TextStyle(color: context.warna.bahaya, fontSize: 12, height: 1.4),
     ),
   );
 }

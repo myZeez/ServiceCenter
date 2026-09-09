@@ -96,7 +96,7 @@ void main() {
       ProviderScope(
         overrides: _dasar(),
         child: MaterialApp(
-          theme: AppTheme.build(),
+          theme: AppTheme.terang(),
           home: const ClaimFormPage(),
         ),
       ),
@@ -122,7 +122,7 @@ void main() {
       ProviderScope(
         overrides: _dasar(),
         child: MaterialApp(
-          theme: AppTheme.build(),
+          theme: AppTheme.terang(),
           home: const ClaimFormPage(),
         ),
       ),
@@ -159,7 +159,7 @@ void main() {
           ),
         ],
         child: MaterialApp(
-          theme: AppTheme.build(),
+          theme: AppTheme.terang(),
           home: const ClaimDetailPage('k1'),
         ),
       ),
@@ -192,7 +192,7 @@ void main() {
           serviceOrdersProvider.overrideWith((ref) => Stream.value([_nota()])),
         ],
         child: MaterialApp(
-          theme: AppTheme.build(),
+          theme: AppTheme.terang(),
           home: const ClaimDetailPage('k1'),
         ),
       ),

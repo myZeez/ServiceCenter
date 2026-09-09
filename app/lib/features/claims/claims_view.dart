@@ -63,7 +63,7 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
                   controller: _search,
                   decoration: InputDecoration(
                     hintText: 'Cari nama, SN, RMA, telp',
-                    prefixIcon: const Icon(
+                    prefixIcon: Icon(
                       Icons.search,
                       size: 17,
                       color: context.warna.teksLembut,
@@ -125,7 +125,7 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
                   child: StatTile(
                     value: '${counts[s] ?? 0}',
                     label: ClaimStatus.label(s),
-                    accent: ClaimStatus.color(s),
+                    accent: ClaimStatus.color(context, s),
                     selected: filter.status == s,
                     onTap: () => ref
                         .read(claimFilterProvider.notifier)

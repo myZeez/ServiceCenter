@@ -40,11 +40,11 @@ LembarExcel _contoh({String? judul, List<CellValue?>? penutup}) => LembarExcel(
       ],
       baris: [
         [
-          DateCellValue(year: 2026, month: 9, day: 4),
+          const DateCellValue(year: 2026, month: 9, day: 4),
           TextCellValue('Budi'),
-          DoubleCellValue(150000),
+          const DoubleCellValue(150000),
         ],
-        [null, TextCellValue('Sari'), DoubleCellValue(90000)],
+        [null, TextCellValue('Sari'), const DoubleCellValue(90000)],
       ],
       penutup: penutup,
     ),
@@ -235,7 +235,7 @@ void main() {
     test('menempel di bawah data dengan garis', () {
       final sheet = _bolakBalik(
         _contoh(
-          penutup: [null, TextCellValue('TOTAL'), DoubleCellValue(240000)],
+          penutup: [null, TextCellValue('TOTAL'), const DoubleCellValue(240000)],
         ),
       );
       final total = sheet.cell(

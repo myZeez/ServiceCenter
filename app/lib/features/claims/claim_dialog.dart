@@ -423,7 +423,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
         AppSpacing.s,
         AppSpacing.s,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: context.warna.teks, width: 1.5)),
       ),
       child: Row(
@@ -458,8 +458,8 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
             const SizedBox(width: AppSpacing.s),
           ],
           if (!isAdmin && !widget.isNew)
-            const Padding(
-              padding: EdgeInsets.only(right: AppSpacing.xs),
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.xs),
               child: Tooltip(
                 message:
                     'Kamu bisa ubah status, catatan, teknisi, dan '
@@ -839,9 +839,9 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
         AppSpacing.sm,
         AppSpacing.s,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: context.warna.teredam,
-        border: Border(top: BorderSide(color: Color(0xFFE4E7E7))),
+        border: const Border(top: BorderSide(color: Color(0xFFE4E7E7))),
       ),
       child: Row(
         children: [
@@ -861,7 +861,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
           FilledButton(
             onPressed: _busy ? null : (editable ? _save : _saveTeknisiScope),
             child: _busy
-                ? const SizedBox(
+                ? SizedBox(
                     height: 14,
                     width: 14,
                     child: CircularProgressIndicator(

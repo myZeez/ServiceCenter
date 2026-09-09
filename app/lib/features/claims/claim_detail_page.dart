@@ -265,8 +265,8 @@ class ClaimDetailPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.s),
                   if (parts.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: AppSpacing.s),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.s),
                       child: Text(
                         'Tidak ada part yang diklaim.',
                         style: TextStyle(color: context.warna.teksLembut),
@@ -847,7 +847,7 @@ class _PartEditDialogState extends State<_PartEditDialog> {
               const SizedBox(height: AppSpacing.xs),
               Text(
                 _error!,
-                style: const TextStyle(color: context.warna.bahaya, fontSize: 12),
+                style: TextStyle(color: context.warna.bahaya, fontSize: 12),
               ),
             ],
           ],

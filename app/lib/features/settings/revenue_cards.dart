@@ -935,7 +935,7 @@ class _MethodOption extends StatelessWidget {
                             vertical: 1,
                           ),
                           color: context.warna.bahaya,
-                          child: const Text(
+                          child: Text(
                             'SARAN',
                             style: TextStyle(
                               fontSize: 8,
@@ -951,7 +951,7 @@ class _MethodOption extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       height: 1.35,
                       color: context.warna.teksLembut,
@@ -979,7 +979,7 @@ class _CardMessage extends StatelessWidget {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: const TextStyle(color: context.warna.teksLembut, fontSize: 12),
+        style: TextStyle(color: context.warna.teksLembut, fontSize: 12),
       ),
     ),
   );

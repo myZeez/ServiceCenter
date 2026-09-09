@@ -575,7 +575,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         AppSpacing.s,
         AppSpacing.s,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: context.warna.teks, width: 1.5)),
       ),
       child: Row(
@@ -1179,9 +1179,9 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         AppSpacing.sm,
         AppSpacing.s,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: context.warna.teredam,
-        border: Border(top: BorderSide(color: Color(0xFFE4E7E7))),
+        border: const Border(top: BorderSide(color: Color(0xFFE4E7E7))),
       ),
       child: Row(
         children: [
@@ -1189,7 +1189,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             child: _error != null
                 ? Text(
                     _error!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: context.warna.bahaya,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -1223,7 +1223,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
           FilledButton(
             onPressed: _busy ? null : _simpan,
             child: _busy
-                ? const SizedBox(
+                ? SizedBox(
                     height: 14,
                     width: 14,
                     child: CircularProgressIndicator(

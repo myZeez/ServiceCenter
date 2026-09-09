@@ -10,9 +10,9 @@ class ReportsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: context.warna.teredam,
-      body: SafeArea(child: ReportsView()),
+      body: const SafeArea(child: ReportsView()),
     );
   }
 }

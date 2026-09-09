@@ -434,7 +434,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
         AppSpacing.s,
         AppSpacing.s,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: context.warna.teks, width: 1.5)),
       ),
       child: Row(
@@ -704,7 +704,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
           const SizedBox(height: AppSpacing.xs),
           Container(
             padding: const EdgeInsets.all(AppSpacing.xs),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: context.warna.teredam,
               border: Border(
                 left: BorderSide(color: context.warna.teks, width: 3),
@@ -714,7 +714,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
               'Untung ${_rp.format(margin(hpp, harga))}'
               '${upNyata == null ? '' : '  ·  ${_persen.format(upNyata)}% '
                         'dari modal'}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
                 color: context.warna.teks,
@@ -994,9 +994,9 @@ class _PartDialogState extends ConsumerState<PartDialog> {
         AppSpacing.sm,
         AppSpacing.s,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: context.warna.teredam,
-        border: Border(top: BorderSide(color: Color(0xFFE4E7E7))),
+        border: const Border(top: BorderSide(color: Color(0xFFE4E7E7))),
       ),
       child: Row(
         children: [
@@ -1004,7 +1004,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
             child: _error != null
                 ? Text(
                     _error!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: context.warna.bahaya,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -1023,7 +1023,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
           FilledButton(
             onPressed: _busy ? null : _simpan,
             child: _busy
-                ? const SizedBox(
+                ? SizedBox(
                     height: 14,
                     width: 14,
                     child: CircularProgressIndicator(

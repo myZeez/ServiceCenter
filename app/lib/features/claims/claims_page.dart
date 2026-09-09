@@ -44,7 +44,7 @@ class ClaimsPage extends ConsumerWidget {
             if (profile != null)
               Text(
                 '${profile.nama} — ${profile.role}'.toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.8,
@@ -196,7 +196,7 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
     final counts = ref.watch(statusCountsProvider).valueOrNull ?? const {};
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: context.warna.teks)),
       ),
       padding: const EdgeInsets.fromLTRB(
@@ -211,7 +211,7 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
             controller: _search,
             decoration: InputDecoration(
               hintText: 'Cari nama, SN, RMA, telp',
-              prefixIcon: const Icon(
+              prefixIcon: Icon(
                 Icons.search,
                 size: 18,
                 color: context.warna.teksLembut,
@@ -324,7 +324,7 @@ class _FilterDropdown<T> extends StatelessWidget {
           // dropdown mendapat fokus -- terlihat seperti kerusakan tampilan.
           focusColor: Colors.transparent,
           icon: const Icon(Icons.expand_more, size: 16),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10.5,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.4,
@@ -417,7 +417,7 @@ class _ClaimCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     _dateFmt.format(claim.tanggal),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
                       letterSpacing: 0.4,
@@ -438,7 +438,7 @@ class _ClaimCard extends StatelessWidget {
               const SizedBox(height: 1),
               Text(
                 claim.sn,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: context.warna.teksLembut,
                   letterSpacing: 0.3,
@@ -478,7 +478,7 @@ class _ClaimCard extends StatelessWidget {
                   if ((claim.noPerbaikan ?? '').isNotEmpty)
                     Text(
                       claim.noPerbaikan!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         letterSpacing: 0.5,
                         color: context.warna.teksLembut,

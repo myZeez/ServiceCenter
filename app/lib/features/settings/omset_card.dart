@@ -95,13 +95,13 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
           children: [
             Container(
               padding: const EdgeInsets.all(AppSpacing.xs),
-              decoration: const BoxDecoration(
-                color: Color(0x0D0033A0),
+              decoration: BoxDecoration(
+                color: const Color(0x0D0033A0),
                 border: Border(
                   left: BorderSide(color: context.warna.aksen, width: 3),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'Ini jasa yang dibayar pelanggan, bukan fee garansi dari '
                 'brand. Keduanya dihitung terpisah dan tidak saling memotong.',
                 style: TextStyle(
@@ -125,7 +125,7 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
                 decoration: InputDecoration(
                   prefixText: 'Rp ',
                   helperText: _n(_target) == 0 ? null : _rp.format(_n(_target)),
-                  helperStyle: const TextStyle(
+                  helperStyle: TextStyle(
                     fontSize: 10.5,
                     color: context.warna.teksLembut,
                   ),
@@ -150,7 +150,7 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
                       ? 'Nol berarti admin tidak menerima fee per nota'
                       : '${_rp.format(_n(_feeAdmin))} × 40 nota = '
                             '${_rp.format(_n(_feeAdmin) * 40)}',
-                  helperStyle: const TextStyle(
+                  helperStyle: TextStyle(
                     fontSize: 10.5,
                     color: context.warna.teksLembut,
                   ),

@@ -10,9 +10,9 @@ class SettlementPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: context.warna.teredam,
-      body: SafeArea(child: SettlementView()),
+      body: const SafeArea(child: SettlementView()),
     );
   }
 }

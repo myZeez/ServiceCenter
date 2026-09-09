@@ -88,14 +88,14 @@ class _PartOrdersViewState extends ConsumerState<PartOrdersView> {
                 width: 260,
                 child: TextField(
                   controller: _search,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Cari nama, part, tipe, SN',
                     prefixIcon: Icon(
                       Icons.search,
                       size: 17,
                       color: context.warna.teksLembut,
                     ),
-                    prefixIconConstraints: BoxConstraints(minWidth: 36),
+                    prefixIconConstraints: const BoxConstraints(minWidth: 36),
                   ),
                   onChanged: (v) => ref
                       .read(_pesananFilterProvider.notifier)
@@ -151,7 +151,7 @@ class _PartOrdersViewState extends ConsumerState<PartOrdersView> {
                   child: StatTile(
                     value: '${perTahap[t] ?? 0}',
                     label: PartTahap.label(t),
-                    accent: PartTahap.color(t),
+                    accent: PartTahap.color(context, t),
                     selected: filter.tahap == t,
                     onTap: () => ref
                         .read(_pesananFilterProvider.notifier)
@@ -277,7 +277,7 @@ class _Tabel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(color: context.warna.teks, width: 1.5),
                 ),
@@ -453,4 +453,7 @@ class _BarisState extends State<_Baris> {
   }
 }
 
-const _sel = TextStyle(fontSize: 13, color: context.warna.teks);
+/// Warnanya sengaja tidak disebut: yang tidak menyebut warna mewarisi
+/// warna teks dari tema yang sedang berlaku, dan itulah yang membuat sel
+/// ini benar di terang maupun gelap.
+const _sel = TextStyle(fontSize: 13);

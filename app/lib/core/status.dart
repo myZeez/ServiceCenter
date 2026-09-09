@@ -20,18 +20,6 @@ class ClaimStatus {
     batal: 'Batal',
   };
 
-  // Palet Swiss hanya punya tiga warna kerja, jadi pembeda status memakai
-  // warna DAN isian. Yang menuntut tindakan diberi bobot visual paling
-  // besar; yang sudah selesai sengaja mundur ke belakang supaya perhatian
-  // jatuh ke pekerjaan yang masih berjalan.
-  static const _colors = {
-    open: context.warna.aksen,
-    proses: context.warna.aksen,
-    tungguPart: context.warna.bahaya,
-    close: context.warna.teks,
-    batal: context.warna.teksLembut,
-  };
-
   static const _filled = {
     open: false,
     proses: true,
@@ -41,8 +29,27 @@ class ClaimStatus {
   };
 
   static String label(String s) => _labels[s] ?? s;
-  static Color color(String s) => _colors[s] ?? context.warna.teksLembut;
   static bool isFilled(String s) => _filled[s] ?? false;
+
+  /// Warna status, diambil dari palet yang sedang berlaku.
+  ///
+  /// Dulu ini peta tetap. Peta tetap tidak bisa lagi menampung warnanya
+  /// begitu ada dua tema: warna yang sama harus berbeda rupanya di siang
+  /// dan malam, dan yang tetap hanyalah perannya.
+  ///
+  /// Pembeda status memakai warna DAN isian, karena paletnya cuma punya
+  /// tiga warna kerja. Yang menuntut tindakan diberi bobot visual paling
+  /// besar; yang sudah selesai sengaja mundur ke belakang supaya perhatian
+  /// jatuh ke pekerjaan yang masih berjalan.
+  static Color color(BuildContext context, String s) {
+    final w = context.warna;
+    return switch (s) {
+      open || proses => w.aksen,
+      tungguPart => w.bahaya,
+      close => w.teks,
+      _ => w.teksLembut,
+    };
+  }
 }
 
 class StatusChip extends StatelessWidget {
@@ -53,7 +60,7 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = ClaimStatus.color(status);
+    final c = ClaimStatus.color(context, status);
     final filled = ClaimStatus.isFilled(status);
 
     return Container(

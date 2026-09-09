@@ -177,7 +177,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
                       AppSpacing.s,
                       AppSpacing.s,
                     ),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(color: context.warna.teks, width: 1.5),
                       ),
@@ -422,9 +422,9 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
         AppSpacing.sm,
         AppSpacing.s,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: context.warna.teredam,
-        border: Border(top: BorderSide(color: Color(0xFFE4E7E7))),
+        border: const Border(top: BorderSide(color: Color(0xFFE4E7E7))),
       ),
       child: Row(
         children: [
@@ -433,7 +433,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
                 ? const SizedBox.shrink()
                 : Text(
                     _error!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: context.warna.bahaya,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -448,7 +448,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
           FilledButton(
             onPressed: _busy ? null : _simpan,
             child: _busy
-                ? const SizedBox(
+                ? SizedBox(
                     height: 14,
                     width: 14,
                     child: CircularProgressIndicator(

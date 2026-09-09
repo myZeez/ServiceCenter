@@ -124,7 +124,7 @@ class _Corner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const side = BorderSide(color: context.warna.bahaya, width: 3);
+    final side = BorderSide(color: context.warna.bahaya, width: 3);
     final top = alignment.y < 0;
     final left = alignment.x < 0;
 
@@ -160,13 +160,13 @@ class _TopBar extends StatelessWidget {
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.close, color: context.warna.permukaan),
+              icon: Icon(Icons.close, color: context.warna.permukaan),
               onPressed: () => Navigator.of(context).pop(),
             ),
             Expanded(
               child: Text(
                 title.toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   color: context.warna.permukaan,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -241,7 +241,7 @@ class _ScannerError extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
+              Icon(
                 Icons.no_photography_outlined,
                 color: context.warna.permukaan,
                 size: 32,
@@ -249,7 +249,7 @@ class _ScannerError extends StatelessWidget {
               const SizedBox(height: AppSpacing.s),
               Text(
                 denied ? 'Izin kamera ditolak' : 'Kamera tidak bisa dibuka',
-                style: const TextStyle(
+                style: TextStyle(
                   color: context.warna.permukaan,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -273,7 +273,7 @@ class _ScannerError extends StatelessWidget {
                 onPressed: () => Navigator.of(context).pop(),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: context.warna.permukaan,
-                  side: const BorderSide(color: context.warna.permukaan, width: 1.5),
+                  side: BorderSide(color: context.warna.permukaan, width: 1.5),
                 ),
                 child: const Text('KETIK MANUAL'),
               ),

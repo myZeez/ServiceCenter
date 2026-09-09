@@ -24,7 +24,7 @@ Future<void> _lukis(
         nomorNotaBerikutnyaProvider.overrideWith((ref) => ambilNomor()),
       ],
       child: MaterialApp(
-        theme: AppTheme.build(),
+        theme: AppTheme.terang(),
         home: Scaffold(
           body: SizedBox(height: tinggi, child: const NomorNotaCard()),
         ),

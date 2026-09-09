@@ -104,7 +104,7 @@ class CustomerField extends StatelessWidget {
                 onFieldSubmitted: (_) => onSubmit(),
                 decoration: InputDecoration(
                   suffixIcon: terpilih == null
-                      ? const Icon(
+                      ? Icon(
                           Icons.search,
                           size: 17,
                           color: context.warna.teksLembut,
@@ -129,7 +129,7 @@ class CustomerField extends StatelessWidget {
                   color: context.warna.permukaan,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppRadius.base),
-                    side: const BorderSide(color: context.warna.teks),
+                    side: BorderSide(color: context.warna.teks),
                   ),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(
@@ -156,7 +156,7 @@ class CustomerField extends StatelessWidget {
                                   width: 72,
                                   child: Text(
                                     c.kode,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: 0.5,
@@ -177,7 +177,7 @@ class CustomerField extends StatelessWidget {
                                 const SizedBox(width: AppSpacing.xs),
                                 Text(
                                   c.telp ?? '—',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: context.warna.teksLembut,
                                   ),
@@ -198,12 +198,12 @@ class CustomerField extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.link, size: 12, color: context.warna.aksen),
+              Icon(Icons.link, size: 12, color: context.warna.aksen),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   'Tertaut ke ${terpilih!.kode}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.4,
@@ -231,8 +231,8 @@ class CustomerField extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 4),
                 child: Container(
                   padding: const EdgeInsets.all(AppSpacing.xs),
-                  decoration: const BoxDecoration(
-                    color: Color(0x0DD82C2C),
+                  decoration: BoxDecoration(
+                    color: const Color(0x0DD82C2C),
                     border: Border(
                       left: BorderSide(color: context.warna.bahaya, width: 3),
                     ),
@@ -240,7 +240,7 @@ class CustomerField extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Sudah ada pelanggan bernama sama:',
                         style: TextStyle(
                           fontSize: 10.5,
@@ -251,13 +251,13 @@ class CustomerField extends StatelessWidget {
                       for (final c in kembar.take(3))
                         Text(
                           '${c.kode} · ${c.telp ?? 'tanpa telepon'}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10.5,
                             color: context.warna.bahaya,
                           ),
                         ),
                       const SizedBox(height: 2),
-                      const Text(
+                      Text(
                         'Pilih dari daftar kalau orangnya sama. Kalau '
                         'berbeda, lanjutkan — akan dibuat pelanggan baru.',
                         style: TextStyle(

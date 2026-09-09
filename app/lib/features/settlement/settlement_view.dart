@@ -406,7 +406,7 @@ class _Tabel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(color: context.warna.teks, width: 1.5),
                 ),
@@ -466,7 +466,7 @@ class _Kepala extends StatelessWidget {
         textAlign: kanan ? TextAlign.right : TextAlign.left,
         overflow: TextOverflow.clip,
         softWrap: false,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 9.5,
           fontWeight: FontWeight.w700,
           letterSpacing: 1,
@@ -519,7 +519,7 @@ class _Baris extends StatelessWidget {
             // brand sama sekali. Ditandai merah, bukan diberi tanda hubung
             // seperti kolom kosong biasa.
             rma.isEmpty
-                ? const Text(
+                ? Text(
                     'BELUM ADA RMA',
                     style: TextStyle(
                       fontSize: 9.5,
@@ -586,7 +586,7 @@ class _Baris extends StatelessWidget {
           sel(
             Text(
               c.tanggalClose == null ? '—' : _tglFmt.format(c.tanggalClose!),
-              style: const TextStyle(fontSize: 13, color: context.warna.teksLembut),
+              style: TextStyle(fontSize: 13, color: context.warna.teksLembut),
             ),
             width: 70,
           ),
@@ -830,7 +830,7 @@ class _Dropdown<T> extends StatelessWidget {
           // dropdown mendapat fokus -- terlihat seperti kerusakan tampilan.
           focusColor: Colors.transparent,
           icon: const Icon(Icons.expand_more, size: 16),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10.5,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.4,

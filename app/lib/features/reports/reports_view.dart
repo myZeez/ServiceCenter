@@ -91,25 +91,25 @@ class _WideGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return const Column(
       children: [
         Expanded(
           flex: 5,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: const [
+            children: [
               Expanded(flex: 2, child: _BrandCard()),
               SizedBox(width: AppSpacing.s),
               Expanded(child: _SummaryCard()),
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.s),
+        SizedBox(height: AppSpacing.s),
         Expanded(
           flex: 4,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: const [
+            children: [
               Expanded(flex: 2, child: _TechCard()),
               SizedBox(width: AppSpacing.s),
               Expanded(child: _ReassignCard()),
@@ -175,7 +175,7 @@ class _SummaryCard extends ConsumerWidget {
               label: ClaimStatus.label(s),
               value: '${counts[s] ?? 0}',
               fraction: total == 0 ? 0 : (counts[s] ?? 0) / total,
-              color: ClaimStatus.color(s),
+              color: ClaimStatus.color(context, s),
             ),
         ],
       ),
@@ -304,7 +304,7 @@ class _ReassignCard extends ConsumerWidget {
                       Flexible(
                         child: Text(
                           '${r['dari_teknisi'] ?? 'Belum ditugaskan'}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             color: context.warna.teksLembut,
                             decoration: TextDecoration.lineThrough,
@@ -312,8 +312,8 @@ class _ReassignCard extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 5),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
                         child: Icon(
                           Icons.arrow_forward,
                           size: 12,
@@ -335,7 +335,7 @@ class _ReassignCard extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(
                     'oleh ${r['diubah_oleh']} · ${at.day}/${at.month}/${at.year}',
-                    style: const TextStyle(fontSize: 11, color: context.warna.teksLembut),
+                    style: TextStyle(fontSize: 11, color: context.warna.teksLembut),
                   ),
                 ],
               ),
@@ -378,7 +378,7 @@ class _AsyncBody extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(
+            Icon(
               Icons.cloud_off_outlined,
               size: 22,
               color: context.warna.teksLembut,
@@ -404,7 +404,7 @@ class _AsyncBody extends StatelessWidget {
               child: Text(
                 emptyText,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: context.warna.teksLembut, fontSize: 13),
+                style: TextStyle(color: context.warna.teksLembut, fontSize: 13),
               ),
             ),
           )

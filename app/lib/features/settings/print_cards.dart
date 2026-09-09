@@ -59,7 +59,7 @@ class _PrinterCardState extends ConsumerState<PrinterCard> {
     }
 
     if (!RawPrinter.didukung) {
-      return const BentoCard(
+      return BentoCard(
         title: 'Printer Nota',
         child: Text(
           'Cetak nota hanya tersedia di aplikasi Windows, tempat printernya '
@@ -83,7 +83,7 @@ class _PrinterCardState extends ConsumerState<PrinterCard> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (daftar.isEmpty)
-              const Text(
+              Text(
                 'Tidak ada printer terdeteksi di komputer ini.',
                 style: TextStyle(fontSize: 12, color: context.warna.bahaya),
               )
@@ -121,13 +121,13 @@ class _PrinterCardState extends ConsumerState<PrinterCard> {
                 padding: const EdgeInsets.all(AppSpacing.xs),
                 decoration: BoxDecoration(
                   color: context.warna.aksen.withValues(alpha: 0.06),
-                  border: const Border(
+                  border: Border(
                     left: BorderSide(color: context.warna.aksen, width: 3),
                   ),
                 ),
                 child: Text(
                   _pesan!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     height: 1.4,
                     color: context.warna.aksen,

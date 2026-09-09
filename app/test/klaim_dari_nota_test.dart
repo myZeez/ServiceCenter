@@ -63,7 +63,7 @@ Future<void> _lukis(
         serviceOrdersProvider.overrideWith((ref) => Stream.value(nota)),
         currentUserProvider.overrideWithValue(null),
       ],
-      child: MaterialApp(theme: AppTheme.build(), home: const ClaimFormPage()),
+      child: MaterialApp(theme: AppTheme.terang(), home: const ClaimFormPage()),
     ),
   );
   await tester.pumpAndSettle();

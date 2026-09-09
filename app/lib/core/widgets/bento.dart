@@ -186,7 +186,7 @@ class PageHeader extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle!,
-                  style: const TextStyle(fontSize: 13, color: context.warna.teksLembut),
+                  style: TextStyle(fontSize: 13, color: context.warna.teksLembut),
                 ),
               ],
             ],

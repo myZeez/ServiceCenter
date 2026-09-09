@@ -148,18 +148,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           const SizedBox(height: AppSpacing.s),
                           Container(
                             padding: const EdgeInsets.all(AppSpacing.s),
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               border: Border(
                                 left: BorderSide(
                                   color: context.warna.bahaya,
                                   width: 3,
                                 ),
                               ),
-                              color: Color(0x0DD82C2C),
+                              color: const Color(0x0DD82C2C),
                             ),
                             child: Text(
                               _error!,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: context.warna.bahaya,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
@@ -173,7 +173,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         FilledButton(
                           onPressed: _busy ? null : _submit,
                           child: _busy
-                              ? const SizedBox(
+                              ? SizedBox(
                                   height: 16,
                                   width: 16,
                                   child: CircularProgressIndicator(

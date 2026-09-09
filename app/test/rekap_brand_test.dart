@@ -66,7 +66,7 @@ Widget _layar({
     settlementsProvider.overrideWith((ref) => Stream.value(hasil)),
   ],
   child: MaterialApp(
-    theme: AppTheme.build(),
+    theme: AppTheme.terang(),
     home: const Scaffold(body: SettlementView()),
   ),
 );

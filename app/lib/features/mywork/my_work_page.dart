@@ -10,9 +10,9 @@ class MyWorkPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: context.warna.teredam,
-      body: SafeArea(child: MyWorkView()),
+      body: const SafeArea(child: MyWorkView()),
     );
   }
 }

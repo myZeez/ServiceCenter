@@ -138,7 +138,7 @@ class _Saringan extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: context.warna.teks)),
       ),
       padding: const EdgeInsets.only(bottom: AppSpacing.s),
@@ -253,7 +253,7 @@ class _KartuNota extends ConsumerWidget {
               ].join(' '),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12.5, color: context.warna.teksLembut),
+              style: TextStyle(fontSize: 12.5, color: context.warna.teksLembut),
             ),
             if ((nota.keluhan ?? '').isNotEmpty) ...[
               const SizedBox(height: 2),
@@ -448,11 +448,11 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
 
           Container(
             padding: const EdgeInsets.all(AppSpacing.xs),
-            decoration: const BoxDecoration(
-              color: Color(0x0D0033A0),
+            decoration: BoxDecoration(
+              color: const Color(0x0D0033A0),
               border: Border(left: BorderSide(color: context.warna.aksen, width: 3)),
             ),
-            child: const Text(
+            child: Text(
               'Biaya, cara bayar, dan data pelanggan diubah dari meja depan.',
               style: TextStyle(
                 fontSize: 11,

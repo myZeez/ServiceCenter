@@ -42,7 +42,7 @@ Future<void> _lukis(WidgetTester tester, {double tinggi = 400}) async {
         ),
       ],
       child: MaterialApp(
-        theme: AppTheme.build(),
+        theme: AppTheme.terang(),
         home: Scaffold(
           body: SizedBox(height: tinggi, child: const BrandFeesCard()),
         ),

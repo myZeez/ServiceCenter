@@ -10,9 +10,9 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: context.warna.teredam,
-      body: SafeArea(child: SettingsView()),
+      body: const SafeArea(child: SettingsView()),
     );
   }
 }

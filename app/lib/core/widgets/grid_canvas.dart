@@ -639,7 +639,7 @@ class _Pegangan extends StatelessWidget {
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 150),
           opacity: tampil ? 1 : 0,
-          child: CustomPaint(painter: _PelukisPegangan(bentuk)),
+          child: CustomPaint(painter: _PelukisPegangan(bentuk, context.warna.bahaya)),
         ),
       ),
     );
@@ -647,21 +647,26 @@ class _Pegangan extends StatelessWidget {
 }
 
 class _PelukisPegangan extends CustomPainter {
-  _PelukisPegangan(this.bentuk);
+  _PelukisPegangan(this.bentuk, this.warna);
 
   final _Bentuk bentuk;
+
+  /// Pelukis tidak punya BuildContext, jadi warnanya dititipkan dari widget
+  /// yang membuatnya -- dan ikut dibandingkan di shouldRepaint, supaya
+  /// pegangannya benar-benar dilukis ulang saat temanya berganti.
+  final Color warna;
 
   @override
   void paint(Canvas canvas, Size size) {
     final cat = Paint()
-      ..color = context.warna.bahaya
+      ..color = warna
       ..strokeWidth = 1.6
       ..strokeCap = StrokeCap.round;
 
     switch (bentuk) {
       case _Bentuk.pindah:
         // Titik-titik bertumpuk, lambang umum untuk "seret aku".
-        final titik = Paint()..color = context.warna.bahaya;
+        final titik = Paint()..color = warna;
         final tengah = size.height / 2;
         for (var i = -2; i <= 2; i++) {
           canvas.drawCircle(Offset(size.width / 2, tengah + i * 6), 1.6, titik);
@@ -695,7 +700,8 @@ class _PelukisPegangan extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _PelukisPegangan old) => old.bentuk != bentuk;
+  bool shouldRepaint(covariant _PelukisPegangan old) =>
+      old.bentuk != bentuk || old.warna != warna;
 }
 
 class _Label extends StatelessWidget {
@@ -712,7 +718,7 @@ class _Label extends StatelessWidget {
     ),
     child: Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         color: context.warna.permukaan,
         fontSize: 10,
         fontWeight: FontWeight.w700,

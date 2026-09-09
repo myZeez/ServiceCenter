@@ -116,7 +116,7 @@ class _HeaderRow extends StatelessWidget {
     return Container(
       // Garis tebal di bawah kepala tabel: pembatas paling kuat di halaman,
       // menandai awal data.
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: context.warna.teks, width: 1.5)),
       ),
       padding: EdgeInsets.fromLTRB(pad, AppSpacing.s, pad, AppSpacing.xs),
@@ -129,7 +129,7 @@ class _HeaderRow extends StatelessWidget {
                 col.label.toUpperCase(),
                 overflow: TextOverflow.clip,
                 softWrap: false,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1,
@@ -245,7 +245,7 @@ class _DataRowState extends State<_DataRow> {
                 border: Border.all(color: context.warna.teksLembut),
                 borderRadius: BorderRadius.circular(2),
               ),
-              child: const Text(
+              child: Text(
                 'TOKO',
                 style: TextStyle(
                   fontSize: 8.5,
@@ -299,7 +299,10 @@ class _DataRowState extends State<_DataRow> {
   }
 }
 
-const _cell = TextStyle(fontSize: 13, color: context.warna.teks);
+/// Warnanya sengaja tidak disebut: yang tidak menyebut warna mewarisi
+/// warna teks dari tema yang sedang berlaku, dan itulah yang membuat sel
+/// ini benar di terang maupun gelap.
+const _cell = TextStyle(fontSize: 13);
 
 class _Cell extends StatelessWidget {
   const _Cell({required this.col, required this.child});

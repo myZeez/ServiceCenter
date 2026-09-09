@@ -164,7 +164,7 @@ class _NomorNotaCardState extends ConsumerState<NomorNotaCard> {
                       ? 'Contoh: 28177'
                       : 'Terbit sebagai '
                             '${contohNomorNota(calon, DateTime.now())}',
-                  helperStyle: const TextStyle(
+                  helperStyle: TextStyle(
                     fontSize: 10.5,
                     color: context.warna.teksLembut,
                   ),
@@ -176,13 +176,13 @@ class _NomorNotaCardState extends ConsumerState<NomorNotaCard> {
 
             Container(
               padding: const EdgeInsets.all(AppSpacing.xs),
-              decoration: const BoxDecoration(
-                color: Color(0x0D0033A0),
+              decoration: BoxDecoration(
+                color: const Color(0x0D0033A0),
                 border: Border(
                   left: BorderSide(color: context.warna.aksen, width: 3),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'Pusat membaca 5 digit terakhir nomor nota sebagai jumlah '
                 'nota yang pernah dibuat. Setel angka ini menyambung catatan '
                 'pusat supaya laporan harian tidak mengulang dari awal.',
@@ -223,11 +223,11 @@ class _Papan extends StatelessWidget {
       ),
       color: context.warna.teredam,
       child: nilai.when(
-        loading: () => const Text(
+        loading: () => Text(
           'Memuat…',
           style: TextStyle(fontSize: 13, color: context.warna.teksLembut),
         ),
-        error: (_, _) => const Text(
+        error: (_, _) => Text(
           'Tidak terbaca. Nomor nota hanya bisa dilihat dan diubah saat '
           'tersambung ke server.',
           style: TextStyle(fontSize: 11.5, height: 1.4, color: context.warna.bahaya),
@@ -253,7 +253,7 @@ class _Papan extends StatelessWidget {
               n <= 1
                   ? 'Belum ada nota yang terbit'
                   : '${n - 1} nota sudah terpakai menurut hitungan ini',
-              style: const TextStyle(fontSize: 11, color: context.warna.teksLembut),
+              style: TextStyle(fontSize: 11, color: context.warna.teksLembut),
             ),
           ],
         ),

@@ -33,7 +33,7 @@ class LabeledField extends StatelessWidget {
               style: Theme.of(context).textTheme.labelMedium,
             ),
             if (required)
-              const Text(
+              Text(
                 ' *',
                 style: TextStyle(
                   color: context.warna.bahaya,
@@ -155,7 +155,7 @@ class EmptyState extends StatelessWidget {
                 constraints: const BoxConstraints(maxWidth: 320),
                 child: Text(
                   description!,
-                  style: const TextStyle(color: context.warna.teksLembut, height: 1.5),
+                  style: TextStyle(color: context.warna.teksLembut, height: 1.5),
                 ),
               ),
             ],
@@ -239,7 +239,7 @@ class InlineAction extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
         child: Text(
           label.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.8,
@@ -268,7 +268,7 @@ class TableHeader extends StatelessWidget {
     text.toUpperCase(),
     overflow: TextOverflow.clip,
     softWrap: false,
-    style: const TextStyle(
+    style: TextStyle(
       fontSize: 9.5,
       fontWeight: FontWeight.w700,
       letterSpacing: 1,

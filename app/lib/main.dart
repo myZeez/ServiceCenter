@@ -56,7 +56,7 @@ class ScManagementApp extends StatelessWidget {
     return MaterialApp(
       title: 'Klaim Garansi',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.build(),
+      theme: AppTheme.terang(),
       home: const _AuthGate(),
     );
   }
@@ -116,23 +116,23 @@ class _ConfigMissingApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(32),
+            padding: EdgeInsets.all(32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.key_off, size: 48),
-                const SizedBox(height: 16),
-                const Text(
+                Icon(Icons.key_off, size: 48),
+                SizedBox(height: 16),
+                Text(
                   'Kredensial Supabase belum diisi',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
-                const Text(
+                SizedBox(height: 8),
+                Text(
                   'Jalankan aplikasi dengan --dart-define-from-file=env.json.\n'
                   'Lihat README untuk contohnya.',
                   textAlign: TextAlign.center,

@@ -161,7 +161,7 @@ class _Sidebar extends ConsumerWidget {
               children: [
                 Container(width: 22, height: 22, color: context.warna.bahaya),
                 const SizedBox(width: AppSpacing.xs),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'KLAIM\nGARANSI',
                     style: TextStyle(
@@ -189,7 +189,7 @@ class _Sidebar extends ConsumerWidget {
                 ),
                 child: Text(
                   sections[i].grup!.toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.2,

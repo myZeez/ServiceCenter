@@ -79,10 +79,10 @@ class ServiceReportsView extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            PageHeader(
+            const PageHeader(
               title: 'Laporan Servis',
               subtitle: 'Nota pelanggan — terpisah dari klaim garansi ke brand',
-              actions: const [_BulanDropdown()],
+              actions: [_BulanDropdown()],
             ),
             const SizedBox(height: AppSpacing.s),
             Container(
@@ -563,7 +563,7 @@ class _Omset extends ConsumerWidget {
                         ),
                         Text(
                           '${t.jumlahNota} nota',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             color: context.warna.teksLembut,
                           ),
@@ -617,14 +617,14 @@ class _Omset extends ConsumerWidget {
           const SizedBox(height: AppSpacing.s),
           Container(
             padding: const EdgeInsets.all(AppSpacing.s),
-            decoration: const BoxDecoration(
-              color: Color(0x0DD82C2C),
+            decoration: BoxDecoration(
+              color: const Color(0x0DD82C2C),
               border: Border(left: BorderSide(color: context.warna.bahaya, width: 3)),
             ),
             child: Text(
               '${hasil.notaTanpaTeknisi} nota selesai belum ada teknisinya. '
               'Nilainya masuk omset toko, tapi tidak jatuh ke siapa pun.',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 height: 1.4,
                 color: context.warna.bahaya,
@@ -909,7 +909,7 @@ class _Keseluruhan extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (n.garansi)
-                  const _Tanda('GARANSI', warna: context.warna.aksen)
+                  _Tanda('GARANSI', warna: context.warna.aksen)
                 else
                   const _Tanda('NON GARANSI'),
                 const SizedBox(width: 4),
@@ -1086,7 +1086,7 @@ class _TombolExportState extends State<_TombolExport> {
       label: Text(widget.label),
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        side: const BorderSide(color: context.warna.teks, width: 1.5),
+        side: BorderSide(color: context.warna.teks, width: 1.5),
       ),
     );
   }
@@ -1134,7 +1134,7 @@ class _Kartu extends StatelessWidget {
               child: Text(
                 pesanKosong,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: context.warna.teksLembut, fontSize: 13),
+                style: TextStyle(color: context.warna.teksLembut, fontSize: 13),
               ),
             ),
           )
@@ -1162,7 +1162,7 @@ class _Kartu extends StatelessWidget {
                 AppSpacing.s,
                 AppSpacing.s,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(color: context.warna.teks, width: 1.5),
                 ),
@@ -1304,17 +1304,22 @@ class _Sel extends StatelessWidget {
 }
 
 class _Tanda extends StatelessWidget {
-  const _Tanda(this.teks, {this.warna = context.warna.teksLembut});
+  const _Tanda(this.teks, {this.warna});
 
   final String teks;
-  final Color warna;
+
+  /// Kosong berarti ikut warna teks lembut dari tema yang berlaku. Nilai
+  /// bawaan sebuah parameter harus const, sementara warna tema baru bisa
+  /// diketahui setelah ada BuildContext.
+  final Color? warna;
 
   @override
   Widget build(BuildContext context) {
+    final w = warna ?? context.warna.teksLembut;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
-        border: Border.all(color: warna),
+        border: Border.all(color: w),
         borderRadius: BorderRadius.circular(3),
       ),
       child: Text(
@@ -1323,7 +1328,7 @@ class _Tanda extends StatelessWidget {
           fontSize: 8.5,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.6,
-          color: warna,
+          color: w,
         ),
       ),
     );
@@ -1352,7 +1357,7 @@ class _BulanDropdown extends ConsumerWidget {
           focusColor: Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.base),
           icon: const Icon(Icons.expand_more, size: 16),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.6,

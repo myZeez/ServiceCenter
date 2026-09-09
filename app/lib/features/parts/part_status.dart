@@ -65,7 +65,7 @@ class PartTahap {
   /// ditulis di catatan, bukan di kolom harga. Memaksa satu angka di situ
   /// membuat yang tercatat lebih miskin daripada yang disampaikan.
   static bool perluHarga(String tahap) =>
-      const [dipesan, dipasang, selesai].contains(tahap);
+      [dipesan, dipasang, selesai].contains(tahap);
 
   static const _labels = {
     foto: 'Tunggu Kode Part',
@@ -90,24 +90,6 @@ class PartTahap {
     kosong: 'No Stock',
   };
 
-  // Aturannya sama dengan status nota: yang menuntut tindakan diberi
-  // bobot paling besar, yang sudah tuntas mundur ke belakang.
-  //
-  // 'dipasang' sengaja merah dan terisi. Part sudah menempel di unit
-  // pelanggan sementara sisa tagihannya belum masuk -- satu-satunya
-  // keadaan di seluruh alur ini yang benar-benar bisa merugikan toko
-  // kalau terlewat.
-  static const _colors = {
-    foto: context.warna.teksLembut,
-    harga: context.warna.aksen,
-    konfirmasi: context.warna.aksen,
-    dipesan: context.warna.aksen,
-    dipasang: context.warna.bahaya,
-    selesai: context.warna.teks,
-    batal: context.warna.teksLembut,
-    kosong: context.warna.bahaya,
-  };
-
   static const _filled = {
     foto: false,
     harga: false,
@@ -121,7 +103,29 @@ class PartTahap {
 
   static String label(String t) => _labels[t] ?? t;
   static String pendek(String t) => _pendek[t] ?? _labels[t] ?? t;
-  static Color color(String t) => _colors[t] ?? context.warna.teksLembut;
+
+  /// Warna tahap, diambil dari palet yang sedang berlaku.
+  ///
+  /// Dulu ini peta tetap, dan peta tetap tidak bisa lagi menampungnya
+  /// begitu ada dua tema: yang tetap hanyalah perannya, rupanya berbeda
+  /// siang dan malam.
+  ///
+  /// Aturannya sama dengan status nota: yang menuntut tindakan diberi
+  /// bobot paling besar, yang sudah tuntas mundur ke belakang.
+  ///
+  /// 'dipasang' sengaja ikut warna bahaya. Part sudah menempel di unit
+  /// pelanggan sementara sisa tagihannya belum masuk -- satu-satunya
+  /// keadaan di seluruh alur ini yang benar-benar bisa merugikan toko
+  /// kalau terlewat.
+  static Color color(BuildContext context, String t) {
+    final w = context.warna;
+    return switch (t) {
+      harga || konfirmasi || dipesan => w.aksen,
+      dipasang || kosong => w.bahaya,
+      selesai => w.teks,
+      _ => w.teksLembut,
+    };
+  }
   static bool isFilled(String t) => _filled[t] ?? false;
 }
 
@@ -133,7 +137,7 @@ class PartTahapChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = PartTahap.color(tahap);
+    final c = PartTahap.color(context, tahap);
     final filled = PartTahap.isFilled(tahap);
 
     return Container(

@@ -36,13 +36,13 @@ class MetodeBayarCard extends ConsumerWidget {
             ),
             child: Container(
               padding: const EdgeInsets.all(AppSpacing.xs),
-              decoration: const BoxDecoration(
-                color: Color(0x0D0033A0),
+              decoration: BoxDecoration(
+                color: const Color(0x0D0033A0),
                 border: Border(
                   left: BorderSide(color: context.warna.aksen, width: 3),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'Yang ditandai PIUTANG berarti uangnya belum diterima — '
                 'notanya tidak dihitung lunas. Tunai, transfer, dan QRIS '
                 'sama saja bagi kas toko.',

@@ -70,7 +70,7 @@ Future<void> _lukis(
         ),
       ],
       child: MaterialApp(
-        theme: AppTheme.build(),
+        theme: AppTheme.terang(),
         home: ServiceDialog(nota: nota),
       ),
     ),

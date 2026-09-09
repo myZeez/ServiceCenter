@@ -43,7 +43,7 @@ Future<void> _lukis(WidgetTester tester, List<Claim> klaim) async {
         allProfilesProvider.overrideWith((ref) => Stream.value([])),
         koneksiProvider.overrideWith((ref) => Stream.value(true)),
       ],
-      child: MaterialApp(theme: AppTheme.build(), home: const ClaimsPage()),
+      child: MaterialApp(theme: AppTheme.terang(), home: const ClaimsPage()),
     ),
   );
   await tester.pumpAndSettle();

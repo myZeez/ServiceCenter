@@ -117,8 +117,8 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
             // sampai jam 17 besok".
             Container(
               padding: const EdgeInsets.all(AppSpacing.s),
-              decoration: const BoxDecoration(
-                color: Color(0x0D0033A0),
+              decoration: BoxDecoration(
+                color: const Color(0x0D0033A0),
                 border: Border(
                   left: BorderSide(color: context.warna.aksen, width: 3),
                 ),
@@ -128,7 +128,7 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
                 children: [
                   Text(
                     'Sekarang jam ${_jam.format(sekarang)}.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
                       color: context.warna.aksen,
@@ -142,7 +142,7 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
                               'ini sudah ditutup.'
                         : 'Nota yang dibuat sekarang masuk laporan '
                               '${_tglPanjang.format(hariIni)}.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       height: 1.4,
                       color: context.warna.aksen,

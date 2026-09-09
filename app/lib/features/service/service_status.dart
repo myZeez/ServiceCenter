@@ -31,17 +31,6 @@ class ServiceStatus {
     batal: 'Batal',
   };
 
-  // Mengikuti pola yang sama dengan status klaim: yang menuntut tindakan
-  // diberi bobot visual paling besar, yang sudah tuntas mundur ke belakang.
-  static const _colors = {
-    masuk: context.warna.aksen,
-    dikerjakan: context.warna.aksen,
-    tungguPart: context.warna.bahaya,
-    selesai: context.warna.bahaya,
-    diambil: context.warna.teks,
-    batal: context.warna.teksLembut,
-  };
-
   static const _filled = {
     masuk: false,
     dikerjakan: true,
@@ -54,7 +43,18 @@ class ServiceStatus {
   };
 
   static String label(String s) => _labels[s] ?? s;
-  static Color color(String s) => _colors[s] ?? context.warna.teksLembut;
+  /// Mengikuti pola yang sama dengan status klaim: yang menuntut tindakan
+  /// diberi bobot visual paling besar, yang sudah tuntas mundur ke
+  /// belakang. Rupanya ikut palet yang sedang berlaku.
+  static Color color(BuildContext context, String s) {
+    final w = context.warna;
+    return switch (s) {
+      masuk || dikerjakan => w.aksen,
+      tungguPart || selesai => w.bahaya,
+      diambil => w.teks,
+      _ => w.teksLembut,
+    };
+  }
   static bool isFilled(String s) => _filled[s] ?? false;
 }
 
@@ -66,7 +66,7 @@ class ServiceStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = ServiceStatus.color(status);
+    final c = ServiceStatus.color(context, status);
     final filled = ServiceStatus.isFilled(status);
 
     return Container(

@@ -110,13 +110,13 @@ class _UpTokoCardState extends ConsumerState<UpTokoCard> {
           children: [
             Container(
               padding: const EdgeInsets.all(AppSpacing.xs),
-              decoration: const BoxDecoration(
-                color: Color(0x0D0033A0),
+              decoration: BoxDecoration(
+                color: const Color(0x0D0033A0),
                 border: Border(
                   left: BorderSide(color: context.warna.aksen, width: 3),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'Persentase dihitung di atas modal. Modal Rp 100.000 dengan '
                 'up 20% dijual Rp 120.000.',
                 style: TextStyle(
@@ -194,7 +194,7 @@ class _UpTokoCardState extends ConsumerState<UpTokoCard> {
               child: FilledButton(
                 onPressed: _busy || _pilihan == null ? null : _simpan,
                 child: _busy
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 14,
                         width: 14,
                         child: CircularProgressIndicator(
@@ -251,7 +251,7 @@ class _Chip extends StatelessWidget {
             ),
             if (bawaan) ...[
               const SizedBox(width: 6),
-              const Text(
+              Text(
                 'BAWAAN',
                 style: TextStyle(
                   fontSize: 8.5,

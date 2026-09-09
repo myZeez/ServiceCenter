@@ -66,7 +66,7 @@ Future<void> _lukis(WidgetTester tester, List<ServiceOrderEntry> data) async {
         ),
       ],
       child: MaterialApp(
-        theme: AppTheme.build(),
+        theme: AppTheme.terang(),
         home: const Scaffold(body: ServiceReportsView()),
       ),
     ),

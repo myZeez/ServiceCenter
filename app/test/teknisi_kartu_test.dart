@@ -76,7 +76,7 @@ void main() {
           ),
         ],
         child: MaterialApp(
-          theme: AppTheme.build(),
+          theme: AppTheme.terang(),
           home: const Scaffold(body: ServiceView()),
         ),
       ),
@@ -113,7 +113,7 @@ void main() {
           omsetSettingsProvider.overrideWith((ref) => Stream.value(null)),
         ],
         child: MaterialApp(
-          theme: AppTheme.build(),
+          theme: AppTheme.terang(),
           home: const Scaffold(body: ServiceView()),
         ),
       ),
@@ -144,7 +144,7 @@ void main() {
           ),
         ],
         child: MaterialApp(
-          theme: AppTheme.build(),
+          theme: AppTheme.terang(),
           home: const Scaffold(body: MyWorkView()),
         ),
       ),
@@ -171,7 +171,7 @@ void main() {
           ringkasSayaProvider.overrideWithValue(null),
         ],
         child: MaterialApp(
-          theme: AppTheme.build(),
+          theme: AppTheme.terang(),
           home: const Scaffold(body: MyWorkView()),
         ),
       ),

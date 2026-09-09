@@ -190,7 +190,7 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
                       controller: _search,
                       decoration: InputDecoration(
                         hintText: 'Cari no nota, nama, SN, telp',
-                        prefixIcon: const Icon(
+                        prefixIcon: Icon(
                           Icons.search,
                           size: 17,
                           color: context.warna.teksLembut,
@@ -237,7 +237,7 @@ class _ServiceViewState extends ConsumerState<ServiceView> {
                       child: StatTile(
                         value: '${perStatus[s] ?? 0}',
                         label: ServiceStatus.label(s),
-                        accent: ServiceStatus.color(s),
+                        accent: ServiceStatus.color(context, s),
                         selected: filter.status == s,
                         onTap: () => ref
                             .read(serviceFilterProvider.notifier)
@@ -429,7 +429,7 @@ class _PanelTeknisi extends ConsumerWidget {
               AppSpacing.sm,
               AppSpacing.s,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: context.warna.teks, width: 1.5),
               ),
@@ -513,7 +513,7 @@ class _BarisTeknisi extends StatelessWidget {
                   '${_rp.format(r.omset)}  ·  ${r.notaSelesai} selesai',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: context.warna.teksLembut),
+                  style: TextStyle(fontSize: 11, color: context.warna.teksLembut),
                 ),
               ],
             ),
@@ -567,7 +567,7 @@ class _Tabel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(color: context.warna.teks, width: 1.5),
                 ),
@@ -671,8 +671,8 @@ class _BarisState extends State<_Baris> {
                 child: Row(
                   children: [
                     if (n.garansi)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
                         child: Icon(
                           Icons.verified_outlined,
                           size: 12,
@@ -751,7 +751,7 @@ class _BarisState extends State<_Baris> {
                       // Piutang perlu terlihat sekilas: itu uang yang sudah
                       // jadi hak toko tetapi belum masuk.
                       if (belumLunas)
-                        const Text(
+                        Text(
                           'BELUM LUNAS',
                           style: TextStyle(
                             fontSize: 8.5,
@@ -778,7 +778,10 @@ class _BarisState extends State<_Baris> {
   }
 }
 
-const _sel = TextStyle(fontSize: 13, color: context.warna.teks);
+/// Warnanya sengaja tidak disebut: yang tidak menyebut warna mewarisi
+/// warna teks dari tema yang sedang berlaku, dan itulah yang membuat sel
+/// ini benar di terang maupun gelap.
+const _sel = TextStyle(fontSize: 13);
 
 class _H extends StatelessWidget {
   const _H(this.text);
@@ -790,7 +793,7 @@ class _H extends StatelessWidget {
     text.toUpperCase(),
     overflow: TextOverflow.clip,
     softWrap: false,
-    style: const TextStyle(
+    style: TextStyle(
       fontSize: 9.5,
       fontWeight: FontWeight.w700,
       letterSpacing: 1,

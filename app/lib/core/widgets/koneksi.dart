@@ -38,7 +38,7 @@ class IndikatorKoneksi extends ConsumerWidget {
             ),
             if (!tersambung) ...[
               const SizedBox(width: 6),
-              const Text(
+              Text(
                 'TERPUTUS',
                 style: TextStyle(
                   fontSize: 10,

@@ -222,7 +222,7 @@ class _TechCard extends ConsumerWidget {
       trailing: sisa > 0
           ? Text(
               '${_rp.format(sisa)} belum dialokasikan',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
                 color: context.warna.bahaya,
@@ -230,9 +230,9 @@ class _TechCard extends ConsumerWidget {
             )
           : null,
       child: hasil.teknisi.isEmpty
-          ? const Center(
+          ? Center(
               child: Padding(
-                padding: EdgeInsets.all(AppSpacing.sm),
+                padding: const EdgeInsets.all(AppSpacing.sm),
                 child: Text(
                   'Belum ada klaim selesai atas nama teknisi di periode ini.',
                   textAlign: TextAlign.center,
@@ -332,9 +332,9 @@ class _BrandCard extends ConsumerWidget {
       title: 'Per Brand',
       padding: EdgeInsets.zero,
       child: hasil.brands.isEmpty
-          ? const Center(
+          ? Center(
               child: Padding(
-                padding: EdgeInsets.all(AppSpacing.sm),
+                padding: const EdgeInsets.all(AppSpacing.sm),
                 child: Text(
                   'Belum ada klaim selesai di periode ini.',
                   textAlign: TextAlign.center,
@@ -411,7 +411,7 @@ class _PeriodeDropdown extends ConsumerWidget {
           focusColor: Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.base),
           icon: const Icon(Icons.expand_more, size: 16),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.6,
@@ -437,13 +437,13 @@ class _Warning extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(AppSpacing.xs),
-    decoration: const BoxDecoration(
-      color: Color(0x0DD82C2C),
+    decoration: BoxDecoration(
+      color: const Color(0x0DD82C2C),
       border: Border(left: BorderSide(color: context.warna.bahaya, width: 3)),
     ),
     child: Text(
       text,
-      style: const TextStyle(fontSize: 11, height: 1.4, color: context.warna.bahaya),
+      style: TextStyle(fontSize: 11, height: 1.4, color: context.warna.bahaya),
     ),
   );
 }
@@ -458,7 +458,7 @@ class _Head extends StatelessWidget {
   Widget build(BuildContext context) => Text(
     text.toUpperCase(),
     textAlign: right ? TextAlign.right : TextAlign.left,
-    style: const TextStyle(
+    style: TextStyle(
       fontSize: 9.5,
       fontWeight: FontWeight.w700,
       letterSpacing: 0.9,

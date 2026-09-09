@@ -271,7 +271,7 @@ class _OmsetServis extends ConsumerWidget {
                   ? 'Target ${_rpOmset.format(r.target)} sudah tercapai'
                   : 'Kurang ${_rpOmset.format(r.kurang)} dari target '
                         '${_rpOmset.format(r.target)}',
-              style: const TextStyle(fontSize: 11.5, color: context.warna.teksLembut),
+              style: TextStyle(fontSize: 11.5, color: context.warna.teksLembut),
             ),
           ],
         ),
@@ -302,7 +302,7 @@ class _PeriodeDropdown extends ConsumerWidget {
           focusColor: Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.base),
           icon: const Icon(Icons.expand_more, size: 16),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.6,

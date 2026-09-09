@@ -74,6 +74,14 @@ Future<void> _lukis(WidgetTester tester, List<ServiceOrderEntry> data) async {
   await tester.pumpAndSettle();
 }
 
+/// Kedua tabel harian punya tabnya sendiri. Sebelum tabnya dibuka,
+/// isinya memang belum tergambar sama sekali -- itu yang membuatnya tidak
+/// lagi berbagi tinggi layar dengan tabel di sebelahnya.
+Future<void> _bukaTabMasuk(WidgetTester tester) async {
+  await tester.tap(find.textContaining('NOTA MASUK'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUpAll(() => initializeDateFormatting('id', null));
 
@@ -91,10 +99,12 @@ void main() {
       ]);
 
       expect(tester.takeException(), isNull);
-      expect(find.text('NOTA KELUAR'), findsOneWidget);
-      expect(find.text('NOTA MASUK'), findsOneWidget);
+      // Jumlahnya ikut di judul tabnya, jadi tabel yang sedang tidak
+      // dibuka pun tetap bisa dilihat isinya berapa.
+      expect(find.text('NOTA KELUAR  (2)'), findsOneWidget);
+      expect(find.text('NOTA MASUK  (1)'), findsOneWidget);
+      // Tab pertama yang terbuka: nota keluar.
       expect(find.text('SRV-0001'), findsOneWidget);
-      expect(find.text('SRV-0003'), findsOneWidget);
     });
 
     testWidgets('nota keluar dipisah dari nota masuk', (tester) async {
@@ -110,7 +120,16 @@ void main() {
 
       expect(find.text('2 nota  ·  Rp150.000'), findsNothing);
       expect(find.textContaining('1 nota'), findsOneWidget);
+      // Selesai kemarin: tidak boleh muncul di tab mana pun hari ini.
+      expect(find.text('SRV-0003'), findsNothing);
+
+      await _bukaTabMasuk(tester);
+
       expect(find.text('1 unit diterima'), findsOneWidget);
+      expect(find.text('SRV-0002'), findsOneWidget);
+      // Kedua tabel tidak lagi bertumpuk: yang satu terbuka, yang lain
+      // tidak ikut tergambar.
+      expect(find.text('SRV-0001'), findsNothing);
       expect(find.text('SRV-0003'), findsNothing);
     });
 
@@ -125,6 +144,8 @@ void main() {
         find.textContaining('Belum ada unit yang selesai'),
         findsOneWidget,
       );
+
+      await _bukaTabMasuk(tester);
       expect(find.textContaining('Belum ada unit yang masuk'), findsOneWidget);
     });
   });

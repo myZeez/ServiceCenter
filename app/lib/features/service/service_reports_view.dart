@@ -207,89 +207,156 @@ class _Harian extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.s),
 
+        // Dua tabel ini dulu bertumpuk, masing-masing separuh tinggi
+        // layar. Keduanya lalu terpotong: hari yang ramai punya dua puluh
+        // baris lebih di tiap tabel, dan yang terlihat cuma lima. Dua
+        // daftar yang sama-sama harus digulir di dalam kotaknya sendiri
+        // adalah bentuk yang paling melelahkan untuk dibaca.
+        //
+        // Dijadikan tab, tiap tabel mendapat seluruh tinggi yang ada.
+        // Urutannya tetap keluar dulu, seperti lembar laporannya sendiri
+        // dan seperti berkas Excel yang dikirim ke pusat.
         Expanded(
-          child: _Kartu(
-            judul: 'Nota Keluar',
-            ringkas: '${keluar.length} nota  ·  ${_rp.format(total)}',
-            kosong: keluar.isEmpty,
-            pesanKosong: 'Belum ada unit yang selesai pada tanggal ini.',
-            child: _TabelHarian(
-              kolom: const [
-                (0, 'Nama', 2),
-                (118, 'No Nota', 0),
-                (0, 'Jenis Barang', 2),
-                (0, 'Perbaikan', 3),
-                (112, 'Biaya', 0),
-                // Cukup lebar untuk tanggal beserta jamnya. Jam masuk
-                // ikut disebut sejak hari kerja berganti jam tutup:
-                // tanpa itu, nota jam 18.30 yang muncul di tab tanggal
-                // berikutnya terbaca seperti salah tempat.
-                (120, 'Tgl Masuk', 0),
-                (104, 'Keterangan', 0),
-              ],
-              baris: [
-                for (final n in keluar)
-                  (
-                    n,
-                    [
-                      n.customerNama,
-                      n.noNota,
-                      _barang(n),
-                      n.perbaikan ?? '—',
-                      n.biaya == 0 ? 'Rp0' : _rp.format(n.biaya),
-                      tanggalJamMasuk(n.tanggalMasuk),
-                      ExcelExport.keteranganHarian(n),
+          child: DefaultTabController(
+            length: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.base),
+                    border: Border.all(color: const Color(0xFFE4E7E7)),
+                  ),
+                  child: TabBar(
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    tabs: [
+                      // Jumlahnya ikut di judul tabnya: yang sedang tidak
+                      // terbuka pun tetap bisa dilihat isinya berapa.
+                      Tab(text: 'NOTA KELUAR  (${keluar.length})'),
+                      Tab(text: 'NOTA MASUK  (${masuk.length})'),
                     ],
                   ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.s),
-
-        Expanded(
-          child: _Kartu(
-            judul: 'Nota Masuk',
-            ringkas: '${masuk.length} unit diterima',
-            kosong: masuk.isEmpty,
-            pesanKosong: 'Belum ada unit yang masuk pada tanggal ini.',
-            child: _TabelHarian(
-              kolom: const [
-                (0, 'Nama', 2),
-                (118, 'No Nota', 0),
-                // Tabel ini dulu tidak menyebut waktu sama sekali --
-                // semua barisnya toh unit yang masuk tanggal itu. Sejak
-                // hari kerja berganti jam tutup, kalimat itu tidak lagi
-                // utuh: unit yang datang jam 18.30 muncul di tab
-                // keesokan harinya, dan tanpa kolom ini kehadirannya di
-                // situ tidak bisa dijelaskan.
-                (120, 'Masuk', 0),
-                (128, 'No HP', 0),
-                (0, 'Jenis Barang', 2),
-                (0, 'Kerusakan', 3),
-                (104, 'Pelunasan', 0),
-              ],
-              baris: [
-                for (final n in masuk)
-                  (
-                    n,
-                    [
-                      n.customerNama,
-                      n.noNota,
-                      tanggalJamMasuk(n.tanggalMasuk),
-                      n.customerTelp ?? '—',
-                      _barang(n),
-                      n.keluhan ?? '—',
-                      n.tanggalLunas == null
-                          ? '—'
-                          : _tgl.format(n.tanggalLunas!),
+                ),
+                const SizedBox(height: AppSpacing.s),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _KartuHarianKeluar(keluar: keluar, total: total),
+                      _KartuHarianMasuk(masuk: masuk),
                     ],
                   ),
+                ),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Tabel nota keluar pada tab Harian.
+class _KartuHarianKeluar extends StatelessWidget {
+  const _KartuHarianKeluar({required this.keluar, required this.total});
+
+  final List<ServiceOrderEntry> keluar;
+  final double total;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Kartu(
+      judul: 'Nota Keluar',
+      ringkas: '${keluar.length} nota  ·  ${_rp.format(total)}',
+      kosong: keluar.isEmpty,
+      pesanKosong: 'Belum ada unit yang selesai pada tanggal ini.',
+      tinggi: double.infinity,
+      child: _TabelHarian(
+        kolom: const [
+          (0, 'Nama', 2),
+          (118, 'No Nota', 0),
+          (0, 'Jenis Barang', 2),
+          (0, 'Perbaikan', 3),
+          (112, 'Biaya', 0),
+          // Cukup lebar untuk tanggal beserta jamnya. Jam masuk
+          // ikut disebut sejak hari kerja berganti jam tutup:
+          // tanpa itu, nota jam 18.30 yang muncul di tab tanggal
+          // berikutnya terbaca seperti salah tempat.
+          (120, 'Tgl Masuk', 0),
+          (104, 'Keterangan', 0),
+        ],
+        baris: [
+          for (final n in keluar)
+            (
+              n,
+              [
+                n.customerNama,
+                n.noNota,
+                _barang(n),
+                n.perbaikan ?? '—',
+                n.biaya == 0 ? 'Rp0' : _rp.format(n.biaya),
+                tanggalJamMasuk(n.tanggalMasuk),
+                ExcelExport.keteranganHarian(n),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  static String _barang(ServiceOrderEntry n) => [
+    n.barangNama,
+    if ((n.barangType ?? '').isNotEmpty) n.barangType!,
+  ].join(' ');
+}
+
+/// Tabel nota masuk pada tab Harian.
+class _KartuHarianMasuk extends StatelessWidget {
+  const _KartuHarianMasuk({required this.masuk});
+
+  final List<ServiceOrderEntry> masuk;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Kartu(
+      judul: 'Nota Masuk',
+      ringkas: '${masuk.length} unit diterima',
+      kosong: masuk.isEmpty,
+      pesanKosong: 'Belum ada unit yang masuk pada tanggal ini.',
+      tinggi: double.infinity,
+      child: _TabelHarian(
+        kolom: const [
+          (0, 'Nama', 2),
+          (118, 'No Nota', 0),
+          // Tabel ini dulu tidak menyebut waktu sama sekali --
+          // semua barisnya toh unit yang masuk tanggal itu. Sejak
+          // hari kerja berganti jam tutup, kalimat itu tidak lagi
+          // utuh: unit yang datang jam 18.30 muncul di tab
+          // keesokan harinya, dan tanpa kolom ini kehadirannya di
+          // situ tidak bisa dijelaskan.
+          (120, 'Masuk', 0),
+          (128, 'No HP', 0),
+          (0, 'Jenis Barang', 2),
+          (0, 'Kerusakan', 3),
+          (104, 'Pelunasan', 0),
+        ],
+        baris: [
+          for (final n in masuk)
+            (
+              n,
+              [
+                n.customerNama,
+                n.noNota,
+                tanggalJamMasuk(n.tanggalMasuk),
+                n.customerTelp ?? '—',
+                _barang(n),
+                n.keluhan ?? '—',
+                n.tanggalLunas == null ? '—' : _tgl.format(n.tanggalLunas!),
+              ],
+            ),
+        ],
+      ),
     );
   }
 
@@ -459,9 +526,14 @@ class _Omset extends ConsumerWidget {
           kosong: hasil.teknisi.isEmpty,
           pesanKosong:
               'Belum ada pekerjaan selesai atas nama teknisi di bulan ini.',
-          tinggi: 320,
+          // Tanpa tinggi tetap: daftarnya sepanjang jumlah orangnya.
+          // Dipotong pada 320 piksel, teknisi keempat dan seterusnya tidak
+          // terlihat sama sekali -- dan tidak ada tanda apa pun bahwa
+          // mereka ada di bawah sana. Yang menggulir halamannya.
           child: ListView.separated(
             padding: EdgeInsets.zero,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: hasil.teknisi.length,
             separatorBuilder: (_, _) => const Divider(),
             itemBuilder: (context, i) {
@@ -1030,12 +1102,30 @@ class _Kartu extends StatelessWidget {
   final String pesanKosong;
   final Widget? aksi;
 
-  /// Diisi saat kartunya dipasang di dalam daftar bergulir, yang tidak
-  /// memberi batas tinggi. Tanpa ini isinya tidak punya ruang untuk diukur.
+  /// Tinggi tetap, dipakai hanya saat kartunya HARUS setinggi itu.
+  ///
+  /// Dibiarkan kosong berarti kartunya tumbuh mengikuti isinya. Itu yang
+  /// benar untuk daftar yang panjangnya ditentukan data -- daftar teknisi
+  /// yang dipotong pada tinggi tetap membuat orang terakhir tidak terlihat
+  /// sama sekali, dan tidak ada tanda apa pun bahwa ia ada di bawah sana.
+  /// Yang menggulir cukup halamannya, bukan kotak di dalam halaman.
   final double? tinggi;
 
   @override
   Widget build(BuildContext context) {
+    final isi = kosong
+        ? Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Text(
+                pesanKosong,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.grey, fontSize: 13),
+              ),
+            ),
+          )
+        : child;
+
     return SizedBox(
       height: tinggi,
       child: Container(
@@ -1047,6 +1137,10 @@ class _Kartu extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          // Tanpa tinggi tetap, kolomnya hanya setinggi isinya -- dan
+          // isinya TIDAK boleh dibungkus Expanded, karena tidak ada ruang
+          // tersisa untuk dibagi.
+          mainAxisSize: tinggi == null ? MainAxisSize.min : MainAxisSize.max,
           children: [
             Container(
               padding: const EdgeInsets.fromLTRB(
@@ -1085,23 +1179,7 @@ class _Kartu extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(
-              child: kosong
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        child: Text(
-                          pesanKosong,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppColors.grey,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    )
-                  : child,
-            ),
+            if (tinggi == null) isi else Expanded(child: isi),
           ],
         ),
       ),

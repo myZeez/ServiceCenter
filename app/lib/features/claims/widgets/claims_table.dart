@@ -220,14 +220,44 @@ class _DataRowState extends State<_DataRow> {
           ),
         ],
       ),
-      _ColId.brand => Text(
-        widget.brand.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-        ),
-        overflow: TextOverflow.ellipsis,
+      // Garansi toko diberi penanda di sebelah brandnya. Tanpa itu kedua
+      // jenis terbaca sama persis di daftar, padahal yang satu ditagihkan
+      // ke brand dan yang satu ditanggung toko sendiri -- dan hanya yang
+      // pertama yang muncul di Rekap Brand.
+      _ColId.brand => Row(
+        children: [
+          Flexible(
+            child: Text(
+              widget.brand.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (!ClaimJenis.ditagihkan(widget.claim.jenis)) ...[
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.grey),
+                borderRadius: BorderRadius.circular(2),
+              ),
+              child: const Text(
+                'TOKO',
+                style: TextStyle(
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                  color: AppColors.grey,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
       _ColId.pelanggan => Text(
         c.namaPelanggan,

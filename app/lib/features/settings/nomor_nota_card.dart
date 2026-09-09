@@ -16,7 +16,9 @@ import '../../core/widgets/swiss_widgets.dart';
 /// setiap kali ada nota baru terbit dari komputer mana pun; salinan lokal
 /// yang tertinggal beberapa menit justru menyesatkan pada satu-satunya
 /// layar yang dipakai orang untuk memutuskan menggesernya.
-final nomorNotaBerikutnyaProvider = FutureProvider.autoDispose<int>((ref) async {
+final nomorNotaBerikutnyaProvider = FutureProvider.autoDispose<int>((
+  ref,
+) async {
   final hasil = await ref.watch(supabaseProvider).rpc('nomor_nota_berikutnya');
   return (hasil as num).toInt();
 });
@@ -47,9 +49,9 @@ class _NomorNotaCardState extends ConsumerState<NomorNotaCard> {
   Future<void> _simpan() async {
     final n = int.tryParse(_nomor.text);
     if (n == null || n < 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nomor harus 1 atau lebih')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Nomor harus 1 atau lebih')));
       return;
     }
 
@@ -102,9 +104,8 @@ class _NomorNotaCardState extends ConsumerState<NomorNotaCard> {
       );
     } on PostgrestException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(pesanGalat(e))));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(pesanGalat(e))));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -151,7 +152,8 @@ class _NomorNotaCardState extends ConsumerState<NomorNotaCard> {
 
             LabeledField(
               label: 'Nomor Nota Berikutnya',
-              hint: 'Angka yang akan dipakai nota yang terbit sesudah ini — '
+              hint:
+                  'Angka yang akan dipakai nota yang terbit sesudah ini — '
                   'bukan nomor terakhir yang sudah terpakai.',
               child: TextField(
                 controller: _nomor,

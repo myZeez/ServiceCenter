@@ -158,7 +158,9 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      _layar(claims: [_klaim(id: '1', rma: '', tutup: _bulanIni)]),
+      _layar(
+        claims: [_klaim(id: '1', rma: '', tutup: _bulanIni)],
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -174,7 +176,9 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      _layar(claims: [_klaim(id: '1', rma: 'IDD7R20001', tutup: _bulanIni)]),
+      _layar(
+        claims: [_klaim(id: '1', rma: 'IDD7R20001', tutup: _bulanIni)],
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -191,7 +195,6 @@ void main() {
   });
 
   testWidgets('layar sempit memakai kartu, bukan tabel', (tester) async {
-
     // Ukuran HP yang dipakai teknisi di lapangan. Tabel delapan kolom tidak
     // muat di sini, dan cacat tata letak semacam itu tidak pernah ketahuan
     // dari flutter analyze.
@@ -213,4 +216,3 @@ void main() {
     expect(find.text('Rp200.000'), findsOneWidget);
   });
 }
-

@@ -113,6 +113,7 @@ class Claim {
     this.telp,
     this.email,
     required this.sn,
+    this.jenis = 'brand',
     this.teknisiId,
     this.keluhan,
     this.noPerbaikan,
@@ -134,7 +135,15 @@ class Claim {
   /// klaim lama yang dicatat sebelum kolom ini ada.
   final String? email;
 
+  /// Nomor seri unit. Kosong berarti belum diisi -- dan pada garansi toko
+  /// memang tidak perlu diisi.
   final String sn;
+
+  /// 'brand' atau 'toko'. Lihat [ClaimJenis].
+  ///
+  /// Klaim lama seluruhnya 'brand': sebelum kolom ini ada, tidak ada cara
+  /// mencatat garansi toko sama sekali.
+  final String jenis;
   final String? teknisiId;
   final String? keluhan;
   final String? noPerbaikan;
@@ -157,7 +166,12 @@ class Claim {
     namaPelanggan: r['nama_pelanggan'] as String,
     telp: r['telp'] as String?,
     email: r['email'] as String?,
-    sn: r['sn'] as String,
+    // Kosong, bukan null. Garansi toko memang tidak memerlukan nomor
+    // seri, dan seluruh layar yang membaca kolom ini sudah memperlakukan
+    // teks kosong sebagai "belum diisi" -- membuatnya nullable hanya
+    // memindahkan pemeriksaan yang sama ke belasan tempat.
+    sn: (r['sn'] as String?) ?? '',
+    jenis: (r['jenis'] as String?) ?? 'brand',
     teknisiId: r['teknisi_id'] as String?,
     keluhan: r['keluhan'] as String?,
     noPerbaikan: r['no_perbaikan'] as String?,

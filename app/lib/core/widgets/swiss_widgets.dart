@@ -28,7 +28,10 @@ class LabeledField extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(label.toUpperCase(), style: Theme.of(context).textTheme.labelMedium),
+            Text(
+              label.toUpperCase(),
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
             if (required)
               const Text(
                 ' *',
@@ -95,7 +98,10 @@ class FieldValue extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.toUpperCase(), style: Theme.of(context).textTheme.labelSmall),
+        Text(
+          label.toUpperCase(),
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
         const SizedBox(height: 2),
         Text(
           value,
@@ -311,9 +317,8 @@ class _TombolExportState extends State<TombolExport> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan berkas. $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal menyimpan berkas. $e')));
     } finally {
       if (mounted) setState(() => _sibuk = false);
     }

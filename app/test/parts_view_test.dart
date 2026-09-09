@@ -80,7 +80,8 @@ void main() {
         expect(
           PartTahap.sebelumDp.contains(t) != PartTahap.sesudahDp.contains(t),
           isTrue,
-          reason: '$t harus ada di salah satu sisi, tidak keduanya dan '
+          reason:
+              '$t harus ada di salah satu sisi, tidak keduanya dan '
               'tidak bukan keduanya',
         );
       }
@@ -110,12 +111,7 @@ void main() {
   group('saringPesanan', () {
     final semua = [
       _pesanan(id: '1', nama: 'Jamal', tahap: PartTahap.foto),
-      _pesanan(
-        id: '2',
-        nama: 'Soni',
-        tahap: PartTahap.dipesan,
-        harga: 120000,
-      ),
+      _pesanan(id: '2', nama: 'Soni', tahap: PartTahap.dipesan, harga: 120000),
       _pesanan(id: '3', nama: 'Rudi', tahap: PartTahap.selesai, harga: 90000),
       _pesanan(id: '4', nama: 'Tika', tahap: PartTahap.kosong),
     ];
@@ -240,9 +236,7 @@ void main() {
       expect(find.text('ORI KB MODULE 1500K, BATT 1300K'), findsOneWidget);
     });
 
-    testWidgets('daftar kosong tetap menawarkan cara menambah', (
-      tester,
-    ) async {
+    testWidgets('daftar kosong tetap menawarkan cara menambah', (tester) async {
       await _lukis(tester, const PartsView(), const []);
 
       expect(tester.takeException(), isNull);
@@ -253,8 +247,12 @@ void main() {
   group('halaman Pemesanan Part', () {
     testWidgets('hanya memuat pesanan yang sudah lewat DP', (tester) async {
       await _lukis(tester, const PartOrdersView(), [
-        _pesanan(id: '1', nama: 'Jamal', tahap: PartTahap.konfirmasi,
-            harga: 90000),
+        _pesanan(
+          id: '1',
+          nama: 'Jamal',
+          tahap: PartTahap.konfirmasi,
+          harga: 90000,
+        ),
         _pesanan(
           id: '2',
           nama: 'Soni',
@@ -298,12 +296,7 @@ void main() {
 
     testWidgets('yang sudah lunas ditandai lunas, bukan Rp0', (tester) async {
       await _lukis(tester, const PartOrdersView(), [
-        _pesanan(
-          id: '1',
-          tahap: PartTahap.selesai,
-          harga: 90000,
-          dp: 90000,
-        ),
+        _pesanan(id: '1', tahap: PartTahap.selesai, harga: 90000, dp: 90000),
       ]);
 
       expect(find.text('LUNAS'), findsOneWidget);

@@ -130,8 +130,18 @@ String? pesanSelisihJam(Duration? selisih) {
 /// Kepala Date memakai format RFC 1123, yang tidak dikenali DateTime.parse.
 DateTime? _parseHttpDate(String v) {
   const bulan = {
-    'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
-    'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12,
+    'Jan': 1,
+    'Feb': 2,
+    'Mar': 3,
+    'Apr': 4,
+    'May': 5,
+    'Jun': 6,
+    'Jul': 7,
+    'Aug': 8,
+    'Sep': 9,
+    'Oct': 10,
+    'Nov': 11,
+    'Dec': 12,
   };
   // Contoh: Thu, 04 Sep 2026 10:16:32 GMT
   final m = RegExp(

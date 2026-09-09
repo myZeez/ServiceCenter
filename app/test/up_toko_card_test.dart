@@ -70,10 +70,7 @@ void main() {
     );
     expect(
       find.descendant(
-        of: find.ancestor(
-          of: find.text('10%'),
-          matching: find.byType(Row),
-        ),
+        of: find.ancestor(of: find.text('10%'), matching: find.byType(Row)),
         matching: find.text('BAWAAN'),
       ),
       findsOneWidget,

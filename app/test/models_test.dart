@@ -38,10 +38,7 @@ void main() {
       // timestamptz dibawa ke waktu setempat: 01:30 UTC adalah 08:30 WIB,
       // dan yang dibaca orang di layar harus jam setempatnya.
       expect(c.tanggal.isUtc, isFalse);
-      expect(
-        c.tanggal.toUtc(),
-        DateTime.utc(2026, 9, 4, 1, 30),
-      );
+      expect(c.tanggal.toUtc(), DateTime.utc(2026, 9, 4, 1, 30));
     });
 
     test('kolom opsional yang kosong tidak bikin gagal', () {

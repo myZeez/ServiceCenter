@@ -104,9 +104,9 @@ class AppTheme {
     );
 
     OutlineInputBorder border(Color c, double w) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.base),
-          borderSide: BorderSide(color: c, width: w),
-        );
+      borderRadius: BorderRadius.circular(AppRadius.base),
+      borderSide: BorderSide(color: c, width: w),
+    );
 
     return ThemeData(
       colorScheme: scheme,
@@ -195,20 +195,14 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.base),
           ),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
 
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.blue,
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
 

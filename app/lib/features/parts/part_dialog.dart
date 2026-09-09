@@ -238,13 +238,19 @@ class _PartDialogState extends ConsumerState<PartDialog> {
     // supaya penolakannya berupa kalimat di tempat yang salah, bukan
     // galat constraint yang tidak bisa dibaca siapa pun.
     if (PartTahap.perluHarga(_tahap) && harga == null) {
-      setState(() => _error = 'Isi harga jualnya dulu. Tahap ini menunggu '
-          'jawaban pelanggan atas sebuah angka — dan angkanya belum ada.');
+      setState(
+        () => _error =
+            'Isi harga jualnya dulu. Tahap ini menunggu '
+            'jawaban pelanggan atas sebuah angka — dan angkanya belum ada.',
+      );
       return;
     }
     if (dp > 0 && harga == null) {
-      setState(() => _error = 'DP tidak bisa dicatat tanpa harga: sisanya '
-          'jadi tidak terhitung.');
+      setState(
+        () => _error =
+            'DP tidak bisa dicatat tanpa harga: sisanya '
+            'jadi tidak terhitung.',
+      );
       return;
     }
 
@@ -255,10 +261,12 @@ class _PartDialogState extends ConsumerState<PartDialog> {
     if (_tahap == PartTahap.selesai &&
         harga != null &&
         sisaTagihan(harga, dp) > 0) {
-      setState(() => _error =
-          'Sisa tagihan masih ${_rp.format(sisaTagihan(harga, dp))}. '
-          'Genapkan DP-nya, atau turunkan harga kalau memang diberi '
-          'potongan.');
+      setState(
+        () => _error =
+            'Sisa tagihan masih ${_rp.format(sisaTagihan(harga, dp))}. '
+            'Genapkan DP-nya, atau turunkan harga kalau memang diberi '
+            'potongan.',
+      );
       return;
     }
 
@@ -354,8 +362,9 @@ class _PartDialogState extends ConsumerState<PartDialog> {
     // keduanya diambil sekali saja, saat daftarnya sudah ada.
     final idTertaut = widget.pesanan?.customerId ?? widget.awal?.customerId;
     if (_pelanggan == null && idTertaut != null) {
-      for (final c in ref.watch(customersProvider).valueOrNull ??
-          const <CustomerEntry>[]) {
+      for (final c
+          in ref.watch(customersProvider).valueOrNull ??
+              const <CustomerEntry>[]) {
         if (c.id == idTertaut) {
           _pelanggan = c;
           break;
@@ -697,12 +706,14 @@ class _PartDialogState extends ConsumerState<PartDialog> {
             padding: const EdgeInsets.all(AppSpacing.xs),
             decoration: const BoxDecoration(
               color: AppColors.lightGrey,
-              border: Border(left: BorderSide(color: AppColors.black, width: 3)),
+              border: Border(
+                left: BorderSide(color: AppColors.black, width: 3),
+              ),
             ),
             child: Text(
               'Untung ${_rp.format(margin(hpp, harga))}'
               '${upNyata == null ? '' : '  ·  ${_persen.format(upNyata)}% '
-                  'dari modal'}',
+                        'dari modal'}',
               style: const TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
@@ -728,8 +739,9 @@ class _PartDialogState extends ConsumerState<PartDialog> {
     // -- tautan yang tersimpan tetapi tidak muncul di dropdown terbaca
     // seperti tautan yang hilang, padahal ia masih ada di server.
     final notaPelanggan = [
-      for (final n in ref.watch(serviceOrdersProvider).valueOrNull ??
-          const <ServiceOrderEntry>[])
+      for (final n
+          in ref.watch(serviceOrdersProvider).valueOrNull ??
+              const <ServiceOrderEntry>[])
         if (n.id == _notaId ||
             (n.customerId != null && n.customerId == _pelanggan?.id))
           n,
@@ -811,9 +823,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
                 child: Container(
                   height: 48,
                   alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.s,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s),
                   decoration: BoxDecoration(
                     color: AppColors.lightGrey,
                     border: Border.all(color: const Color(0xFFCFD5D4)),
@@ -895,9 +905,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
                   child: TextFormField(
                     controller: _noPo,
                     textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
-                      hintText: 'IDD7510006',
-                    ),
+                    decoration: const InputDecoration(hintText: 'IDD7510006'),
                   ),
                 ),
               ),
@@ -910,8 +918,9 @@ class _PartDialogState extends ConsumerState<PartDialog> {
           label: 'Nota Servis untuk Jasa Pasang',
           hint: 'Biaya jasanya dicatat di nota itu, bukan di sini.',
           child: DropdownButtonFormField<String>(
-            initialValue:
-                notaPelanggan.any((n) => n.id == _notaId) ? _notaId : null,
+            initialValue: notaPelanggan.any((n) => n.id == _notaId)
+                ? _notaId
+                : null,
             isExpanded: true,
             hint: Text(
               _pelanggan == null

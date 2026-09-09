@@ -93,9 +93,7 @@ void main() {
   test('modal dan margin ikut saat datanya ada', () {
     final l = _lembar(
       [_pesanan(id: '1', harga: 120000)],
-      modal: {
-        '1': const PartCost(partOrderId: '1', hpp: 100000, upPersen: 20),
-      },
+      modal: {'1': const PartCost(partOrderId: '1', hpp: 100000, upPersen: 20)},
     );
 
     final baris = l.tabel.single.baris.single;
@@ -123,17 +121,21 @@ void main() {
       ('batal', 'CANCEL'),
       ('kosong', 'NO STOCK'),
     ]) {
-      final baris = _lembar([
-        _pesanan(id: '1', tahap: tahap, harga: null),
-      ]).tabel.single.baris.single;
+      final baris = _lembar([_pesanan(id: '1', tahap: tahap, harga: null)])
+          .tabel
+          .single
+          .baris
+          .single;
       expect((baris[6] as TextCellValue).value.toString(), teks);
     }
   });
 
   test('tanggal DP dipakai kalau ada, tanggal bertanya kalau belum', () {
-    final adaDp = _lembar([
-      _pesanan(id: '1', tanggalDp: DateTime(2026, 9, 20)),
-    ]).tabel.single.baris.single;
+    final adaDp = _lembar([_pesanan(id: '1', tanggalDp: DateTime(2026, 9, 20))])
+        .tabel
+        .single
+        .baris
+        .single;
     expect((adaDp[0] as DateCellValue).day, 20);
 
     final belum = _lembar([_pesanan(id: '2')]).tabel.single.baris.single;

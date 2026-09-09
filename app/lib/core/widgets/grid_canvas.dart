@@ -37,9 +37,9 @@ class GridLayout {
 }
 
 String encodeLayout(GridLayout layout) => jsonEncode({
-      'spans': {for (final e in layout.spans.entries) e.key: e.value.toJson()},
-      'order': layout.order,
-    });
+  'spans': {for (final e in layout.spans.entries) e.key: e.value.toJson()},
+  'order': layout.order,
+});
 
 GridLayout decodeLayout(String? raw) {
   if (raw == null || raw.isEmpty) return const GridLayout();
@@ -165,11 +165,10 @@ class _GridCanvasState extends State<GridCanvas> {
 
         final tata = _hitungTata();
         final baris = tata.jumlahBaris;
-        final tinggi = baris * widget.rowHeight +
-            (baris - 1).clamp(0, 9999) * widget.gap;
+        final tinggi =
+            baris * widget.rowHeight + (baris - 1).clamp(0, 9999) * widget.gap;
 
-        double lebarDari(int span) =>
-            span * lebarSel + (span - 1) * widget.gap;
+        double lebarDari(int span) => span * lebarSel + (span - 1) * widget.gap;
         double tinggiDari(int span) =>
             span * widget.rowHeight + (span - 1) * widget.gap;
 
@@ -229,18 +228,23 @@ class _GridCanvasState extends State<GridCanvas> {
         _bayanganUkuran = p.span;
       }),
       onGeserUbah: (arah, dx, dy) {
-        final awal = widget.layout.spans[p.area.id] ??
+        final awal =
+            widget.layout.spans[p.area.id] ??
             GridSpan(p.area.colSpan, p.area.rowSpan);
         setState(() {
           _bayanganUkuran = GridSpan(
             arah == _Arah.bawah
                 ? awal.colSpan
-                : (awal.colSpan + (dx / langkahX).round())
-                    .clamp(p.area.minColSpan, widget.columns),
+                : (awal.colSpan + (dx / langkahX).round()).clamp(
+                    p.area.minColSpan,
+                    widget.columns,
+                  ),
             arah == _Arah.kanan
                 ? awal.rowSpan
-                : (awal.rowSpan + (dy / langkahY).round())
-                    .clamp(p.area.minRowSpan, 40),
+                : (awal.rowSpan + (dy / langkahY).round()).clamp(
+                    p.area.minRowSpan,
+                    40,
+                  ),
           );
         });
       },
@@ -309,7 +313,8 @@ class _GridCanvasState extends State<GridCanvas> {
 
     final tata = _hitungTata();
     for (final p in tata.daftar) {
-      final di = kolom >= p.kolom &&
+      final di =
+          kolom >= p.kolom &&
           kolom < p.kolom + p.span.colSpan &&
           baris >= p.baris &&
           baris < p.baris + p.span.rowSpan;
@@ -474,104 +479,104 @@ class _IsiKotakState extends State<_IsiKotak> {
             if (!widget.editable)
               const SizedBox.shrink()
             else ...[
-            if (widget.sedangDiubah || widget.sedangDipindah)
+              if (widget.sedangDiubah || widget.sedangDipindah)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: _Label(
+                    '${widget.span.colSpan} × ${widget.span.rowSpan}',
+                  ),
+                ),
+
+              // Pegangan pindah di tepi kiri: jauh dari isi kartu, jadi tidak
+              // pernah bersaing dengan tombol atau kolom isian di dalamnya.
               Positioned(
-                right: 8,
-                top: 8,
-                child: _Label(
-                  '${widget.span.colSpan} × ${widget.span.rowSpan}',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 10,
+                child: _Pegangan(
+                  cursor: SystemMouseCursors.move,
+                  tampil: tampil,
+                  bentuk: _Bentuk.pindah,
+                  onMulai: () {
+                    _akumulasi = Offset.zero;
+                    widget.onMulaiPindah();
+                  },
+                  onGeser: (d, global) {
+                    _akumulasi += d;
+                    widget.onGeserPindah(_akumulasi, global);
+                  },
+                  onSelesai: widget.onSelesaiPindah,
                 ),
               ),
 
-            // Pegangan pindah di tepi kiri: jauh dari isi kartu, jadi tidak
-            // pernah bersaing dengan tombol atau kolom isian di dalamnya.
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 10,
-              child: _Pegangan(
-                cursor: SystemMouseCursors.move,
-                tampil: tampil,
-                bentuk: _Bentuk.pindah,
-                onMulai: () {
-                  _akumulasi = Offset.zero;
-                  widget.onMulaiPindah();
-                },
-                onGeser: (d, global) {
-                  _akumulasi += d;
-                  widget.onGeserPindah(_akumulasi, global);
-                },
-                onSelesai: widget.onSelesaiPindah,
+              Positioned(
+                right: 0,
+                top: 10,
+                bottom: 26,
+                width: 10,
+                child: _Pegangan(
+                  cursor: SystemMouseCursors.resizeLeftRight,
+                  tampil: tampil,
+                  bentuk: _Bentuk.tepi,
+                  onMulai: () {
+                    _akumulasi = Offset.zero;
+                    widget.onMulaiUbah(_Arah.kanan);
+                  },
+                  onGeser: (d, _) {
+                    _akumulasi += d;
+                    widget.onGeserUbah(_Arah.kanan, _akumulasi.dx, 0);
+                  },
+                  onSelesai: widget.onSelesaiUbah,
+                ),
               ),
-            ),
 
-            Positioned(
-              right: 0,
-              top: 10,
-              bottom: 26,
-              width: 10,
-              child: _Pegangan(
-                cursor: SystemMouseCursors.resizeLeftRight,
-                tampil: tampil,
-                bentuk: _Bentuk.tepi,
-                onMulai: () {
-                  _akumulasi = Offset.zero;
-                  widget.onMulaiUbah(_Arah.kanan);
-                },
-                onGeser: (d, _) {
-                  _akumulasi += d;
-                  widget.onGeserUbah(_Arah.kanan, _akumulasi.dx, 0);
-                },
-                onSelesai: widget.onSelesaiUbah,
+              Positioned(
+                left: 10,
+                right: 26,
+                bottom: 0,
+                height: 10,
+                child: _Pegangan(
+                  cursor: SystemMouseCursors.resizeUpDown,
+                  tampil: tampil,
+                  bentuk: _Bentuk.tepi,
+                  onMulai: () {
+                    _akumulasi = Offset.zero;
+                    widget.onMulaiUbah(_Arah.bawah);
+                  },
+                  onGeser: (d, _) {
+                    _akumulasi += d;
+                    widget.onGeserUbah(_Arah.bawah, 0, _akumulasi.dy);
+                  },
+                  onSelesai: widget.onSelesaiUbah,
+                ),
               ),
-            ),
 
-            Positioned(
-              left: 10,
-              right: 26,
-              bottom: 0,
-              height: 10,
-              child: _Pegangan(
-                cursor: SystemMouseCursors.resizeUpDown,
-                tampil: tampil,
-                bentuk: _Bentuk.tepi,
-                onMulai: () {
-                  _akumulasi = Offset.zero;
-                  widget.onMulaiUbah(_Arah.bawah);
-                },
-                onGeser: (d, _) {
-                  _akumulasi += d;
-                  widget.onGeserUbah(_Arah.bawah, 0, _akumulasi.dy);
-                },
-                onSelesai: widget.onSelesaiUbah,
+              Positioned(
+                right: 0,
+                bottom: 0,
+                width: 26,
+                height: 26,
+                child: _Pegangan(
+                  cursor: SystemMouseCursors.resizeDownRight,
+                  tampil: tampil,
+                  bentuk: _Bentuk.sudut,
+                  onMulai: () {
+                    _akumulasi = Offset.zero;
+                    widget.onMulaiUbah(_Arah.sudut);
+                  },
+                  onGeser: (d, _) {
+                    _akumulasi += d;
+                    widget.onGeserUbah(
+                      _Arah.sudut,
+                      _akumulasi.dx,
+                      _akumulasi.dy,
+                    );
+                  },
+                  onSelesai: widget.onSelesaiUbah,
+                ),
               ),
-            ),
-
-            Positioned(
-              right: 0,
-              bottom: 0,
-              width: 26,
-              height: 26,
-              child: _Pegangan(
-                cursor: SystemMouseCursors.resizeDownRight,
-                tampil: tampil,
-                bentuk: _Bentuk.sudut,
-                onMulai: () {
-                  _akumulasi = Offset.zero;
-                  widget.onMulaiUbah(_Arah.sudut);
-                },
-                onGeser: (d, _) {
-                  _akumulasi += d;
-                  widget.onGeserUbah(
-                    _Arah.sudut,
-                    _akumulasi.dx,
-                    _akumulasi.dy,
-                  );
-                },
-                onSelesai: widget.onSelesaiUbah,
-              ),
-            ),
             ],
           ],
         ),
@@ -621,15 +626,15 @@ class _Pegangan extends StatelessWidget {
         gestures: {
           _PenarikLangsung:
               GestureRecognizerFactoryWithHandlers<_PenarikLangsung>(
-            _PenarikLangsung.new,
-            (r) {
-              r
-                ..onStart = ((_) => onMulai())
-                ..onUpdate = ((d) => onGeser(d.delta, d.globalPosition))
-                ..onEnd = ((_) => onSelesai())
-                ..onCancel = (() => onSelesai());
-            },
-          ),
+                _PenarikLangsung.new,
+                (r) {
+                  r
+                    ..onStart = ((_) => onMulai())
+                    ..onUpdate = ((d) => onGeser(d.delta, d.globalPosition))
+                    ..onEnd = ((_) => onSelesai())
+                    ..onCancel = (() => onSelesai());
+                },
+              ),
         },
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 150),
@@ -659,11 +664,7 @@ class _PelukisPegangan extends CustomPainter {
         final titik = Paint()..color = AppColors.red;
         final tengah = size.height / 2;
         for (var i = -2; i <= 2; i++) {
-          canvas.drawCircle(
-            Offset(size.width / 2, tengah + i * 6),
-            1.6,
-            titik,
-          );
+          canvas.drawCircle(Offset(size.width / 2, tengah + i * 6), 1.6, titik);
         }
 
       case _Bentuk.tepi:
@@ -704,21 +705,21 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(
-          color: AppColors.black,
-          borderRadius: BorderRadius.circular(3),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: AppColors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+    decoration: BoxDecoration(
+      color: AppColors.black,
+      borderRadius: BorderRadius.circular(3),
+    ),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: AppColors.white,
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.5,
+      ),
+    ),
+  );
 }
 
 class _PelukisGrid extends CustomPainter {

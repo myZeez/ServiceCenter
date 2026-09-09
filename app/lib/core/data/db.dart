@@ -122,40 +122,37 @@ class Db {
         if (Siklus.aktif) segarkan();
       });
 
-      langganan = _c
-          .from(tabel)
-          .stream(primaryKey: kunci)
-          .listen(
-            (rows) {
-              if (!hidup) return;
-              // Kedatangan dicatat, bukan hanya kegagalan. Langganan ke
-              // tabel yang tidak terdaftar di publikasi tetap terpasang
-              // tanpa protes -- ia hanya tidak pernah mengirim apa pun, dan
-              // tanpa catatan ini keadaan itu tidak bisa dibedakan dari
-              // server yang memang sedang sepi.
-              debugPrint('[realtime] $tabel: ${rows.length} baris');
+      langganan = _c.from(tabel).stream(primaryKey: kunci).listen(
+        (rows) {
+          if (!hidup) return;
+          // Kedatangan dicatat, bukan hanya kegagalan. Langganan ke
+          // tabel yang tidak terdaftar di publikasi tetap terpasang
+          // tanpa protes -- ia hanya tidak pernah mengirim apa pun, dan
+          // tanpa catatan ini keadaan itu tidak bisa dibedakan dari
+          // server yang memang sedang sepi.
+          debugPrint('[realtime] $tabel: ${rows.length} baris');
 
-              // Barisnya SENGAJA tidak dipakai langsung. Langganan
-              // membawa daftarnya sendiri, dan daftar itu terkena batas
-              // baris yang sama -- memakainya berarti daftar lengkap
-              // hasil penarikan berhalaman tadi tertimpa versi terpotong
-              // setiap kali ada satu perubahan kecil di tabel.
-              //
-              // Jadi yang diambil dari sini hanya kabarnya: ada yang
-              // berubah, tarik ulang. Ditunda sesaat supaya perubahan
-              // beruntun -- menyimpan sebuah formulir menyentuh beberapa
-              // baris sekaligus -- cukup menghasilkan satu penarikan.
-              tunda?.cancel();
-              tunda = Timer(const Duration(milliseconds: 400), segarkan);
-            },
-            // Tidak diteruskan ke layar dengan sengaja: langganan yang
-            // gagal bukan alasan mengosongkan halaman, karena penarikan
-            // berkala tetap menjaga isinya benar. Tetapi dicatat -- galat
-            // yang ditelan tanpa sisa membuat penyebabnya tidak bisa
-            // diperiksa siapa pun kemudian.
-            onError: (Object e) =>
-                debugPrint('[realtime] langganan $tabel gagal: $e'),
-          );
+          // Barisnya SENGAJA tidak dipakai langsung. Langganan
+          // membawa daftarnya sendiri, dan daftar itu terkena batas
+          // baris yang sama -- memakainya berarti daftar lengkap
+          // hasil penarikan berhalaman tadi tertimpa versi terpotong
+          // setiap kali ada satu perubahan kecil di tabel.
+          //
+          // Jadi yang diambil dari sini hanya kabarnya: ada yang
+          // berubah, tarik ulang. Ditunda sesaat supaya perubahan
+          // beruntun -- menyimpan sebuah formulir menyentuh beberapa
+          // baris sekaligus -- cukup menghasilkan satu penarikan.
+          tunda?.cancel();
+          tunda = Timer(const Duration(milliseconds: 400), segarkan);
+        },
+        // Tidak diteruskan ke layar dengan sengaja: langganan yang
+        // gagal bukan alasan mengosongkan halaman, karena penarikan
+        // berkala tetap menjaga isinya benar. Tetapi dicatat -- galat
+        // yang ditelan tanpa sisa membuat penyebabnya tidak bisa
+        // diperiksa siapa pun kemudian.
+        onError: (Object e) =>
+            debugPrint('[realtime] langganan $tabel gagal: $e'),
+      );
     };
 
     keluar.onCancel = () async {
@@ -172,25 +169,30 @@ class Db {
   // Master
   // ------------------------------------------------------------------
 
-  Stream<List<Brand>> watchAllBrands() => _semua('brands', Brand.fromMap)
-      .map((l) => l..sort((a, b) => a.nama.compareTo(b.nama)));
+  Stream<List<Brand>> watchAllBrands() => _semua(
+    'brands',
+    Brand.fromMap,
+  ).map((l) => l..sort((a, b) => a.nama.compareTo(b.nama)));
 
-  Stream<List<PartType>> watchAllPartTypes() =>
-      _semua('part_types', PartType.fromMap)
-          .map((l) => l..sort((a, b) => a.nama.compareTo(b.nama)));
+  Stream<List<PartType>> watchAllPartTypes() => _semua(
+    'part_types',
+    PartType.fromMap,
+  ).map((l) => l..sort((a, b) => a.nama.compareTo(b.nama)));
 
-  Stream<List<MetodeBayar>> watchMetodeBayar() =>
-      _semua('metode_bayar', MetodeBayar.fromMap)
-          .map((l) => l..sort((a, b) => a.urutan.compareTo(b.urutan)));
+  Stream<List<MetodeBayar>> watchMetodeBayar() => _semua(
+    'metode_bayar',
+    MetodeBayar.fromMap,
+  ).map((l) => l..sort((a, b) => a.urutan.compareTo(b.urutan)));
 
   Future<void> simpanMetodeBayar(Map<String, dynamic> baris) => _pastikan(
     _c.from('metode_bayar').upsert(baris, onConflict: 'kode').select('id'),
     'metode bayar',
   );
 
-  Stream<List<Profile>> watchAllProfiles() =>
-      _semua('profiles', Profile.fromMap)
-          .map((l) => l..sort((a, b) => a.nama.compareTo(b.nama)));
+  Stream<List<Profile>> watchAllProfiles() => _semua(
+    'profiles',
+    Profile.fromMap,
+  ).map((l) => l..sort((a, b) => a.nama.compareTo(b.nama)));
 
   Future<List<Profile>> allProfiles() async {
     final rows = await _c.from('profiles').select();
@@ -201,17 +203,16 @@ class Db {
   // Klaim garansi
   // ------------------------------------------------------------------
 
-  Stream<List<Claim>> watchClaims() => _semua('claims', Claim.fromMap)
-      .map((l) => l..sort((a, b) => b.tanggal.compareTo(a.tanggal)));
+  Stream<List<Claim>> watchClaims() => _semua(
+    'claims',
+    Claim.fromMap,
+  ).map((l) => l..sort((a, b) => b.tanggal.compareTo(a.tanggal)));
 
   Stream<List<ClaimPart>> watchParts() =>
       _semua('claim_parts', ClaimPart.fromMap);
 
   Future<List<ClaimPart>> partsOf(String claimId) async {
-    final rows = await _c
-        .from('claim_parts')
-        .select()
-        .eq('claim_id', claimId);
+    final rows = await _c.from('claim_parts').select().eq('claim_id', claimId);
     return [for (final r in rows) ClaimPart.fromMap(r)];
   }
 
@@ -226,10 +227,11 @@ class Db {
   Future<void> simpanClaim(Map<String, dynamic> baris) =>
       _pastikan(_c.from('claims').upsert(baris).select('id'), 'klaim');
 
-  Future<void> ubahClaim(String id, Map<String, dynamic> perubahan) => _pastikan(
-    _c.from('claims').update(perubahan).eq('id', id).select('id'),
-    'klaim',
-  );
+  Future<void> ubahClaim(String id, Map<String, dynamic> perubahan) =>
+      _pastikan(
+        _c.from('claims').update(perubahan).eq('id', id).select('id'),
+        'klaim',
+      );
 
   /// Mengganti teknisi yang mengerjakan. Sejak migrasi 0024 teknisi juga
   /// boleh mengubah status dan catatan klaim, serta menambah part lewat
@@ -269,9 +271,10 @@ class Db {
   // Administrasi servis
   // ------------------------------------------------------------------
 
-  Stream<List<ServiceOrderEntry>> watchServiceOrders() =>
-      _semua('service_orders', ServiceOrderEntry.fromMap)
-          .map((l) => l..sort((a, b) => b.tanggalMasuk.compareTo(a.tanggalMasuk)));
+  Stream<List<ServiceOrderEntry>> watchServiceOrders() => _semua(
+    'service_orders',
+    ServiceOrderEntry.fromMap,
+  ).map((l) => l..sort((a, b) => b.tanggalMasuk.compareTo(a.tanggalMasuk)));
 
   /// Mengubah nota servis. Teknisi hanya boleh menyentuh kolom pekerjaan --
   /// status, catatan, dan teknisinya; biaya serta identitas nota ditahan
@@ -300,21 +303,24 @@ class Db {
     return hasil as String;
   }
 
-  Stream<List<ShipmentEntry>> watchShipments() =>
-      _semua('shipments', ShipmentEntry.fromMap)
-          .map((l) => l..sort((a, b) => b.tanggalKirim.compareTo(a.tanggalKirim)));
+  Stream<List<ShipmentEntry>> watchShipments() => _semua(
+    'shipments',
+    ShipmentEntry.fromMap,
+  ).map((l) => l..sort((a, b) => b.tanggalKirim.compareTo(a.tanggalKirim)));
 
-  Stream<List<CustomerEntry>> watchCustomers() =>
-      _semua('customers', CustomerEntry.fromMap)
-          .map((l) => l..sort((a, b) => a.nama.compareTo(b.nama)));
+  Stream<List<CustomerEntry>> watchCustomers() => _semua(
+    'customers',
+    CustomerEntry.fromMap,
+  ).map((l) => l..sort((a, b) => a.nama.compareTo(b.nama)));
 
   // ------------------------------------------------------------------
   // Tanya harga dan pemesanan part
   // ------------------------------------------------------------------
 
-  Stream<List<PartOrder>> watchPartOrders() =>
-      _semua('part_orders', PartOrder.fromMap)
-          .map((l) => l..sort((a, b) => b.tanggal.compareTo(a.tanggal)));
+  Stream<List<PartOrder>> watchPartOrders() => _semua(
+    'part_orders',
+    PartOrder.fromMap,
+  ).map((l) => l..sort((a, b) => b.tanggal.compareTo(a.tanggal)));
 
   /// Modal tiap pesanan. Bagi teknisi aliran ini selalu kosong: barisnya
   /// disaring aturan akses di server, bukan disembunyikan layar.
@@ -330,8 +336,10 @@ class Db {
   /// Upsert dengan alasan yang sama seperti klaim: id dibuat di aplikasi,
   /// dan percobaan kedua atas penyimpanan yang gagal separuh jalan harus
   /// melanjutkan baris yang sama, bukan ditolak sebagai kembar.
-  Future<void> simpanPartOrder(Map<String, dynamic> baris) =>
-      _pastikan(_c.from('part_orders').upsert(baris).select('id'), 'pesanan part');
+  Future<void> simpanPartOrder(Map<String, dynamic> baris) => _pastikan(
+    _c.from('part_orders').upsert(baris).select('id'),
+    'pesanan part',
+  );
 
   Future<void> ubahPartOrder(String id, Map<String, dynamic> perubahan) =>
       _pastikan(
@@ -407,7 +415,6 @@ class Db {
   );
 
   Stream<List<BrandShareEntry>> watchBrandShares() => _semua(
-
     'brand_technician_shares',
     BrandShareEntry.fromMap,
     kunci: const ['brand_id', 'profile_id'],
@@ -486,9 +493,9 @@ void _catat(SupabaseClient client, String pesan) {
   final sesi = client.auth.currentSession;
   final kedaluwarsa = sesi?.expiresAt == null
       ? 'tidak ada sesi'
-      : DateTime.fromMillisecondsSinceEpoch(
-          sesi!.expiresAt! * 1000,
-        ).toLocal().toIso8601String();
+      : DateTime.fromMillisecondsSinceEpoch(sesi!.expiresAt! * 1000)
+            .toLocal()
+            .toIso8601String();
 
   debugPrint(
     '[db] $pesan | user=${client.auth.currentUser?.id ?? '-'} '

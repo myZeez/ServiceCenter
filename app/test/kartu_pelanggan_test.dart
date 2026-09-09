@@ -69,7 +69,10 @@ Future<void> _lukis(
           (ref) => Stream.value(const <Profile>[]),
         ),
       ],
-      child: MaterialApp(theme: AppTheme.build(), home: ServiceDialog(nota: nota)),
+      child: MaterialApp(
+        theme: AppTheme.build(),
+        home: ServiceDialog(nota: nota),
+      ),
     ),
   );
   await tester.pumpAndSettle();
@@ -99,10 +102,7 @@ void main() {
     ) async {
       await _lukis(tester);
 
-      expect(
-        find.textContaining('atau isi nama baru'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('atau isi nama baru'), findsOneWidget);
     });
   });
 

@@ -57,6 +57,7 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
   final _namaFokus = FocusNode();
 
   int? _brandId;
+  String _jenis = ClaimJenis.brand;
   String? _teknisiId;
   String _status = ClaimStatus.open;
   late DateTime _tanggal;
@@ -95,6 +96,7 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
 
     _tanggal = c.tanggal;
     _brandId = c.brandId;
+    _jenis = c.jenis;
     _teknisiId = c.teknisiId;
     _status = c.status;
     _nama.text = c.namaPelanggan;
@@ -215,6 +217,7 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
       'telp': nullIfEmpty(_telp),
       'email': nullIfEmpty(_email),
       'sn': _sn.text.trim(),
+      'jenis': _jenis,
       'teknisi_id': _teknisiId,
       'keluhan': nullIfEmpty(_keluhan),
       'no_perbaikan': nullIfEmpty(_noPerbaikan),
@@ -434,9 +437,38 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                       const SizedBox(height: AppSpacing.s),
                     ],
 
+                    // Jenisnya ditanya paling dulu: ia yang menentukan
+                    // kolom mana di bawahnya yang wajib.
+                    LabeledField(
+                      label: 'Jenis Garansi',
+                      required: true,
+                      hint: ClaimJenis.hint(_jenis),
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _jenis,
+                        isExpanded: true,
+                        items: [
+                          for (final j in ClaimJenis.all)
+                            DropdownMenuItem(
+                              value: j,
+                              child: Text(ClaimJenis.label(j)),
+                            ),
+                        ],
+                        onChanged: (v) =>
+                            setState(() => _jenis = v ?? ClaimJenis.brand),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s),
+
                     LabeledField(
                       label: 'Brand',
                       required: true,
+                      // Diisi pada kedua jenis. Pada garansi toko bukan
+                      // untuk ditagihkan, melainkan supaya merek unit yang
+                      // sering kembali tetap bisa dihitung.
+                      hint: ClaimJenis.ditagihkan(_jenis)
+                          ? null
+                          : 'Tidak ditagihkan ke brand — hanya untuk '
+                                'mencatat merek unitnya.',
                       child: DropdownButtonFormField<int>(
                         initialValue: _brandId,
                         isExpanded: true,
@@ -453,8 +485,10 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                     const SizedBox(height: AppSpacing.s),
                     LabeledField(
                       label: 'Serial Number',
-                      required: true,
-                      hint: scanSupported
+                      required: ClaimJenis.perluSn(_jenis),
+                      hint: !ClaimJenis.perluSn(_jenis)
+                          ? 'Boleh dikosongkan pada garansi toko.'
+                          : scanSupported
                           ? 'Pindai barcode untuk menghindari salah ketik.'
                           : null,
                       child: TextFormField(
@@ -465,8 +499,10 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                             onScanned: (v) => setState(() => _sn.text = v),
                           ),
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'SN wajib diisi'
+                        validator: (v) =>
+                            ClaimJenis.perluSn(_jenis) &&
+                                (v == null || v.trim().isEmpty)
+                            ? 'SN wajib untuk klaim ke brand'
                             : null,
                       ),
                     ),

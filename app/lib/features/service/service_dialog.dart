@@ -11,6 +11,7 @@ import '../../core/data/models.dart';
 import '../../core/print/nota_template.dart';
 import '../../core/print/raw_printer.dart';
 import '../../core/data/galat.dart';
+import '../../core/status.dart';
 import '../../core/fitur.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
@@ -117,6 +118,10 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   DateTime? _estimasi;
   bool _garansi = false;
 
+  /// Jenis klaim yang akan lahir dari nota ini. Hanya berlaku saat
+  /// centang garansi menyala dan klaimnya memang belum ada.
+  String _jenisGaransi = ClaimJenis.brand;
+
   /// Apakah nota baru ini sekalian membuka tanya harga part.
   ///
   /// Selama tidak dicentang, formulir ini bekerja persis seperti sebelum
@@ -198,6 +203,15 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   bool get _bolehUbahGaransi =>
       widget.nota == null ||
       (!widget.nota!.garansi && widget.nota!.claimId == null);
+
+  /// Apakah nomor seri wajib diisi pada nota ini.
+  ///
+  /// Hanya saat sebuah klaim KE BRAND memang akan lahir dari sini. Brand
+  /// mengenali unit dari nomor serinya, dan klaim tanpa itu tidak bisa
+  /// diproses siapa pun -- lebih baik ditolak saat diketik daripada
+  /// ditemukan sebulan kemudian oleh orang di RC brand.
+  bool get _perluSn =>
+      _garansi && _bolehUbahGaransi && ClaimJenis.perluSn(_jenisGaransi);
 
   Future<bool> _biayaGaransiDisengaja(double biaya) async {
     if (!perluKonfirmasiBiayaGaransi(
@@ -301,6 +315,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             .toUtc()
             .toIso8601String(),
         'brand_id': _brandId!,
+        'jenis': _jenisGaransi,
         'nama_pelanggan': _nama.text.trim(),
         'telp': _kosongNull(_telp),
         'email': _kosongNull(_email),
@@ -635,22 +650,22 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         const SizedBox(height: AppSpacing.s),
         LabeledField(
           label: 'Email',
-          // Wajib hanya saat sebuah klaim garansi memang akan lahir dari
-          // nota ini -- portal RMA brand menuntutnya. Nota yang klaimnya
-          // sudah ada, atau nota arsip bergaransi, tidak dipaksa: tidak ada
-          // klaim baru yang dibuat, dan kolomnya memang belum ada saat itu.
-          required: _garansi && _bolehUbahGaransi,
+          // Tidak pernah wajib, pada jenis garansi mana pun.
+          //
+          // Sempat dipaksa saat centang garansi menyala, dengan alasan
+          // portal RMA brand menuntutnya. Alasannya benar tetapi tempatnya
+          // salah: yang menuntut email adalah portal brand saat unitnya
+          // didaftarkan ke sana, bukan meja depan saat notanya diketik.
+          // Pelanggan yang tidak punya email -- atau tidak ingat -- tidak
+          // boleh membuat notanya gagal disimpan.
           hint: _garansi && _bolehUbahGaransi
-              ? 'Portal RMA sebagian brand menuntut email pelanggan.'
+              ? 'Portal RMA sebagian brand menuntutnya. Boleh dikosongkan '
+                    'dan diisi belakangan.'
               : null,
           child: TextFormField(
             controller: _email,
             keyboardType: TextInputType.emailAddress,
             decoration: const InputDecoration(hintText: 'nama@email.com'),
-            validator: (v) =>
-                _garansi && _bolehUbahGaransi && (v ?? '').trim().isEmpty
-                ? 'Email wajib untuk klaim garansi'
-                : null,
           ),
         ),
 
@@ -691,19 +706,22 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         const SizedBox(height: AppSpacing.s),
         LabeledField(
           label: 'Nomor Seri',
-          required: _garansi,
-          hint: _garansi
+          required: _perluSn,
+          hint: _perluSn
               ? 'Brand mengenali unit dari nomor serinya. Klaim tanpa ini '
                     'tidak bisa diproses siapa pun.'
               : null,
           child: TextFormField(
             controller: _sn,
             textCapitalization: TextCapitalization.characters,
-            // Wajib hanya saat unitnya diklaimkan. Servis biasa sering
-            // masuk tanpa nomor seri terbaca -- stikernya sudah hilang atau
-            // unitnya mati total -- dan itu tidak menghalangi perbaikan.
-            validator: (v) => _garansi && (v ?? '').trim().isEmpty
-                ? 'Nomor seri wajib untuk klaim garansi'
+            // Wajib hanya saat unitnya diklaimkan KE BRAND. Servis biasa
+            // sering masuk tanpa nomor seri terbaca -- stikernya sudah
+            // hilang atau unitnya mati total -- dan itu tidak menghalangi
+            // perbaikan. Garansi toko juga tidak memerlukannya: unitnya
+            // baru saja ditangani toko sendiri, notanya masih ada, dan
+            // tidak ada pihak luar yang perlu diyakinkan.
+            validator: (v) => _perluSn && (v ?? '').trim().isEmpty
+                ? 'Nomor seri wajib untuk klaim ke brand'
                 : null,
             decoration: InputDecoration(
               suffixIcon: ScanFieldButton(
@@ -828,7 +846,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                 ? 'Sudah bertanda garansi. Klaimnya dicatat terpisah di '
                       'halaman Klaim.'
                 : widget.isNew
-                ? 'Klaim ke brand dibuat otomatis dari data ini.'
+                ? 'Klaimnya dibuat otomatis dari data ini. Pilih jenisnya '
+                      'di bawah.'
                 : 'Ternyata garansi setelah dicek? Centang saja — klaimnya '
                       'dibuat saat nota ini disimpan.',
             style: Theme.of(context).textTheme.labelSmall,
@@ -837,8 +856,31 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         if (_garansi && _bolehUbahGaransi) ...[
           const SizedBox(height: AppSpacing.xs),
           LabeledField(
+            label: 'Jenis Garansi',
+            required: true,
+            hint: ClaimJenis.hint(_jenisGaransi),
+            child: DropdownButtonFormField<String>(
+              initialValue: _jenisGaransi,
+              isExpanded: true,
+              items: [
+                for (final j in ClaimJenis.all)
+                  DropdownMenuItem(value: j, child: Text(ClaimJenis.label(j))),
+              ],
+              onChanged: (v) =>
+                  setState(() => _jenisGaransi = v ?? ClaimJenis.brand),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s),
+          LabeledField(
             label: 'Brand untuk Klaim',
             required: true,
+            // Diisi pada kedua jenis. Pada garansi toko bukan untuk
+            // ditagihkan, melainkan supaya merek unit yang sering kembali
+            // dalam masa garansi servis tetap bisa dihitung.
+            hint: ClaimJenis.ditagihkan(_jenisGaransi)
+                ? null
+                : 'Tidak ditagihkan ke brand — hanya untuk mencatat merek '
+                      'unitnya.',
             child: DropdownButtonFormField<int>(
               initialValue: _brandId,
               isExpanded: true,

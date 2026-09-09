@@ -100,18 +100,8 @@ void main() {
     test('hanya nota yang selesai bulan ini yang dihitung', () async {
       final c = _wadah(
         nota: [
-          _nota(
-            id: '1',
-            teknisi: 't1',
-            biaya: 300000,
-            selesai: _bulanIni,
-          ),
-          _nota(
-            id: '2',
-            teknisi: 't1',
-            biaya: 500000,
-            selesai: _bulanLalu,
-          ),
+          _nota(id: '1', teknisi: 't1', biaya: 300000, selesai: _bulanIni),
+          _nota(id: '2', teknisi: 't1', biaya: 500000, selesai: _bulanLalu),
         ],
       );
       await _siap(c);
@@ -190,10 +180,10 @@ void main() {
       );
       await _siap(c);
 
-      expect(
-        c.read(ringkasTeknisiProvider).map((r) => r.teknisi.nama),
-        ['Andi', 'Reza'],
-      );
+      expect(c.read(ringkasTeknisiProvider).map((r) => r.teknisi.nama), [
+        'Andi',
+        'Reza',
+      ]);
     });
 
     test('teknisi tanpa pekerjaan tetap muncul', () async {

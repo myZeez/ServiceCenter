@@ -24,13 +24,13 @@ void main() {
   const agus = 'agus';
 
   List<RevenueClaim> klaim(int jumlah, int brandId, String? teknisi) => [
-        for (var i = 0; i < jumlah; i++)
-          RevenueClaim(
-            brandId: brandId,
-            tanggal: DateTime(2026, 2, 10),
-            teknisiId: teknisi,
-          ),
-      ];
+    for (var i = 0; i < jumlah; i++)
+      RevenueClaim(
+        brandId: brandId,
+        tanggal: DateTime(2026, 2, 10),
+        teknisiId: teknisi,
+      ),
+  ];
 
   TechnicianEarning cari(List<TechnicianEarning> list, String id) =>
       list.firstWhere((e) => e.teknisiId == id);
@@ -107,10 +107,7 @@ void main() {
       );
 
       final b = hasil.brands.single;
-      expect(
-        b.bagianToko + b.bagianAdmin + b.bagianTeknisi,
-        b.nilai.round(),
-      );
+      expect(b.bagianToko + b.bagianAdmin + b.bagianTeknisi, b.nilai.round());
     });
   });
 
@@ -324,32 +321,33 @@ void main() {
       expect(hasil.unitTanpaFee, 0);
     });
 
-    test('brand yang menolak sebuah unit dicatat sebagai nol, bukan diabaikan',
-        () {
-      final hasil = hitungPendapatan(
-        claims: [
-          RevenueClaim(
-            brandId: asusId,
-            tanggal: DateTime(2026, 2, 10),
-            teknisiId: budi,
-            fee: 0,
-          ),
-          ...klaim(1, asusId, budi),
-        ],
-        fees: [asus],
-        settings: const RevenueSettings(),
-      );
+    test(
+      'brand yang menolak sebuah unit dicatat sebagai nol, bukan diabaikan',
+      () {
+        final hasil = hitungPendapatan(
+          claims: [
+            RevenueClaim(
+              brandId: asusId,
+              tanggal: DateTime(2026, 2, 10),
+              teknisiId: budi,
+              fee: 0,
+            ),
+            ...klaim(1, asusId, budi),
+          ],
+          fees: [asus],
+          settings: const RevenueSettings(),
+        );
 
-      // Unitnya tetap terhitung sebagai pekerjaan yang dilakukan; yang nol
-      // hanya nilainya.
-      expect(hasil.totalUnit, 2);
-      expect(hasil.totalNilai, 100000);
-      expect(hasil.unitTanpaFee, 1);
-    });
+        // Unitnya tetap terhitung sebagai pekerjaan yang dilakukan; yang nol
+        // hanya nilainya.
+        expect(hasil.totalUnit, 2);
+        expect(hasil.totalNilai, 100000);
+        expect(hasil.unitTanpaFee, 1);
+      },
+    );
   });
 
   group('Data yang belum lengkap', () {
-
     test('brand tanpa fee dilaporkan tersendiri, bukan dihitung diam-diam', () {
       final hasil = hitungPendapatan(
         claims: [...klaim(10, asusId, budi), ...klaim(5, 99, budi)],

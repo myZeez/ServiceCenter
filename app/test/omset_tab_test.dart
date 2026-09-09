@@ -64,9 +64,7 @@ Future<void> _bukaTabOmset(WidgetTester tester) async {
         // Bulannya diikat supaya hasilnya tidak berubah bulan depan.
         bulanProvider.overrideWith((ref) => const Bulan(2026, 9)),
       ],
-      child: const MaterialApp(
-        home: Scaffold(body: ServiceReportsView()),
-      ),
+      child: const MaterialApp(home: Scaffold(body: ServiceReportsView())),
     ),
   );
   await tester.pumpAndSettle();

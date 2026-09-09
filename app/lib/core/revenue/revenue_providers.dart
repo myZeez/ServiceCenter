@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/models.dart';
 import '../providers.dart';
+import '../status.dart';
 import 'revenue_calculator.dart';
 
 /// Rentang waktu perhitungan. Kuartal dipakai sebagai bawaan karena begitulah
@@ -23,8 +24,11 @@ class Periode {
         if (mulai.isAfter(now)) continue;
         // Akhir kuartal = detik terakhir sebelum kuartal berikutnya, supaya
         // klaim yang dicatat sore hari di hari terakhir tetap ikut terhitung.
-        final akhir = DateTime(y, q * 3 + 1, 1)
-            .subtract(const Duration(milliseconds: 1));
+        final akhir = DateTime(
+          y,
+          q * 3 + 1,
+          1,
+        ).subtract(const Duration(milliseconds: 1));
         out.add(Periode('Q$q $y', mulai, akhir));
       }
     }
@@ -45,8 +49,12 @@ final _closedClaimsProvider = Provider.autoDispose<AsyncValue<List<Claim>>>((
       .whenData(
         (l) => l
             .where(
+              // Bagi hasil bersumber dari fee brand. Garansi toko tidak
+              // menghasilkan fee dari siapa pun -- memasukkannya berarti
+              // membagi uang yang tidak pernah diterima.
               (c) =>
                   c.status == 'close' &&
+                  ClaimJenis.ditagihkan(c.jenis) &&
                   !c.tanggal.isBefore(p.dari) &&
                   !c.tanggal.isAfter(p.sampai),
             )
@@ -67,11 +75,14 @@ final settlementsProvider = StreamProvider.autoDispose<List<ClaimSettlement>>(
 
 /// claimId -> hasil pencocokannya.
 final settlementByClaimProvider =
-    Provider.autoDispose<Map<String, ClaimSettlement>>((ref) => {
-      for (final s in ref.watch(settlementsProvider).valueOrNull ??
-          const <ClaimSettlement>[])
-        s.claimId: s,
-    });
+    Provider.autoDispose<Map<String, ClaimSettlement>>(
+      (ref) => {
+        for (final s
+            in ref.watch(settlementsProvider).valueOrNull ??
+                const <ClaimSettlement>[])
+          s.claimId: s,
+      },
+    );
 
 final revenueConfigProvider = StreamProvider.autoDispose<RevenueConfig?>(
   (ref) => ref.watch(databaseProvider).watchRevenueConfig(),
@@ -147,15 +158,16 @@ final revenueResultProvider = Provider.autoDispose<RevenueResult?>((ref) {
 });
 
 /// brandId -> (teknisiId -> persen).
-final brandSharesProvider =
-    Provider.autoDispose<Map<int, Map<String, double>>>((ref) {
-  final rows = ref.watch(_sharesProvider).valueOrNull ?? const [];
-  final out = <int, Map<String, double>>{};
-  for (final r in rows) {
-    (out[r.brandId] ??= {})[r.profileId] = r.persen;
-  }
-  return out;
-});
+final brandSharesProvider = Provider.autoDispose<Map<int, Map<String, double>>>(
+  (ref) {
+    final rows = ref.watch(_sharesProvider).valueOrNull ?? const [];
+    final out = <int, Map<String, double>>{};
+    for (final r in rows) {
+      (out[r.brandId] ??= {})[r.profileId] = r.persen;
+    }
+    return out;
+  },
+);
 
 final brandRulesProvider = Provider.autoDispose<Map<int, BrandRuleEntry>>(
   (ref) => {
@@ -165,7 +177,9 @@ final brandRulesProvider = Provider.autoDispose<Map<int, BrandRuleEntry>>(
 );
 
 /// Fee yang berlaku saat ini untuk tiap brand, untuk halaman pengaturan.
-final currentFeesProvider = Provider.autoDispose<Map<int, BrandFeeEntry>>((ref) {
+final currentFeesProvider = Provider.autoDispose<Map<int, BrandFeeEntry>>((
+  ref,
+) {
   final fees = ref.watch(brandFeesProvider).valueOrNull ?? const [];
   final out = <int, BrandFeeEntry>{};
   for (final f in fees) {

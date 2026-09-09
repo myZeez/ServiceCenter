@@ -59,7 +59,9 @@ class BentoCard extends StatelessWidget {
                 ],
               ),
             ),
-          Flexible(child: Padding(padding: padding, child: child)),
+          Flexible(
+            child: Padding(padding: padding, child: child),
+          ),
         ],
       ),
     );

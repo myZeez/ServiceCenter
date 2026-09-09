@@ -18,7 +18,8 @@ class Prefs {
 
   final SharedPreferences _p;
 
-  static Future<Prefs> buka() async => Prefs(await SharedPreferences.getInstance());
+  static Future<Prefs> buka() async =>
+      Prefs(await SharedPreferences.getInstance());
 
   /// Perubahan disiarkan sendiri karena SharedPreferences tidak punya
   /// pemberitahuan bawaan; tanpa ini, layar yang menampilkan nilainya tidak
@@ -35,9 +36,7 @@ class Prefs {
   /// Nilai sekarang, lalu tiap kali kunci itu berubah.
   Stream<String?> watch(String kunci) async* {
     yield baca(kunci);
-    yield* _perubahan.stream
-        .where((k) => k == kunci)
-        .map((_) => baca(kunci));
+    yield* _perubahan.stream.where((k) => k == kunci).map((_) => baca(kunci));
   }
 
   void dispose() => _perubahan.close();

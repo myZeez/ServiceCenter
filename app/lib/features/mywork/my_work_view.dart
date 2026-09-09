@@ -67,8 +67,8 @@ class MyWorkView extends ConsumerWidget {
             subtitle: profile == null
                 ? null
                 : '${profile.nama}  ·  '
-                    '${DateFormat('d MMM').format(periode.dari)} — '
-                    '${DateFormat('d MMM yyyy').format(periode.sampai)}',
+                      '${DateFormat('d MMM').format(periode.dari)} — '
+                      '${DateFormat('d MMM yyyy').format(periode.sampai)}',
             actions: const [_PeriodeDropdown()],
           ),
           const SizedBox(height: AppSpacing.s),
@@ -308,8 +308,8 @@ class _PeriodeDropdown extends ConsumerWidget {
             letterSpacing: 0.6,
             color: AppColors.black,
           ),
-          onChanged: (v) => ref.read(periodeProvider.notifier).state =
-              list.firstWhere((e) => e.label == v),
+          onChanged: (v) => ref.read(periodeProvider.notifier).state = list
+              .firstWhere((e) => e.label == v),
           items: [
             for (final p in list)
               DropdownMenuItem(value: p.label, child: Text(p.label)),

@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/providers.dart';
 import 'package:sc_management/core/theme.dart';
+import 'package:sc_management/core/widgets/swiss_widgets.dart';
 import 'package:sc_management/features/claims/claim_detail_page.dart';
 import 'package:sc_management/features/claims/claim_form_page.dart';
 
@@ -64,6 +65,16 @@ List<Override> _dasar() => [
   allPartTypesProvider.overrideWith((ref) => Stream.value(_partTypes)),
   currentUserProvider.overrideWithValue(null),
 ];
+
+/// Dropdown di dalam LabeledField berlabel tertentu.
+///
+/// Dicari lewat labelnya, bukan lewat urutannya: formulir klaim punya
+/// beberapa dropdown teks, dan "yang pertama" berpindah tiap kali ada satu
+/// lagi yang ditambahkan di atasnya.
+Finder _dropdownBerlabel(String label) => find.descendant(
+  of: find.ancestor(of: find.text(label), matching: find.byType(LabeledField)),
+  matching: find.byType(DropdownButtonFormField<String>),
+);
 
 /// Dropdown di formulir ini sering berada di bawah lipatan layar HP, dan
 /// mengetuk yang tidak terlihat tidak membuka apa pun.
@@ -118,7 +129,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await _buka(tester, find.byType(DropdownButtonFormField<String>).first);
+    await _buka(tester, _dropdownBerlabel('TEKNISI'));
 
     expect(find.text('Reza Teknisi'), findsWidgets);
     // Admin ikut: pada hari yang sepi memang orang di meja depan yang

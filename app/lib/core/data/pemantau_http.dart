@@ -39,7 +39,8 @@ class PemantauHttp extends BaseClient {
 
     // Jalurnya saja, tanpa tuan rumah: yang menjelaskan adalah tabel dan
     // penyaringnya, dan alamat proyek hanya memenuhi baris.
-    final jalur = '${request.url.path}${request.url.hasQuery ? '?${request.url.query}' : ''}';
+    final jalur =
+        '${request.url.path}${request.url.hasQuery ? '?${request.url.query}' : ''}';
     final punyaToken = request.headers.keys.any(
       (k) => k.toLowerCase() == 'authorization',
     );

@@ -74,9 +74,8 @@ class ReportsView extends ConsumerWidget {
           const SizedBox(height: AppSpacing.sm),
           Expanded(
             child: LayoutBuilder(
-              builder: (context, c) => c.maxWidth > 900
-                  ? const _WideGrid()
-                  : const _NarrowStack(),
+              builder: (context, c) =>
+                  c.maxWidth > 900 ? const _WideGrid() : const _NarrowStack(),
             ),
           ),
         ],
@@ -208,9 +207,11 @@ class _BrandCard extends ConsumerWidget {
 
           final qs = quarters.toList();
           final names = byBrand.keys.toList()
-            ..sort((a, b) => byBrand[b]!.values
-                .fold(0, (x, y) => x + y)
-                .compareTo(byBrand[a]!.values.fold(0, (x, y) => x + y)));
+            ..sort(
+              (a, b) => byBrand[b]!.values
+                  .fold(0, (x, y) => x + y)
+                  .compareTo(byBrand[a]!.values.fold(0, (x, y) => x + y)),
+            );
 
           return _PivotTable(
             firstColumn: 'Brand',
@@ -250,9 +251,11 @@ class _TechCard extends ConsumerWidget {
 
           final bs = brands.toList()..sort();
           final names = byTech.keys.toList()
-            ..sort((a, b) => byTech[b]!.values
-                .fold(0, (x, y) => x + y)
-                .compareTo(byTech[a]!.values.fold(0, (x, y) => x + y)));
+            ..sort(
+              (a, b) => byTech[b]!.values
+                  .fold(0, (x, y) => x + y)
+                  .compareTo(byTech[a]!.values.fold(0, (x, y) => x + y)),
+            );
 
           return _PivotTable(
             firstColumn: 'Teknisi',
@@ -359,54 +362,54 @@ class _AsyncBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => value.when(
-        loading: () => const Center(
-          child: SizedBox(
-            height: 18,
-            width: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-        // Satu-satunya bagian aplikasi yang memang butuh koneksi: angkanya
-        // dihitung oleh database, bukan oleh perangkat.
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.cloud_off_outlined,
-                  size: 22,
-                  color: AppColors.grey,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  'Perlu koneksi',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Angka rekap dihitung di server.',
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ],
+    loading: () => const Center(
+      child: SizedBox(
+        height: 18,
+        width: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+    ),
+    // Satu-satunya bagian aplikasi yang memang butuh koneksi: angkanya
+    // dihitung oleh database, bukan oleh perangkat.
+    error: (e, _) => Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.cloud_off_outlined,
+              size: 22,
+              color: AppColors.grey,
             ),
-          ),
+            const SizedBox(height: AppSpacing.xs),
+            const Text(
+              'Perlu koneksi',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Angka rekap dihitung di server.',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ],
         ),
-        data: (rows) => rows.isEmpty
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  child: Text(
-                    emptyText,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.grey, fontSize: 13),
-                  ),
-                ),
-              )
-            : builder(rows),
-      );
+      ),
+    ),
+    data: (rows) => rows.isEmpty
+        ? Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: Text(
+                emptyText,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.grey, fontSize: 13),
+              ),
+            ),
+          )
+        : builder(rows),
+  );
 }
 
 typedef _PivotRow = ({String label, List<int> values});
@@ -428,15 +431,15 @@ class _PivotTable extends StatelessWidget {
     const numWidth = 62.0;
 
     Widget cell(String text, {bool head = false, bool bold = false}) => Text(
-          text,
-          textAlign: TextAlign.right,
-          style: TextStyle(
-            fontSize: head ? 9.5 : 13,
-            fontWeight: head || bold ? FontWeight.w700 : FontWeight.w400,
-            letterSpacing: head ? 0.9 : 0,
-            color: head ? AppColors.grey : AppColors.black,
-          ),
-        );
+      text,
+      textAlign: TextAlign.right,
+      style: TextStyle(
+        fontSize: head ? 9.5 : 13,
+        fontWeight: head || bold ? FontWeight.w700 : FontWeight.w400,
+        letterSpacing: head ? 0.9 : 0,
+        color: head ? AppColors.grey : AppColors.black,
+      ),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

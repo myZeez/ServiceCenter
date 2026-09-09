@@ -43,10 +43,7 @@ class _PrinterCardState extends ConsumerState<PrinterCard> {
 
   Future<void> _uji() async {
     final lebar = int.tryParse(_lebar.text) ?? 32;
-    final galat = RawPrinter.kirim(
-      _dipilih ?? '',
-      susunUjiCetak(lebar: lebar),
-    );
+    final galat = RawPrinter.kirim(_dipilih ?? '', susunUjiCetak(lebar: lebar));
     setState(() => _pesan = galat ?? 'Uji cetak terkirim.');
   }
 
@@ -107,7 +104,8 @@ class _PrinterCardState extends ConsumerState<PrinterCard> {
             const SizedBox(height: AppSpacing.s),
             LabeledField(
               label: 'Lebar Kolom',
-              hint: 'Jumlah karakter per baris. Kertas 57,5mm biasanya 32 — '
+              hint:
+                  'Jumlah karakter per baris. Kertas 57,5mm biasanya 32 — '
                   'pastikan lewat uji cetak, garis penggarisnya harus pas '
                   'satu baris.',
               child: TextField(
@@ -208,21 +206,26 @@ class _StoreCardState extends ConsumerState<StoreCard> {
   Future<void> _simpan() async {
     setState(() => _busy = true);
     try {
-      await ref.read(supabaseProvider).from('store_settings').update({
-        'nama': _nama.text.trim(),
-        'alamat': _alamat.text.trim().isEmpty ? null : _alamat.text.trim(),
-        'telepon': _telepon.text.trim().isEmpty ? null : _telepon.text.trim(),
-        'ketentuan':
-            _ketentuan.text.trim().isEmpty ? null : _ketentuan.text.trim(),
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', 1);
-
-
+      await ref
+          .read(supabaseProvider)
+          .from('store_settings')
+          .update({
+            'nama': _nama.text.trim(),
+            'alamat': _alamat.text.trim().isEmpty ? null : _alamat.text.trim(),
+            'telepon': _telepon.text.trim().isEmpty
+                ? null
+                : _telepon.text.trim(),
+            'ketentuan': _ketentuan.text.trim().isEmpty
+                ? null
+                : _ketentuan.text.trim(),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', 1);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Identitas toko tersimpan')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Identitas toko tersimpan')));
     } on PostgrestException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -276,7 +279,8 @@ class _StoreCardState extends ConsumerState<StoreCard> {
             const SizedBox(height: AppSpacing.s),
             LabeledField(
               label: 'Ketentuan Nota',
-              hint: 'Dicetak di kaki nota. Tiap baris baru tetap jadi baris '
+              hint:
+                  'Dicetak di kaki nota. Tiap baris baru tetap jadi baris '
                   'terpisah saat dicetak.',
               child: TextField(
                 controller: _ketentuan,

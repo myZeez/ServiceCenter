@@ -54,7 +54,10 @@ class _PartsPageState extends ConsumerState<PartsPage> {
       appBar: AppBar(
         titleSpacing: AppSpacing.sm,
         title: const Text('Part'),
-        actions: const [IndikatorKoneksi(), SizedBox(width: AppSpacing.xs)],
+        actions: const [
+          IndikatorKoneksi(),
+          SizedBox(width: AppSpacing.xs),
+        ],
       ),
       body: Column(
         children: [
@@ -349,9 +352,8 @@ class _UbahPartState extends ConsumerState<_UbahPart> {
 
     if (!mounted) return;
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Pesanan diperbarui')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Pesanan diperbarui')));
   }
 
   @override
@@ -447,7 +449,11 @@ class _UbahPartState extends ConsumerState<_UbahPart> {
             ),
             child: const Text(
               'Harga, DP, dan pelunasan diatur dari meja depan.',
-              style: TextStyle(fontSize: 11, height: 1.4, color: AppColors.blue),
+              style: TextStyle(
+                fontSize: 11,
+                height: 1.4,
+                color: AppColors.blue,
+              ),
             ),
           ),
 

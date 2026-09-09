@@ -120,10 +120,10 @@ void main() {
       ]);
       await c.read(allProfilesProvider.future);
 
-      expect(
-        c.read(pengerjaUntukProvider('2')).map((p) => p.nama),
-        ['Budi', 'Andi'],
-      );
+      expect(c.read(pengerjaUntukProvider('2')).map((p) => p.nama), [
+        'Budi',
+        'Andi',
+      ]);
     });
 
     test('tanpa siapa pun terpilih, daftarnya apa adanya', () async {
@@ -133,10 +133,10 @@ void main() {
       ]);
       await c.read(allProfilesProvider.future);
 
-      expect(
-        c.read(pengerjaUntukProvider(null)).map((p) => p.nama),
-        ['Budi', 'Andi'],
-      );
+      expect(c.read(pengerjaUntukProvider(null)).map((p) => p.nama), [
+        'Budi',
+        'Andi',
+      ]);
     });
   });
 

@@ -64,14 +64,12 @@ class _UpTokoCardState extends ConsumerState<UpTokoCard> {
       );
     } on PostgrestException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(pesanGalat(e))));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(pesanGalat(e))));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(pesanGalat(e))));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(pesanGalat(e))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -186,10 +184,7 @@ class _UpTokoCardState extends ConsumerState<UpTokoCard> {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.s),
-                OutlinedButton(
-                  onPressed: _tambah,
-                  child: const Text('TAMBAH'),
-                ),
+                OutlinedButton(onPressed: _tambah, child: const Text('TAMBAH')),
               ],
             ),
 

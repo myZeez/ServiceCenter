@@ -12,7 +12,11 @@ import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
 import '../../core/widgets/swiss_widgets.dart';
 
-final _rp = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+final _rp = NumberFormat.currency(
+  locale: 'id_ID',
+  symbol: 'Rp',
+  decimalDigits: 0,
+);
 final _tgl = DateFormat('d MMM yyyy');
 final _iso = DateFormat('yyyy-MM-dd');
 
@@ -26,7 +30,6 @@ Future<void> _simpan(
 ) async {
   try {
     await aksi();
-
   } on PostgrestException catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
@@ -125,14 +128,11 @@ class BrandFeesCard extends ConsumerWidget {
     await _simpan(
       context,
       ref,
-      () => ref.read(supabaseProvider).from('brand_fees').upsert(
-        {
-          'brand_id': brand.id,
-          'fee': hasil.fee,
-          'berlaku_dari': _iso.format(hasil.dari),
-        },
-        onConflict: 'brand_id,berlaku_dari',
-      ),
+      () => ref.read(supabaseProvider).from('brand_fees').upsert({
+        'brand_id': brand.id,
+        'fee': hasil.fee,
+        'berlaku_dari': _iso.format(hasil.dari),
+      }, onConflict: 'brand_id,berlaku_dari'),
     );
   }
 
@@ -225,9 +225,9 @@ class _BrandMoneyRow extends StatelessWidget {
                   rule == null
                       ? 'Pembagian: aturan umum'
                       : 'Pembagian: ${rule!.persenToko.toInt()}/'
-                          '${rule!.persenAdmin.toInt()}/'
-                          '${rule!.persenTeknisi.toInt()}'
-                          '  ·  khusus brand ini',
+                            '${rule!.persenAdmin.toInt()}/'
+                            '${rule!.persenTeknisi.toInt()}'
+                            '  ·  khusus brand ini',
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
               ),
@@ -289,7 +289,8 @@ class _FeeDialogState extends State<_FeeDialog> {
               LabeledField(
                 label: 'Fee per Unit',
                 required: true,
-                hint: 'Nilai awal untuk satu unit selesai, sebelum rekap '
+                hint:
+                    'Nilai awal untuk satu unit selesai, sebelum rekap '
                     'bulanan brand mengoreksinya.',
                 child: TextFormField(
                   controller: _fee,
@@ -372,8 +373,9 @@ class _RuleDialog extends StatefulWidget {
 }
 
 class _RuleDialogState extends State<_RuleDialog> {
-  late final _toko =
-      TextEditingController(text: '${(widget.current?.persenToko ?? 30).toInt()}');
+  late final _toko = TextEditingController(
+    text: '${(widget.current?.persenToko ?? 30).toInt()}',
+  );
   late final _admin = TextEditingController(
     text: '${(widget.current?.persenAdmin ?? 10).toInt()}',
   );
@@ -432,10 +434,11 @@ class _RuleDialogState extends State<_RuleDialog> {
         FilledButton(
           onPressed: _sisa != 0
               ? null
-              : () => Navigator.pop(
-                    context,
-                    [_n(_toko), _n(_admin), _n(_teknisi)],
-                  ),
+              : () => Navigator.pop(context, [
+                  _n(_toko),
+                  _n(_admin),
+                  _n(_teknisi),
+                ]),
           child: const Text('SIMPAN'),
         ),
       ],
@@ -488,7 +491,8 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
       100 -
       techs.fold<double>(
         0,
-        (a, t) => a + _n(_shares[_key(brandId, t.id)] ?? TextEditingController()),
+        (a, t) =>
+            a + _n(_shares[_key(brandId, t.id)] ?? TextEditingController()),
       );
 
   Future<void> _save(List<Brand> brands, List<Profile> techs) async {
@@ -497,13 +501,16 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
 
     final client = ref.read(supabaseProvider);
     await _simpan(context, ref, () async {
-      await client.from('revenue_settings').update({
-        'persen_toko': _n(_toko),
-        'persen_admin': _n(_admin),
-        'persen_teknisi': _n(_teknisi),
-        'metode_teknisi': _metode,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', 1);
+      await client
+          .from('revenue_settings')
+          .update({
+            'persen_toko': _n(_toko),
+            'persen_admin': _n(_admin),
+            'persen_teknisi': _n(_teknisi),
+            'metode_teknisi': _metode,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', 1);
 
       if (_metode == 'manual') {
         final rows = <Map<String, dynamic>>[];
@@ -511,11 +518,7 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
           for (final t in techs) {
             final c = _shares[_key(b.id, t.id)];
             if (c == null) continue;
-            rows.add({
-              'brand_id': b.id,
-              'profile_id': t.id,
-              'persen': _n(c),
-            });
+            rows.add({'brand_id': b.id, 'profile_id': t.id, 'persen': _n(c)});
           }
         }
         if (rows.isNotEmpty) {
@@ -536,7 +539,8 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
     final config = ref.watch(revenueConfigProvider).valueOrNull;
     final shares = ref.watch(brandSharesProvider);
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
-    final techs = ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
+    final techs =
+        ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
 
     if (!_loaded) {
       _toko.text = '${(config?.persenToko ?? 30).toInt()}';
@@ -565,10 +569,7 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'ATURAN UMUM',
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
+            Text('ATURAN UMUM', style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: 6),
             _PercentRow(label: 'Toko', controller: _toko, onChanged: _touch),
             _PercentRow(label: 'Admin', controller: _admin, onChanged: _touch),
@@ -595,7 +596,8 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
               value: 'per_unit',
               group: _metode,
               title: 'Per unit dikerjakan',
-              subtitle: 'Sesuai nilai yang dihasilkan di tiap brand. Tidak '
+              subtitle:
+                  'Sesuai nilai yang dihasilkan di tiap brand. Tidak '
                   'perlu diubah saat jumlah teknisi berubah.',
               recommended: true,
               onTap: (v) => setState(() => _metode = v),
@@ -604,7 +606,8 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
               value: 'rata',
               group: _metode,
               title: 'Rata',
-              subtitle: 'Jatah teknisi tiap brand dibagi sama besar antar '
+              subtitle:
+                  'Jatah teknisi tiap brand dibagi sama besar antar '
                   'yang mengerjakannya.',
               onTap: (v) => setState(() => _metode = v),
             ),
@@ -612,7 +615,8 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
               value: 'manual',
               group: _metode,
               title: 'Manual per brand',
-              subtitle: 'Persentase ditentukan sendiri untuk tiap brand. '
+              subtitle:
+                  'Persentase ditentukan sendiri untuk tiap brand. '
                   'Yang punya porsi tetap dibayar walau tidak mengerjakan '
                   'unit — untuk kerja pendukung seperti input klaim dan '
                   'permintaan part.',
@@ -682,8 +686,9 @@ class _RevenueSplitCardState extends ConsumerState<RevenueSplitCard> {
                         for (final t in techs)
                           Expanded(
                             child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 2,
+                              ),
                               child: _PercentCell(
                                 controller: _shares[_key(b.id, t.id)]!,
                                 onChanged: _touch,
@@ -822,8 +827,8 @@ class _Remaining extends StatelessWidget {
               pas
                   ? 'Pas 100%'
                   : sisa < 0
-                      ? 'Kelebihan ${sisa.abs().toStringAsFixed(0)}%'
-                      : 'Sisa ${sisa.toStringAsFixed(0)}% belum dialokasikan',
+                  ? 'Kelebihan ${sisa.abs().toStringAsFixed(0)}%'
+                  : 'Sisa ${sisa.toStringAsFixed(0)}% belum dialokasikan',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -969,13 +974,13 @@ class _CardMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.grey, fontSize: 12),
-          ),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: AppColors.grey, fontSize: 12),
+      ),
+    ),
+  );
 }

@@ -120,6 +120,11 @@ final unitRekapProvider = Provider.autoDispose<List<UnitRekap>?>((ref) {
   final out = <UnitRekap>[];
   for (final c in claims) {
     if (c.status != ClaimStatus.close) continue;
+    // Garansi toko tidak pernah ditagihkan: unitnya ditanggung toko
+    // sendiri, dan tidak ada fee brand yang bisa direkap. Memasukkannya
+    // ke sini berarti menagih brand atas pekerjaan yang tidak pernah
+    // mereka setujui.
+    if (!ClaimJenis.ditagihkan(c.jenis)) continue;
     if (brandId != null && c.brandId != brandId) continue;
 
     final tutup = c.tanggalClose;
@@ -250,7 +255,9 @@ class _Ringkasan extends ConsumerWidget {
           child: StatTile(value: '${units.length}', label: 'Unit Selesai'),
         ),
         const SizedBox(width: AppSpacing.xs),
-        Expanded(child: StatTile(value: '$cocok', label: 'Sudah Cocok')),
+        Expanded(
+          child: StatTile(value: '$cocok', label: 'Sudah Cocok'),
+        ),
         const SizedBox(width: AppSpacing.xs),
         Expanded(
           child: StatTile(
@@ -366,8 +373,7 @@ class _Daftar extends ConsumerWidget {
       trailing: hanyaBelum
           ? InlineAction(
               label: 'Tampilkan semua',
-              onTap: () =>
-                  ref.read(hanyaBelumProvider.notifier).state = false,
+              onTap: () => ref.read(hanyaBelumProvider.notifier).state = false,
             )
           : null,
       child: wide ? _Tabel(tampil) : _Kartu(tampil),
@@ -587,7 +593,10 @@ class _Baris extends StatelessWidget {
           sel(_NilaiSel(unit), width: 122),
           SizedBox(
             width: 56,
-            child: Align(alignment: Alignment.centerRight, child: _CocokBox(unit)),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: _CocokBox(unit),
+            ),
           ),
         ],
       ),
@@ -919,9 +928,8 @@ Future<void> _jalankan(
     await aksi();
   } catch (e) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(pesanGalat(e))));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(pesanGalat(e))));
   }
 }
 
@@ -1000,7 +1008,8 @@ class _NilaiDialogState extends State<_NilaiDialog> {
               const SizedBox(height: AppSpacing.s),
               LabeledField(
                 label: 'Masuk Rekap Bulan',
-                hint: 'Menentukan unit ini muncul di bulan mana. Ubah kalau '
+                hint:
+                    'Menentukan unit ini muncul di bulan mana. Ubah kalau '
                     'brand memasukkannya ke surat bulan lain.',
                 child: OutlinedButton(
                   onPressed: () async {

@@ -23,10 +23,7 @@ class MetodeBayarCard extends ConsumerWidget {
     return BentoCard(
       title: 'Cara Bayar',
       padding: EdgeInsets.zero,
-      trailing: InlineAction(
-        label: 'Tambah',
-        onTap: () => _form(context, ref),
-      ),
+      trailing: InlineAction(label: 'Tambah', onTap: () => _form(context, ref)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -72,8 +69,10 @@ class MetodeBayarCard extends ConsumerWidget {
                     ),
                     itemCount: metode.length,
                     separatorBuilder: (_, _) => const Divider(),
-                    itemBuilder: (context, i) =>
-                        _Baris(metode[i], onUbah: () => _form(context, ref, m: metode[i])),
+                    itemBuilder: (context, i) => _Baris(
+                      metode[i],
+                      onUbah: () => _form(context, ref, m: metode[i]),
+                    ),
                   ),
           ),
         ],
@@ -110,9 +109,7 @@ class MetodeBayarCard extends ConsumerWidget {
                   child: TextField(
                     controller: nama,
                     autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Transfer BRI',
-                    ),
+                    decoration: const InputDecoration(hintText: 'Transfer BRI'),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.s),
@@ -124,10 +121,7 @@ class MetodeBayarCard extends ConsumerWidget {
                   dense: true,
                   title: const Text(
                     'Piutang',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(
                     'Uangnya belum diterima saat nota ditutup.',
@@ -159,8 +153,7 @@ class MetodeBayarCard extends ConsumerWidget {
     // menyimpan kode ini apa adanya; mengubahnya berarti nota yang sudah
     // tercetak tiba-tiba menunjuk ke cara bayar yang tidak ada lagi.
     final kode =
-        m?.kode ??
-        teks.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+        m?.kode ?? teks.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
 
     try {
       await ref.read(databaseProvider).simpanMetodeBayar({
@@ -173,9 +166,8 @@ class MetodeBayarCard extends ConsumerWidget {
       });
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(pesanGalat(e))));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(pesanGalat(e))));
     }
   }
 }
@@ -242,9 +234,8 @@ class _Baris extends ConsumerWidget {
                 });
               } catch (e) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text(pesanGalat(e))));
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(pesanGalat(e))));
               }
             },
           ),

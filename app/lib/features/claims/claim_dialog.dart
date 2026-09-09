@@ -88,6 +88,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
   final _namaFokus = FocusNode();
 
   int? _brandId;
+  String _jenis = ClaimJenis.brand;
   String? _teknisiId;
   String _status = ClaimStatus.open;
   late DateTime _tanggal;
@@ -121,6 +122,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
 
     _tanggal = c.tanggal;
     _brandId = c.brandId;
+    _jenis = c.jenis;
     _teknisiId = c.teknisiId;
     _status = c.status;
     _nama.text = c.namaPelanggan;
@@ -217,6 +219,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
       'telp': _nullIfEmpty(_telp),
       'email': _nullIfEmpty(_email),
       'sn': _snUnit.text.trim(),
+      'jenis': _jenis,
       'teknisi_id': _teknisiId,
       'keluhan': _nullIfEmpty(_keluhan),
       'no_perbaikan': _nullIfEmpty(_noPerbaikan),
@@ -324,9 +327,8 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
 
     if (!mounted) return;
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Perubahan tersimpan')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Perubahan tersimpan')));
   }
 
   @override
@@ -459,7 +461,8 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
             const Padding(
               padding: EdgeInsets.only(right: AppSpacing.xs),
               child: Tooltip(
-                message: 'Kamu bisa ubah status, catatan, teknisi, dan '
+                message:
+                    'Kamu bisa ubah status, catatan, teknisi, dan '
                     'tambah part. Data unit dan pelanggan diubah admin.',
                 child: Icon(
                   Icons.lock_outline,
@@ -553,6 +556,27 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
 
         const SectionLabel('Unit'),
         const SizedBox(height: AppSpacing.s),
+
+        // Ditanya paling dulu: jenisnya yang menentukan kolom mana di
+        // bawahnya yang wajib diisi.
+        LabeledField(
+          label: 'Jenis Garansi',
+          required: true,
+          hint: ClaimJenis.hint(_jenis),
+          child: DropdownButtonFormField<String>(
+            initialValue: _jenis,
+            isExpanded: true,
+            onChanged: editable
+                ? (v) => setState(() => _jenis = v ?? ClaimJenis.brand)
+                : null,
+            items: [
+              for (final j in ClaimJenis.all)
+                DropdownMenuItem(value: j, child: Text(ClaimJenis.label(j))),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s),
+
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -560,6 +584,9 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
               child: LabeledField(
                 label: 'Brand',
                 required: true,
+                // Diisi pada kedua jenis. Pada garansi toko bukan untuk
+                // ditagihkan, melainkan supaya merek unit yang sering
+                // kembali tetap bisa dihitung.
                 child: DropdownButtonFormField<int>(
                   initialValue: _brandId,
                   isExpanded: true,
@@ -607,7 +634,10 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
         const SizedBox(height: AppSpacing.s),
         LabeledField(
           label: 'Serial Number',
-          required: true,
+          required: ClaimJenis.perluSn(_jenis),
+          hint: ClaimJenis.perluSn(_jenis)
+              ? null
+              : 'Boleh dikosongkan pada garansi toko.',
           child: TextFormField(
             controller: _snUnit,
             readOnly: !editable,
@@ -620,7 +650,9 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                   : null,
             ),
             validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'SN wajib diisi' : null,
+                ClaimJenis.perluSn(_jenis) && (v == null || v.trim().isEmpty)
+                ? 'SN wajib untuk klaim ke brand'
+                : null,
           ),
         ),
         const SizedBox(height: AppSpacing.s),

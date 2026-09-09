@@ -38,7 +38,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     });
 
     try {
-      await ref.read(supabaseProvider).auth.signInWithPassword(
+      await ref
+          .read(supabaseProvider)
+          .auth
+          .signInWithPassword(
             email: _email.text.trim(),
             password: _password.text,
           );
@@ -58,7 +61,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         child: SingleChildScrollView(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: MediaQuery.sizeOf(context).height -
+              minHeight:
+                  MediaQuery.sizeOf(context).height -
                   MediaQuery.paddingOf(context).vertical,
             ),
             child: Padding(

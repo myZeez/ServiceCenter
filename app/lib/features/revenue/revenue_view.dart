@@ -9,7 +9,11 @@ import '../../core/revenue/revenue_providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
 
-final _rp = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+final _rp = NumberFormat.currency(
+  locale: 'id_ID',
+  symbol: 'Rp',
+  decimalDigits: 0,
+);
 
 class RevenueView extends ConsumerWidget {
   const RevenueView({super.key});
@@ -29,7 +33,8 @@ class RevenueView extends ConsumerWidget {
         children: [
           PageHeader(
             title: 'Pendapatan',
-            subtitle: '${DateFormat('d MMM').format(periode.dari)} — '
+            subtitle:
+                '${DateFormat('d MMM').format(periode.dari)} — '
                 '${DateFormat('d MMM yyyy').format(periode.sampai)}'
                 '  ·  hanya klaim berstatus Selesai',
             actions: const [_PeriodeDropdown()],
@@ -143,13 +148,17 @@ class _TotalCard extends StatelessWidget {
           // angka di atas lebih kecil dari yang seharusnya.
           if (hasil.unitTanpaFee > 0) ...[
             const SizedBox(height: AppSpacing.xs),
-            _Warning('${hasil.unitTanpaFee} unit brand-nya belum punya fee, '
-                'jadi dihitung nol.'),
+            _Warning(
+              '${hasil.unitTanpaFee} unit brand-nya belum punya fee, '
+              'jadi dihitung nol.',
+            ),
           ],
           if (hasil.unitTanpaTeknisi > 0) ...[
             const SizedBox(height: AppSpacing.xs),
-            _Warning('${hasil.unitTanpaTeknisi} unit belum ada teknisinya, '
-                'jadi bagiannya tidak jatuh ke siapa pun.'),
+            _Warning(
+              '${hasil.unitTanpaTeknisi} unit belum ada teknisinya, '
+              'jadi bagiannya tidak jatuh ke siapa pun.',
+            ),
           ],
         ],
       ),
@@ -167,11 +176,11 @@ class _SplitCard extends StatelessWidget {
     final total = hasil.totalNilai;
 
     Widget baris(String label, int nilai, Color c) => BentoBarRow(
-          label: label,
-          value: _rp.format(nilai),
-          fraction: total == 0 ? 0 : nilai / total,
-          color: c,
-        );
+      label: label,
+      value: _rp.format(nilai),
+      fraction: total == 0 ? 0 : nilai / total,
+      color: c,
+    );
 
     return BentoCard(
       title: 'Pembagian',
@@ -292,10 +301,7 @@ class _TechCard extends ConsumerWidget {
                             ),
                             SizedBox(
                               width: 134,
-                              child: _Num(
-                                _rp.format(t.pendapatan),
-                                bold: true,
-                              ),
+                              child: _Num(_rp.format(t.pendapatan), bold: true),
                             ),
                           ],
                         ),
@@ -411,8 +417,8 @@ class _PeriodeDropdown extends ConsumerWidget {
             letterSpacing: 0.6,
             color: AppColors.black,
           ),
-          onChanged: (v) => ref.read(periodeProvider.notifier).state =
-              list.firstWhere((e) => e.label == v),
+          onChanged: (v) => ref.read(periodeProvider.notifier).state = list
+              .firstWhere((e) => e.label == v),
           items: [
             for (final p in list)
               DropdownMenuItem(value: p.label, child: Text(p.label)),
@@ -430,20 +436,16 @@ class _Warning extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(AppSpacing.xs),
-        decoration: const BoxDecoration(
-          color: Color(0x0DD82C2C),
-          border: Border(left: BorderSide(color: AppColors.red, width: 3)),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 11,
-            height: 1.4,
-            color: AppColors.red,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.all(AppSpacing.xs),
+    decoration: const BoxDecoration(
+      color: Color(0x0DD82C2C),
+      border: Border(left: BorderSide(color: AppColors.red, width: 3)),
+    ),
+    child: Text(
+      text,
+      style: const TextStyle(fontSize: 11, height: 1.4, color: AppColors.red),
+    ),
+  );
 }
 
 class _Head extends StatelessWidget {
@@ -454,15 +456,15 @@ class _Head extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        text.toUpperCase(),
-        textAlign: right ? TextAlign.right : TextAlign.left,
-        style: const TextStyle(
-          fontSize: 9.5,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.9,
-          color: AppColors.grey,
-        ),
-      );
+    text.toUpperCase(),
+    textAlign: right ? TextAlign.right : TextAlign.left,
+    style: const TextStyle(
+      fontSize: 9.5,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.9,
+      color: AppColors.grey,
+    ),
+  );
 }
 
 class _Num extends StatelessWidget {
@@ -474,12 +476,12 @@ class _Num extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        text,
-        textAlign: TextAlign.right,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
-          color: muted ? AppColors.grey : AppColors.black,
-        ),
-      );
+    text,
+    textAlign: TextAlign.right,
+    style: TextStyle(
+      fontSize: 13,
+      fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+      color: muted ? AppColors.grey : AppColors.black,
+    ),
+  );
 }

@@ -97,9 +97,7 @@ void main() {
     });
 
     test('selisih berjam-jam ditulis dalam jam dan menit', () {
-      final pesan = pesanSelisihJam(
-        const Duration(hours: 2, minutes: 15),
-      );
+      final pesan = pesanSelisihJam(const Duration(hours: 2, minutes: 15));
       expect(pesan, contains('2 jam 15 menit'));
     });
   });

@@ -27,10 +27,7 @@ Future<void> _lukis(WidgetTester tester, {PartOrder? pesanan}) async {
         partCostsProvider.overrideWith((ref) => Stream.value(const [])),
         partSettingsProvider.overrideWith(
           (ref) => Stream.value(
-            const PartSettingsRow(
-              upTokoPilihan: [10, 20],
-              upTokoBawaan: 20,
-            ),
+            const PartSettingsRow(upTokoPilihan: [10, 20], upTokoBawaan: 20),
           ),
         ),
         allProfilesProvider.overrideWith(
@@ -48,10 +45,7 @@ Future<void> _lukis(WidgetTester tester, {PartOrder? pesanan}) async {
 /// Kolom isian di bawah sebuah label. LabeledField menaikkan labelnya jadi
 /// huruf besar, jadi teksnya dicari dalam bentuk itu.
 Finder _isian(String label) => find.descendant(
-  of: find.ancestor(
-    of: find.text(label),
-    matching: find.byType(LabeledField),
-  ),
+  of: find.ancestor(of: find.text(label), matching: find.byType(LabeledField)),
   matching: find.byType(TextFormField),
 );
 

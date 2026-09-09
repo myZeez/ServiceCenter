@@ -5,10 +5,13 @@ import 'package:sc_management/core/status.dart';
 void main() {
   group('ClaimStatus', () {
     test('nilai status cocok dengan enum claim_status di Postgres', () {
-      expect(
-        ClaimStatus.all,
-        ['open', 'proses', 'tunggu_part', 'close', 'batal'],
-      );
+      expect(ClaimStatus.all, [
+        'open',
+        'proses',
+        'tunggu_part',
+        'close',
+        'batal',
+      ]);
     });
 
     test('setiap status punya label bahasa Indonesia', () {

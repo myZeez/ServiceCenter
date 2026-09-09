@@ -424,10 +424,7 @@ class _BarisState extends State<_Baris> {
               ),
               SizedBox(
                 width: 104,
-                child: Text(
-                  p.dp == 0 ? '—' : _rp.format(p.dp),
-                  style: _sel,
-                ),
+                child: Text(p.dp == 0 ? '—' : _rp.format(p.dp), style: _sel),
               ),
               SizedBox(
                 width: 104,

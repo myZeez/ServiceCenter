@@ -30,9 +30,9 @@ enum MetodeTeknisi {
   final String kode;
 
   static MetodeTeknisi dari(String kode) => MetodeTeknisi.values.firstWhere(
-        (e) => e.kode == kode,
-        orElse: () => MetodeTeknisi.perUnit,
-      );
+    (e) => e.kode == kode,
+    orElse: () => MetodeTeknisi.perUnit,
+  );
 }
 
 /// Pembagian antara toko, admin, dan teknisi.
@@ -304,9 +304,9 @@ RevenueResult hitungPendapatan({
           ..sort((a, b) => nilaiTek[b]!.compareTo(nilaiTek[a]!));
 
         if (ids.isNotEmpty) {
-          final belumBertuan = (nilaiBrand -
-                  nilaiTek.values.fold<double>(0, (a, b) => a + b))
-              .clamp(0.0, double.infinity);
+          final belumBertuan =
+              (nilaiBrand - nilaiTek.values.fold<double>(0, (a, b) => a + b))
+                  .clamp(0.0, double.infinity);
 
           final nilaiOrang = bagiRata(jatah, [
             for (final id in ids) nilaiTek[id]!,
@@ -319,7 +319,9 @@ RevenueResult hitungPendapatan({
                 teknisiId: ids[i],
                 unit: unitTek[ids[i]] ?? 0,
                 nilai: nilaiTek[ids[i]]!,
-                porsi: nilaiBrand == 0 ? 0 : nilaiTek[ids[i]]! * 100 / nilaiBrand,
+                porsi: nilaiBrand == 0
+                    ? 0
+                    : nilaiTek[ids[i]]! * 100 / nilaiBrand,
                 pendapatan: nilaiOrang[i],
               ),
             );
@@ -397,7 +399,11 @@ RevenueResult hitungPendapatan({
     teknisiPool += b.bagianTeknisi;
 
     for (final e in b.teknisi) {
-      unitGabungan.update(e.teknisiId, (v) => v + e.unit, ifAbsent: () => e.unit);
+      unitGabungan.update(
+        e.teknisiId,
+        (v) => v + e.unit,
+        ifAbsent: () => e.unit,
+      );
       nilaiGabungan.update(
         e.teknisiId,
         (v) => v + e.nilai,

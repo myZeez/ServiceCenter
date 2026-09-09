@@ -5,7 +5,11 @@ import 'escpos.dart';
 
 final _tglJam = DateFormat('dd/MM/yyyy HH:mm');
 final _tgl = DateFormat('dd/MM/yyyy');
-final _rp = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+final _rp = NumberFormat.currency(
+  locale: 'id_ID',
+  symbol: 'Rp',
+  decimalDigits: 0,
+);
 
 enum JenisNota {
   masuk('NOTA MASUK'),
@@ -71,11 +75,7 @@ void _satuNota(
   // Huruf ganda hanya memuat separuh kolom. Nama toko yang panjang lebih
   // terbaca sebagai satu baris tebal berukuran biasa daripada dipecah
   // menjadi dua baris besar.
-  p.tengah(
-    namaToko,
-    tebalkan: true,
-    besarkan: namaToko.length <= p.lebar ~/ 2,
-  );
+  p.tengah(namaToko, tebalkan: true, besarkan: namaToko.length <= p.lebar ~/ 2);
 
   // Alamat sering ditulis beberapa baris; baris barunya dipertahankan.
   for (final baris in (toko?.alamat ?? '').split('\n')) {

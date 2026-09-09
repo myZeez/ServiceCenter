@@ -76,3 +76,41 @@ class StatusChip extends StatelessWidget {
     );
   }
 }
+
+/// Jenis garansi. Nilainya harus sama persis dengan check `jenis` pada
+/// tabel claims.
+///
+/// Keduanya sama-sama berbiaya nol bagi pelanggan; yang membedakan siapa
+/// yang menanggungnya. Yang ke brand ditagihkan dan masuk Rekap Brand,
+/// yang ke toko ditanggung sendiri dan tidak ditagihkan ke mana pun.
+class ClaimJenis {
+  static const brand = 'brand';
+  static const toko = 'toko';
+
+  static const all = [brand, toko];
+
+  static const _labels = {brand: 'Garansi Brand', toko: 'Garansi Toko'};
+
+  /// Keterangan sebaris untuk dipasang di bawah pilihannya. Perbedaannya
+  /// bukan soal nama melainkan soal akibat, dan akibat itu harus terbaca
+  /// di tempat orang memilih.
+  static const _hints = {
+    brand:
+        'Part diminta ke brand. Nomor seri wajib — brand mengenali unit '
+        'dari situ. Masuk Rekap Brand.',
+    toko:
+        'Ditanggung toko sendiri, misalnya unit yang rusak lagi dalam masa '
+        'garansi servis. Nomor seri tidak diperlukan, dan tidak masuk '
+        'Rekap Brand.',
+  };
+
+  static String label(String j) => _labels[j] ?? j;
+  static String hint(String j) => _hints[j] ?? '';
+
+  /// Apakah jenis ini menuntut nomor seri.
+  static bool perluSn(String j) => j == brand;
+
+  /// Apakah jenis ini ditagihkan ke brand. Dipakai Rekap Brand dan bagi
+  /// hasil untuk menyaring; toko tidak menagih dirinya sendiri.
+  static bool ditagihkan(String j) => j == brand;
+}

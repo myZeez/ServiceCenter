@@ -44,8 +44,7 @@ void main() {
       expect(upPersenDari(100000, 120000), closeTo(20, 0.0001));
     });
 
-    test('harga yang dibulatkan menghasilkan persentase yang sedikit lain',
-        () {
+    test('harga yang dibulatkan menghasilkan persentase yang sedikit lain', () {
       // Inilah gunanya angka ini diperlihatkan: sesudah dibulatkan ke atas,
       // yang tercatat bukan lagi 10% persis, dan layar harus jujur soal itu.
       expect(upPersenDari(137000, 151000), closeTo(10.219, 0.001));
@@ -82,14 +81,16 @@ void main() {
       expect(r.sisa, 70000);
     });
 
-    test('pesanan yang harganya belum ada dihitung sebagai nol, bukan galat',
-        () {
-      final r = ringkasPesanan([_pesanan(), _pesanan(harga: 50000)]);
+    test(
+      'pesanan yang harganya belum ada dihitung sebagai nol, bukan galat',
+      () {
+        final r = ringkasPesanan([_pesanan(), _pesanan(harga: 50000)]);
 
-      expect(r.jumlah, 2);
-      expect(r.harga, 50000);
-      expect(r.sisa, 0);
-    });
+        expect(r.jumlah, 2);
+        expect(r.harga, 50000);
+        expect(r.sisa, 0);
+      },
+    );
 
     test('daftar kosong menghasilkan nol, bukan galat', () {
       final r = ringkasPesanan(const []);

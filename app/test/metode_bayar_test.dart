@@ -16,12 +16,7 @@ import 'package:sc_management/features/settings/metode_bayar_card.dart';
 const _daftar = [
   MetodeBayar(id: 1, kode: 'cash', nama: 'Cash', urutan: 1),
   MetodeBayar(id: 2, kode: 'qris', nama: 'QRIS', urutan: 2),
-  MetodeBayar(
-    id: 3,
-    kode: 'transfer_bri',
-    nama: 'Transfer BRI',
-    urutan: 3,
-  ),
+  MetodeBayar(id: 3, kode: 'transfer_bri', nama: 'Transfer BRI', urutan: 3),
   MetodeBayar(
     id: 4,
     kode: 'transfer_btn',
@@ -54,10 +49,12 @@ void main() {
       final c = _wadah();
       await c.read(allMetodeBayarProvider.future);
 
-      expect(
-        c.read(metodeBayarProvider).map((m) => m.kode),
-        ['cash', 'qris', 'transfer_bri', 'piutang'],
-      );
+      expect(c.read(metodeBayarProvider).map((m) => m.kode), [
+        'cash',
+        'qris',
+        'transfer_bri',
+        'piutang',
+      ]);
     });
 
     test('daftar kosong tidak menjatuhkan apa pun', () async {
@@ -123,9 +120,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            allMetodeBayarProvider.overrideWith(
-              (ref) => Stream.value(_daftar),
-            ),
+            allMetodeBayarProvider.overrideWith((ref) => Stream.value(_daftar)),
           ],
           child: const MaterialApp(
             home: Scaffold(

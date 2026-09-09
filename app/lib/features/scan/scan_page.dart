@@ -52,7 +52,10 @@ class _ScanPageState extends State<ScanPage> {
 
     final value = capture.barcodes
         .map((b) => b.rawValue)
-        .firstWhere((v) => v != null && v.trim().isNotEmpty, orElse: () => null);
+        .firstWhere(
+          (v) => v != null && v.trim().isNotEmpty,
+          orElse: () => null,
+        );
 
     if (value == null) return;
 
@@ -103,7 +106,10 @@ class _Viewfinder extends StatelessWidget {
               Alignment.bottomLeft,
               Alignment.bottomRight,
             ])
-              Align(alignment: a, child: _Corner(alignment: a)),
+              Align(
+                alignment: a,
+                child: _Corner(alignment: a),
+              ),
           ],
         ),
       ),
@@ -224,8 +230,7 @@ class _ScannerError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final denied =
-        error.errorCode == MobileScannerErrorCode.permissionDenied;
+    final denied = error.errorCode == MobileScannerErrorCode.permissionDenied;
 
     return ColoredBox(
       color: AppColors.black,
@@ -236,8 +241,11 @@ class _ScannerError extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.no_photography_outlined,
-                  color: AppColors.white, size: 32),
+              const Icon(
+                Icons.no_photography_outlined,
+                color: AppColors.white,
+                size: 32,
+              ),
               const SizedBox(height: AppSpacing.s),
               Text(
                 denied ? 'Izin kamera ditolak' : 'Kamera tidak bisa dibuka',
@@ -251,8 +259,8 @@ class _ScannerError extends StatelessWidget {
               Text(
                 denied
                     ? 'Aktifkan izin kamera untuk aplikasi ini lewat '
-                        'Setelan, lalu buka pemindai lagi. SN tetap bisa '
-                        'diketik manual.'
+                          'Setelan, lalu buka pemindai lagi. SN tetap bisa '
+                          'diketik manual.'
                     : error.errorDetails?.message ?? error.errorCode.name,
                 style: TextStyle(
                   color: AppColors.white.withValues(alpha: 0.75),
@@ -280,11 +288,7 @@ class _ScannerError extends StatelessWidget {
 /// Tombol pindai untuk ditempel sebagai suffix pada kolom isian.
 /// Otomatis tidak muncul di platform yang tidak mendukung kamera.
 class ScanFieldButton extends StatelessWidget {
-  const ScanFieldButton({
-    super.key,
-    required this.onScanned,
-    this.title,
-  });
+  const ScanFieldButton({super.key, required this.onScanned, this.title});
 
   final ValueChanged<String> onScanned;
   final String? title;

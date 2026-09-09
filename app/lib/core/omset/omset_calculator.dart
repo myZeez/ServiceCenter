@@ -7,10 +7,7 @@
 library;
 
 class OmsetSettings {
-  const OmsetSettings({
-    this.targetTeknisi = 4000000,
-    this.feeAdminPerNota = 0,
-  });
+  const OmsetSettings({this.targetTeknisi = 4000000, this.feeAdminPerNota = 0});
 
   /// Target produksi bulanan tiap teknisi, dalam rupiah.
   final double targetTeknisi;

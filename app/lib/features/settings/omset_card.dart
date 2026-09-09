@@ -48,23 +48,24 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
   Future<void> _simpan() async {
     setState(() => _busy = true);
     try {
-      await ref.read(supabaseProvider).from('service_settings').update({
-        'target_omset': _n(_target),
-        'fee_admin_per_nota': _n(_feeAdmin),
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', 1);
+      await ref
+          .read(supabaseProvider)
+          .from('service_settings')
+          .update({
+            'target_omset': _n(_target),
+            'fee_admin_per_nota': _n(_feeAdmin),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', 1);
 
-
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aturan omset tersimpan')),
-      );
-    } on PostgrestException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(pesanGalat(e))));
+      ).showSnackBar(const SnackBar(content: Text('Aturan omset tersimpan')));
+    } on PostgrestException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(pesanGalat(e))));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -114,7 +115,8 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
 
             LabeledField(
               label: 'Target Omset Teknisi',
-              hint: 'Per orang, tiap bulan. Yang diukur jasa kotor yang '
+              hint:
+                  'Per orang, tiap bulan. Yang diukur jasa kotor yang '
                   'dihasilkan — bukan bayarannya.',
               child: TextField(
                 controller: _target,
@@ -122,9 +124,7 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: InputDecoration(
                   prefixText: 'Rp ',
-                  helperText: _n(_target) == 0
-                      ? null
-                      : _rp.format(_n(_target)),
+                  helperText: _n(_target) == 0 ? null : _rp.format(_n(_target)),
                   helperStyle: const TextStyle(
                     fontSize: 10.5,
                     color: AppColors.grey,
@@ -137,7 +137,8 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
 
             LabeledField(
               label: 'Fee Admin per Nota',
-              hint: 'Untuk tiap nota yang keluar, berapa pun biaya jasanya. '
+              hint:
+                  'Untuk tiap nota yang keluar, berapa pun biaya jasanya. '
                   'Nota kecil sama repotnya dengan nota besar.',
               child: TextField(
                 controller: _feeAdmin,

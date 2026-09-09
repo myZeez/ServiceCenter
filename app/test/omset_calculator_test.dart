@@ -10,11 +10,10 @@ void main() {
     double biaya,
     String? teknisi, {
     bool lunas = true,
-  }) =>
-      [
-        for (var i = 0; i < jumlah; i++)
-          OmsetNota(teknisiId: teknisi, biaya: biaya, lunas: lunas),
-      ];
+  }) => [
+    for (var i = 0; i < jumlah; i++)
+      OmsetNota(teknisiId: teknisi, biaya: biaya, lunas: lunas),
+  ];
 
   OmsetTeknisi cari(OmsetResult r, String id) =>
       r.teknisi.firstWhere((e) => e.teknisiId == id);

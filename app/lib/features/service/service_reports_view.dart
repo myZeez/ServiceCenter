@@ -89,7 +89,7 @@ class ServiceReportsView extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: context.warna.permukaan,
                 borderRadius: BorderRadius.circular(AppRadius.base),
-                border: Border.all(color: const Color(0xFFE4E7E7)),
+                border: Border.all(color: context.warna.garisHalus),
               ),
               child: const TabBar(
                 isScrollable: true,
@@ -227,7 +227,7 @@ class _Harian extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: context.warna.permukaan,
                     borderRadius: BorderRadius.circular(AppRadius.base),
-                    border: Border.all(color: const Color(0xFFE4E7E7)),
+                    border: Border.all(color: context.warna.garisHalus),
                   ),
                   child: TabBar(
                     isScrollable: true,
@@ -618,7 +618,7 @@ class _Omset extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.s),
             decoration: BoxDecoration(
-              color: const Color(0x0DD82C2C),
+              color: context.warna.bahaya.withValues(alpha: 0.05),
               border: Border(left: BorderSide(color: context.warna.bahaya, width: 3)),
             ),
             child: Text(
@@ -1148,7 +1148,7 @@ class _Kartu extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.warna.permukaan,
           borderRadius: BorderRadius.circular(AppRadius.base),
-          border: Border.all(color: const Color(0xFFE4E7E7)),
+          border: Border.all(color: context.warna.garisHalus),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -1256,7 +1256,7 @@ class _BarisKlikState extends State<_BarisKlik> {
           decoration: BoxDecoration(
             color: _hover ? context.warna.teredam : context.warna.permukaan,
             border: Border(
-              bottom: const BorderSide(color: Color(0xFFE4E7E7)),
+              bottom: BorderSide(color: context.warna.garisHalus),
               left: BorderSide(
                 color: _hover ? context.warna.bahaya : Colors.transparent,
                 width: 3,

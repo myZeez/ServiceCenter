@@ -293,7 +293,7 @@ class _NilaiTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.base),
-        border: Border.all(color: const Color(0xFFE4E7E7)),
+        border: Border.all(color: context.warna.garisHalus),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -508,8 +508,8 @@ class _Baris extends StatelessWidget {
     }
 
     return Container(
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE4E7E7))),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: context.warna.garisHalus)),
       ),
       padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 8, AppSpacing.sm, 8),
       child: Row(
@@ -816,7 +816,7 @@ class _Dropdown<T> extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       decoration: BoxDecoration(
         border: Border.all(
-          color: value == null ? const Color(0xFFCFD5D4) : context.warna.teks,
+          color: value == null ? context.warna.garisIsian : context.warna.teks,
         ),
         borderRadius: BorderRadius.circular(AppRadius.small),
       ),
@@ -1023,7 +1023,7 @@ class _NilaiDialogState extends State<_NilaiDialog> {
                   },
                   style: OutlinedButton.styleFrom(
                     alignment: Alignment.centerLeft,
-                    side: const BorderSide(color: Color(0xFFCFD5D4)),
+                    side: BorderSide(color: context.warna.garisIsian),
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.s,
                       vertical: 13,

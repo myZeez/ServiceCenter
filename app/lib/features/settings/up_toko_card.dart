@@ -111,7 +111,7 @@ class _UpTokoCardState extends ConsumerState<UpTokoCard> {
             Container(
               padding: const EdgeInsets.all(AppSpacing.xs),
               decoration: BoxDecoration(
-                color: const Color(0x0D0033A0),
+                color: context.warna.aksen.withValues(alpha: 0.05),
                 border: Border(
                   left: BorderSide(color: context.warna.aksen, width: 3),
                 ),
@@ -234,7 +234,7 @@ class _Chip extends StatelessWidget {
         decoration: BoxDecoration(
           color: bawaan ? context.warna.teks : Colors.transparent,
           border: Border.all(
-            color: bawaan ? context.warna.teks : const Color(0xFFCFD5D4),
+            color: bawaan ? context.warna.teks : context.warna.garisIsian,
           ),
           borderRadius: BorderRadius.circular(AppRadius.small),
         ),

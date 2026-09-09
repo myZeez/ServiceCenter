@@ -364,7 +364,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
             constraints: BoxConstraints(maxHeight: size.height - 80),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.base),
-              border: Border.all(color: const Color(0xFFE4E7E7)),
+              border: Border.all(color: context.warna.garisHalus),
             ),
             child: !_ready
                 ? const SizedBox(
@@ -610,7 +610,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                   onPressed: editable && !widget.isNew ? _pickDate : null,
                   style: OutlinedButton.styleFrom(
                     alignment: Alignment.centerLeft,
-                    side: const BorderSide(color: Color(0xFFCFD5D4), width: 1),
+                    side: BorderSide(color: context.warna.garisIsian, width: 1),
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.s,
                       vertical: 13,
@@ -841,7 +841,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
       ),
       decoration: BoxDecoration(
         color: context.warna.teredam,
-        border: const Border(top: BorderSide(color: Color(0xFFE4E7E7))),
+        border: Border(top: BorderSide(color: context.warna.garisHalus)),
       ),
       child: Row(
         children: [

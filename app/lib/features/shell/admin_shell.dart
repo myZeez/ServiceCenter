@@ -148,7 +148,7 @@ class _Sidebar extends ConsumerWidget {
       decoration: BoxDecoration(
         color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.base),
-        border: Border.all(color: const Color(0xFFE4E7E7)),
+        border: Border.all(color: context.warna.garisHalus),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -282,7 +282,7 @@ class _NavItemState extends State<_NavItem> {
           decoration: BoxDecoration(
             color: active
                 ? context.warna.teredam
-                : (_hover ? const Color(0xFFF8F9F9) : Colors.transparent),
+                : (_hover ? context.warna.teks.withValues(alpha: 0.03) : Colors.transparent),
             // Batang merah menandai bagian yang sedang dibuka.
             border: Border(
               left: BorderSide(

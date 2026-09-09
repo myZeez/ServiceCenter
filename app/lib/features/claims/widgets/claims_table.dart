@@ -182,7 +182,7 @@ class _DataRowState extends State<_DataRow> {
           decoration: BoxDecoration(
             color: _hover ? context.warna.teredam : context.warna.permukaan,
             border: Border(
-              bottom: const BorderSide(color: Color(0xFFE4E7E7)),
+              bottom: BorderSide(color: context.warna.garisHalus),
               // Penanda merah di tepi kiri saat kursor lewat -- menggantikan
               // arsiran baris, dan tetap terbaca di layar apa pun.
               left: BorderSide(

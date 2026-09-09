@@ -232,7 +232,7 @@ class CustomerField extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(AppSpacing.xs),
                   decoration: BoxDecoration(
-                    color: const Color(0x0DD82C2C),
+                    color: context.warna.bahaya.withValues(alpha: 0.05),
                     border: Border(
                       left: BorderSide(color: context.warna.bahaya, width: 3),
                     ),

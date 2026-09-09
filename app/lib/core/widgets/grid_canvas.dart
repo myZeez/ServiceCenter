@@ -188,6 +188,7 @@ class _GridCanvasState extends State<GridCanvas> {
                         cellWidth: lebarSel,
                         rowHeight: widget.rowHeight,
                         gap: widget.gap,
+                        warna: context.warna.bahaya.withValues(alpha: 0.07),
                       ),
                     ),
                   ),
@@ -735,6 +736,7 @@ class _PelukisGrid extends CustomPainter {
     required this.cellWidth,
     required this.rowHeight,
     required this.gap,
+    required this.warna,
   });
 
   final int columns;
@@ -743,9 +745,13 @@ class _PelukisGrid extends CustomPainter {
   final double rowHeight;
   final double gap;
 
+  /// CustomPainter berada di luar pohon widget, jadi warnanya dititipkan
+  /// dari yang membuatnya dan ikut dibandingkan di shouldRepaint.
+  final Color warna;
+
   @override
   void paint(Canvas canvas, Size size) {
-    final cat = Paint()..color = const Color(0x12D82C2C);
+    final cat = Paint()..color = warna;
 
     for (var c = 0; c < columns; c++) {
       for (var r = 0; r < rows; r++) {
@@ -767,5 +773,5 @@ class _PelukisGrid extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _PelukisGrid old) =>
-      old.columns != columns || old.rows != rows;
+      old.columns != columns || old.rows != rows || old.warna != warna;
 }

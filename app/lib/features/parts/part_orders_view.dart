@@ -170,7 +170,7 @@ class _PartOrdersViewState extends ConsumerState<PartOrdersView> {
               decoration: BoxDecoration(
                 color: context.warna.permukaan,
                 borderRadius: BorderRadius.circular(AppRadius.base),
-                border: Border.all(color: const Color(0xFFE4E7E7)),
+                border: Border.all(color: context.warna.garisHalus),
               ),
               clipBehavior: Clip.antiAlias,
               child: tampil.isEmpty
@@ -213,7 +213,7 @@ class _Ringkasan extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.base),
-        border: Border.all(color: const Color(0xFFE4E7E7)),
+        border: Border.all(color: context.warna.garisHalus),
       ),
       child: Row(
         children: [
@@ -358,7 +358,7 @@ class _BarisState extends State<_Baris> {
           decoration: BoxDecoration(
             color: _hover ? context.warna.teredam : context.warna.permukaan,
             border: Border(
-              bottom: const BorderSide(color: Color(0xFFE4E7E7)),
+              bottom: BorderSide(color: context.warna.garisHalus),
               left: BorderSide(
                 color: _hover
                     ? context.warna.bahaya

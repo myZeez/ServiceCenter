@@ -96,7 +96,7 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
             Container(
               padding: const EdgeInsets.all(AppSpacing.xs),
               decoration: BoxDecoration(
-                color: const Color(0x0D0033A0),
+                color: context.warna.aksen.withValues(alpha: 0.05),
                 border: Border(
                   left: BorderSide(color: context.warna.aksen, width: 3),
                 ),

@@ -423,8 +423,8 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                           ),
                           style: OutlinedButton.styleFrom(
                             alignment: Alignment.centerLeft,
-                            side: const BorderSide(
-                              color: Color(0xFFCFD5D4),
+                            side: BorderSide(
+                              color: context.warna.garisIsian,
                               width: 1,
                             ),
                             padding: const EdgeInsets.symmetric(

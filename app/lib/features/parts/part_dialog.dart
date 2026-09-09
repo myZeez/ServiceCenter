@@ -403,7 +403,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
             constraints: BoxConstraints(maxHeight: size.height - 80),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.base),
-              border: Border.all(color: const Color(0xFFE4E7E7)),
+              border: Border.all(color: context.warna.garisHalus),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -826,7 +826,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s),
                   decoration: BoxDecoration(
                     color: context.warna.teredam,
-                    border: Border.all(color: const Color(0xFFCFD5D4)),
+                    border: Border.all(color: context.warna.garisIsian),
                     borderRadius: BorderRadius.circular(AppRadius.small),
                   ),
                   child: Text(
@@ -965,7 +965,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
     },
     style: OutlinedButton.styleFrom(
       alignment: Alignment.centerLeft,
-      side: const BorderSide(color: Color(0xFFCFD5D4)),
+      side: BorderSide(color: context.warna.garisIsian),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.s,
         vertical: 13,
@@ -996,7 +996,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
       ),
       decoration: BoxDecoration(
         color: context.warna.teredam,
-        border: const Border(top: BorderSide(color: Color(0xFFE4E7E7))),
+        border: Border(top: BorderSide(color: context.warna.garisHalus)),
       ),
       child: Row(
         children: [

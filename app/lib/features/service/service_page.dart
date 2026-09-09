@@ -220,8 +220,8 @@ class _KartuNota extends ConsumerWidget {
           horizontal: AppSpacing.sm,
           vertical: AppSpacing.s,
         ),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFE4E7E7))),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: context.warna.garisHalus)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,7 +449,7 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.xs),
             decoration: BoxDecoration(
-              color: const Color(0x0D0033A0),
+              color: context.warna.aksen.withValues(alpha: 0.05),
               border: Border(left: BorderSide(color: context.warna.aksen, width: 3)),
             ),
             child: Text(

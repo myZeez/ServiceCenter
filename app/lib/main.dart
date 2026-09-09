@@ -48,15 +48,22 @@ Future<void> main() async {
   );
 }
 
-class ScManagementApp extends StatelessWidget {
+class ScManagementApp extends ConsumerWidget {
   const ScManagementApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Selagi pilihannya dibaca dari perangkat, ikut sistem dulu. Nilai itu
+    // benar untuk sebagian besar orang, jadi tidak ada kedipan terang ke
+    // gelap pada perangkat yang memang disetel gelap.
+    final mode = ref.watch(modeTemaProvider).valueOrNull ?? ThemeMode.system;
+
     return MaterialApp(
       title: 'Klaim Garansi',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.terang(),
+      darkTheme: AppTheme.gelap(),
+      themeMode: mode,
       home: const _AuthGate(),
     );
   }

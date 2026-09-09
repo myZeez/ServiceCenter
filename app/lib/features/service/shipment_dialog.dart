@@ -163,7 +163,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
             constraints: BoxConstraints(maxHeight: size.height - 80),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.base),
-              border: Border.all(color: const Color(0xFFE4E7E7)),
+              border: Border.all(color: context.warna.garisHalus),
             ),
             child: Form(
               key: _formKey,
@@ -273,7 +273,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
               );
               if (p != null) setState(() => _tanggalKirim = p);
             },
-            style: _tombolTanggal,
+            style: _tombolTanggal(context),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -393,7 +393,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
               );
               if (p != null) setState(() => _tanggalKembali = p);
             },
-            style: _tombolTanggal,
+            style: _tombolTanggal(context),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -424,7 +424,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
       ),
       decoration: BoxDecoration(
         color: context.warna.teredam,
-        border: const Border(top: BorderSide(color: Color(0xFFE4E7E7))),
+        border: Border(top: BorderSide(color: context.warna.garisHalus)),
       ),
       child: Row(
         children: [
@@ -464,8 +464,12 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
   }
 }
 
-final _tombolTanggal = OutlinedButton.styleFrom(
+/// Gaya tombol pemilih tanggal.
+///
+/// Berupa fungsi, bukan nilai tetap: bingkainya mengikuti tema yang
+/// sedang berlaku, dan tema baru bisa dibaca setelah ada BuildContext.
+ButtonStyle _tombolTanggal(BuildContext context) => OutlinedButton.styleFrom(
   alignment: Alignment.centerLeft,
-  side: const BorderSide(color: Color(0xFFCFD5D4), width: 1),
+  side: BorderSide(color: context.warna.garisIsian, width: 1),
   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s, vertical: 13),
 );

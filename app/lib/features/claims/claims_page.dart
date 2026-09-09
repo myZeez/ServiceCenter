@@ -310,7 +310,7 @@ class _FilterDropdown<T> extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       decoration: BoxDecoration(
         border: Border.all(
-          color: value == null ? const Color(0xFFCFD5D4) : context.warna.teks,
+          color: value == null ? context.warna.garisIsian : context.warna.teks,
         ),
         borderRadius: BorderRadius.circular(AppRadius.small),
       ),

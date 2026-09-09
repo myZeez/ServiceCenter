@@ -155,7 +155,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   width: 3,
                                 ),
                               ),
-                              color: const Color(0x0DD82C2C),
+                              color: context.warna.bahaya.withValues(alpha: 0.05),
                             ),
                             child: Text(
                               _error!,

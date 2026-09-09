@@ -200,7 +200,7 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
               decoration: BoxDecoration(
                 color: context.warna.permukaan,
                 borderRadius: BorderRadius.circular(AppRadius.base),
-                border: Border.all(color: const Color(0xFFE4E7E7)),
+                border: Border.all(color: context.warna.garisHalus),
               ),
               clipBehavior: Clip.antiAlias,
               child: claims.isEmpty
@@ -268,7 +268,7 @@ class _BrandChipState extends State<_BrandChip> {
             border: Border.all(
               color: active
                   ? context.warna.teks
-                  : (_hover ? context.warna.teks : const Color(0xFFCFD5D4)),
+                  : (_hover ? context.warna.teks : context.warna.garisIsian),
             ),
             borderRadius: BorderRadius.circular(AppRadius.small),
           ),

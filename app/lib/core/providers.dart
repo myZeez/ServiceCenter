@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -451,6 +452,32 @@ final gridLayoutProvider = StreamProvider.family<GridLayout, String>(
 
 Future<void> simpanGridLayout(WidgetRef ref, String key, GridLayout layout) =>
     ref.read(prefsProvider).tulis('grid.$key', encodeLayout(layout));
+
+/// Terang, gelap, atau ikut sistem.
+///
+/// Melekat pada perangkat, bukan pada akun. Komputer meja depan berdiri di
+/// ruangan berlampu sepanjang hari sementara HP teknisi ikut dibawa ke
+/// ruang belakang yang remang; memaksa keduanya sama tidak menolong
+/// siapa pun. Bawaannya ikut sistem, jadi Windows dan Android yang sudah
+/// disetel gelap langsung gelap tanpa disuruh.
+final modeTemaProvider = StreamProvider<ThemeMode>(
+  (ref) => ref.watch(prefsProvider).watch('tema.mode').map(bacaModeTema),
+);
+
+ThemeMode bacaModeTema(String? nilai) => switch (nilai) {
+  'terang' => ThemeMode.light,
+  'gelap' => ThemeMode.dark,
+  _ => ThemeMode.system,
+};
+
+String tulisModeTema(ThemeMode mode) => switch (mode) {
+  ThemeMode.light => 'terang',
+  ThemeMode.dark => 'gelap',
+  ThemeMode.system => 'sistem',
+};
+
+Future<void> simpanModeTema(WidgetRef ref, ThemeMode mode) =>
+    ref.read(prefsProvider).tulis('tema.mode', tulisModeTema(mode));
 
 final printerNamaProvider = StreamProvider<String>(
   (ref) => ref.watch(prefsProvider).watch('printer.nama').map((v) => v ?? ''),

@@ -15,6 +15,7 @@ import 'omset_card.dart';
 import 'print_cards.dart';
 import 'revenue_cards.dart';
 import 'metode_bayar_card.dart';
+import 'tampilan_card.dart';
 import 'up_toko_card.dart';
 
 /// Semua pengaturan dalam satu layar.
@@ -96,7 +97,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.s),
             decoration: BoxDecoration(
-              color: const Color(0x0D0033A0),
+              color: context.warna.aksen.withValues(alpha: 0.05),
               border: Border(left: BorderSide(color: context.warna.aksen, width: 3)),
             ),
             child: Text(
@@ -198,6 +199,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         rowSpan: 8,
                         child: HariKerjaCard(),
                       ),
+                      GridArea(
+                        id: 'tampilan',
+                        colSpan: 6,
+                        rowSpan: 9,
+                        child: TampilanCard(),
+                      ),
                     ],
                   );
                 }
@@ -226,6 +233,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     SizedBox(height: 440, child: MetodeBayarCard()),
                     SizedBox(height: AppSpacing.s),
                     SizedBox(height: 480, child: HariKerjaCard()),
+                    SizedBox(height: AppSpacing.s),
+                    SizedBox(height: 540, child: TampilanCard()),
                     SizedBox(height: AppSpacing.sm),
                   ],
                 );
@@ -938,7 +947,7 @@ class _Notice extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(AppSpacing.xs),
     decoration: BoxDecoration(
-      color: const Color(0x0DD82C2C),
+      color: context.warna.bahaya.withValues(alpha: 0.05),
       border: Border(left: BorderSide(color: context.warna.bahaya, width: 3)),
     ),
     child: Text(

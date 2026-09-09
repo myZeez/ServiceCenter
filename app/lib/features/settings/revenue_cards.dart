@@ -322,7 +322,7 @@ class _FeeDialogState extends State<_FeeDialog> {
                   },
                   style: OutlinedButton.styleFrom(
                     alignment: Alignment.centerLeft,
-                    side: const BorderSide(color: Color(0xFFCFD5D4), width: 1),
+                    side: BorderSide(color: context.warna.garisIsian, width: 1),
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.s,
                       vertical: 13,
@@ -894,7 +894,7 @@ class _MethodOption extends StatelessWidget {
         decoration: BoxDecoration(
           color: active ? context.warna.teredam : Colors.transparent,
           border: Border.all(
-            color: active ? context.warna.teks : const Color(0xFFE4E7E7),
+            color: active ? context.warna.teks : context.warna.garisHalus,
           ),
           borderRadius: BorderRadius.circular(AppRadius.small),
         ),

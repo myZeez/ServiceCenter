@@ -31,7 +31,7 @@ class BentoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.base),
-        border: Border.all(color: const Color(0xFFE4E7E7)),
+        border: Border.all(color: context.warna.garisHalus),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -121,7 +121,7 @@ class _StatTileState extends State<StatTile> {
             border: Border.all(
               color: active
                   ? accent
-                  : (_hover ? accent : const Color(0xFFE4E7E7)),
+                  : (_hover ? accent : context.warna.garisHalus),
               width: active ? 1 : 1,
             ),
           ),

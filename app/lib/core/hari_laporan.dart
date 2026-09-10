@@ -1,17 +1,19 @@
-/// Jam tutup laporan harian bila pengaturannya belum terbaca.
+/// Jam tutup nota keluar bila pengaturannya belum terbaca.
 ///
 /// Dipakai juga di server sebagai bawaan kolom store_settings.tutup_jam.
 /// Dua tempat, satu angka -- kalau berbeda, yang terlihat adalah nota yang
 /// jatuh ke hari berbeda tergantung siapa yang menghitungnya.
 const jamTutupBawaan = 17;
 
-/// Hari kerja yang menaungi sebuah saat.
+/// Hari kerja yang menaungi sebuah saat, untuk nota keluar.
 ///
-/// Hari di toko tidak berganti tengah malam. Laporan harian ditutup jam
-/// 17.00 dan dikirim ke pusat; unit yang masuk sesudahnya tidak mungkin
-/// ikut di dalamnya, jadi ia tercatat sebagai unit hari berikutnya --
-/// persis seperti yang dilakukan orang di meja depan dengan buku
-/// catatannya sejak sebelum ada aplikasi ini.
+/// Laporan nota keluar ditutup jam 17.00 dan dikirim ke pusat; unit yang
+/// selesai atau dilunasi sesudahnya tidak mungkin ikut di dalamnya, jadi
+/// ia tercatat di laporan hari berikutnya. Server menjalankan aturan yang
+/// sama waktu menstempel tanggal_selesai dan tanggal_lunas.
+///
+/// Tidak untuk nota masuk. Unit yang diterima jam 19.45 diterima hari itu
+/// juga, dan nota masuk memakai hari kalender biasa.
 ///
 /// Batasnya menyertakan jam tutupnya sendiri: tepat 17.00 laporannya sudah
 /// ditutup, jadi nota jam 17.00 sudah masuk besok.
@@ -34,7 +36,3 @@ bool hariLaporanSama(
   final h = hariLaporan(saat, jamTutup);
   return h.year == hari.year && h.month == hari.month && h.day == hari.day;
 }
-
-/// Hari kerja yang sedang berjalan sekarang.
-DateTime hariLaporanKini([int jamTutup = jamTutupBawaan]) =>
-    hariLaporan(DateTime.now(), jamTutup);

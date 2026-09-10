@@ -13,11 +13,15 @@ import '../../core/widgets/swiss_widgets.dart';
 final _jam = DateFormat('HH:mm');
 final _tglPanjang = DateFormat('EEEE, d MMMM yyyy', 'id');
 
-/// Jam laporan harian ditutup.
+/// Jam nota keluar ditutup.
 ///
-/// Hari di toko tidak berganti tengah malam. Laporannya ditutup sore dan
-/// dikirim ke pusat; unit yang masuk sesudahnya tidak mungkin ikut di
-/// dalamnya, jadi ia tercatat sebagai unit hari berikutnya.
+/// Laporan nota keluar ditutup sore dan dikirim ke pusat; unit yang
+/// selesai atau dilunasi sesudahnya tidak mungkin ikut di dalamnya, jadi
+/// ia tercatat di laporan hari berikutnya.
+///
+/// Nota masuk tidak ikut bergeser. Unit yang diterima jam berapa pun
+/// sampai 23.59 tercatat di hari itu juga, sama seperti di buku meja
+/// depan -- menerima barang tidak ada hubungannya dengan tutup buku.
 ///
 /// Kartunya sendiri, bukan digabung ke Identitas Toko: yang di sana
 /// menentukan bunyi kertas nota, yang di sini menentukan sebuah nota
@@ -52,7 +56,7 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
           content: Text(
             jam >= 24
                 ? 'Hari kerja mengikuti hari kalender, tanpa pergeseran.'
-                : 'Laporan harian ditutup jam $jam.00.',
+                : 'Nota keluar ditutup jam $jam.00.',
           ),
         ),
       );
@@ -76,8 +80,8 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
     final jam = _pilihan ?? tersimpan;
 
     final sekarang = DateTime.now();
-    final hariIni = hariLaporan(sekarang, jam);
-    final bergeser = hariIni.day != sekarang.day;
+    final hariKeluar = hariLaporan(sekarang, jam);
+    final bergeser = hariKeluar.day != sekarang.day;
 
     return BentoCard(
       title: 'Hari Kerja',
@@ -87,11 +91,11 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
           mainAxisSize: MainAxisSize.min,
           children: [
             LabeledField(
-              label: 'Laporan Harian Ditutup',
+              label: 'Nota Keluar Ditutup',
               hint:
-                  'Nota yang masuk pada jam ini atau sesudahnya dihitung '
-                  'sebagai nota hari berikutnya — sama seperti buku catatan '
-                  'di meja depan.',
+                  'Unit yang selesai atau dilunasi pada jam ini atau '
+                  'sesudahnya masuk laporan keluar hari berikutnya. Nota '
+                  'masuk tidak digeser — tetap tercatat di hari diterimanya.',
               child: DropdownButtonFormField<int>(
                 initialValue: jam,
                 isExpanded: true,
@@ -102,7 +106,7 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
                       child: Text(
                         j >= 24
                             ? 'Tengah malam — tidak digeser'
-                            : '$j.00 — nota sesudahnya masuk besok',
+                            : '$j.00 — yang keluar sesudahnya masuk besok',
                       ),
                     ),
                 ],
@@ -136,12 +140,11 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    bergeser
-                        ? 'Nota yang dibuat sekarang masuk laporan '
-                              '${_tglPanjang.format(hariIni)} — laporan hari '
-                              'ini sudah ditutup.'
-                        : 'Nota yang dibuat sekarang masuk laporan '
-                              '${_tglPanjang.format(hariIni)}.',
+                    'Unit yang masuk sekarang: laporan '
+                    '${_tglPanjang.format(sekarang)}.\n'
+                    'Unit yang selesai sekarang: laporan '
+                    '${_tglPanjang.format(hariKeluar)}'
+                    '${bergeser ? ' — laporan keluar hari ini sudah ditutup.' : '.'}',
                     style: TextStyle(
                       fontSize: 11,
                       height: 1.4,
@@ -154,9 +157,9 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
             const SizedBox(height: AppSpacing.s),
 
             Text(
-              'Berlaku untuk halaman Servis, tab Harian, dan ekspor Excel. '
-              'Tanggal selesai dan tanggal lunas ikut memakainya sejak '
-              'disimpan — nota yang sudah tercatat tidak digeser.',
+              'Berlaku untuk nota keluar di tab Harian dan ekspor Excel, '
+              'dan untuk tanggal lunas di laporan Pelunasan. Nota yang '
+              'sudah tercatat tidak digeser.',
               style: Theme.of(context).textTheme.labelSmall,
             ),
             const SizedBox(height: AppSpacing.s),

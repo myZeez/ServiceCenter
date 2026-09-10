@@ -15,11 +15,9 @@ String tanggalJamMasuk(DateTime saat) =>
 
 /// Sel kolom "Masuk" pada tabel nota: tanggal di atas, jam di bawahnya.
 ///
-/// Jamnya baru benar-benar dibutuhkan sejak hari kerja berganti jam
-/// 17.00. Sebuah nota bisa muncul di bawah tanggal 7 sementara kertasnya
-/// tertulis 6, dan tanpa jamnya yang membaca akan mengira notanya salah
-/// tempat -- atau lebih buruk, mengira aplikasinya keliru menghitung.
-/// Dengan jam 18.30 tertulis di sebelahnya, alasannya terbaca sendiri.
+/// Jamnya ikut disebut supaya lebih rinci: di tabel nota keluar, jarak
+/// antara jam masuk dan hari selesainya adalah berapa lama unit itu
+/// menunggu, dan itu terbaca tanpa membuka notanya.
 ///
 /// Bertumpuk, bukan berdampingan, supaya lebar kolomnya tidak berubah.
 /// Kolom yang melebar mendorong nama pelanggan terpotong, dan nama yang

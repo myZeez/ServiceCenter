@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 
 import '../../core/export/excel_export.dart';
 import '../../core/data/models.dart';
-import '../../core/hari_laporan.dart';
 import '../../core/nota/nomor_nota.dart';
 import '../../core/omset/omset_providers.dart';
 import '../../core/providers.dart';
@@ -126,9 +125,14 @@ class ServiceReportsView extends ConsumerWidget {
 // Laporan harian untuk pusat — dua tabel, keluar dan masuk
 // =====================================================================
 
-final tanggalHarianProvider = StateProvider<DateTime>(
-  (ref) => hariLaporanKini(ref.read(jamTutupProvider)),
-);
+/// Tanggal yang dibuka tab Harian. Bawaannya hari kalender ini: nota
+/// masuk hari ini masih terus bertambah sampai tengah malam, dan halaman
+/// yang melompat ke tanggal besok jam 17.00 menyembunyikan justru nota
+/// yang baru saja diketik.
+final tanggalHarianProvider = StateProvider<DateTime>((ref) {
+  final n = DateTime.now();
+  return DateTime(n.year, n.month, n.day);
+});
 
 bool _hariSama(DateTime? a, DateTime b) =>
     a != null && a.year == b.year && a.month == b.month && a.day == b.day;
@@ -139,7 +143,6 @@ class _Harian extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tanggal = ref.watch(tanggalHarianProvider);
-    final jamTutup = ref.watch(jamTutupProvider);
     final semua =
         ref.watch(serviceOrdersProvider).valueOrNull ??
         const <ServiceOrderEntry>[];
@@ -148,17 +151,16 @@ class _Harian extends ConsumerWidget {
     // itu. Keduanya termasuk garansi maupun reguler -- pusat membaca
     // seluruh lalu lintas unit, bukan hanya yang berbayar.
     //
-    // Yang keluar dibandingkan apa adanya: tanggal_selesai sudah berupa
-    // tanggal, dan servernya yang menstempelnya dengan hari kerja. Yang
-    // masuk masih berupa saat lengkap, jadi pergeserannya dihitung di
-    // sini.
+    // Batasnya sengaja berbeda. Nota keluar ditutup jam 17.00: laporannya
+    // dikirim ke pusat sore itu, jadi unit yang selesai sesudahnya masuk
+    // laporan besok -- tanggal_selesai sudah distempel server dengan
+    // aturan itu, dan dibandingkan apa adanya. Nota masuk memakai hari
+    // kalender: unit yang diterima jam 19.45 diterima hari itu juga.
     final keluar =
         semua.where((n) => _hariSama(n.tanggalSelesai, tanggal)).toList()
           ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
     final masuk =
-        semua
-            .where((n) => hariLaporanSama(n.tanggalMasuk, tanggal, jamTutup))
-            .toList()
+        semua.where((n) => _hariSama(n.tanggalMasuk, tanggal)).toList()
           ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
 
     final total = keluar.fold<double>(0, (a, n) => a + n.biaya);
@@ -185,10 +187,14 @@ class _Harian extends ConsumerWidget {
             ),
             const SizedBox(width: AppSpacing.xs),
             OutlinedButton(
-              // Hari kerja, bukan hari kalender: sesudah jam tutup yang
-              // sedang berjalan sudah hari berikutnya.
-              onPressed: () => ref.read(tanggalHarianProvider.notifier).state =
-                  hariLaporanKini(jamTutup),
+              onPressed: () {
+                final n = DateTime.now();
+                ref.read(tanggalHarianProvider.notifier).state = DateTime(
+                  n.year,
+                  n.month,
+                  n.day,
+                );
+              },
               child: const Text('HARI INI'),
             ),
             const Spacer(),
@@ -198,11 +204,8 @@ class _Harian extends ConsumerWidget {
             _TombolExport(
               label: 'EXCEL ${_namaBulan.format(tanggal).toUpperCase()}',
               aktif: semua.isNotEmpty,
-              onExport: () => ExcelExport.harianBulanan(
-                semua: semua,
-                bulan: tanggal,
-                jamTutup: jamTutup,
-              ),
+              onExport: () =>
+                  ExcelExport.harianBulanan(semua: semua, bulan: tanggal),
             ),
           ],
         ),
@@ -279,10 +282,8 @@ class _KartuHarianKeluar extends StatelessWidget {
           (0, 'Jenis Barang', 2),
           (0, 'Perbaikan', 3),
           (112, 'Biaya', 0),
-          // Cukup lebar untuk tanggal beserta jamnya. Jam masuk
-          // ikut disebut sejak hari kerja berganti jam tutup:
-          // tanpa itu, nota jam 18.30 yang muncul di tab tanggal
-          // berikutnya terbaca seperti salah tempat.
+          // Cukup lebar untuk tanggal beserta jamnya: berapa lama
+          // unitnya menunggu terbaca dari sini tanpa membuka notanya.
           (120, 'Tgl Masuk', 0),
           (104, 'Keterangan', 0),
         ],
@@ -328,12 +329,9 @@ class _KartuHarianMasuk extends StatelessWidget {
         kolom: const [
           (0, 'Nama', 2),
           (118, 'No Nota', 0),
-          // Tabel ini dulu tidak menyebut waktu sama sekali --
-          // semua barisnya toh unit yang masuk tanggal itu. Sejak
-          // hari kerja berganti jam tutup, kalimat itu tidak lagi
-          // utuh: unit yang datang jam 18.30 muncul di tab
-          // keesokan harinya, dan tanpa kolom ini kehadirannya di
-          // situ tidak bisa dijelaskan.
+          // Jamnya ikut disebut supaya lebih rinci -- tanggalnya
+          // sendiri sudah pasti tanggal tab ini, karena nota masuk
+          // memakai hari kalender.
           (120, 'Masuk', 0),
           (128, 'No HP', 0),
           (0, 'Jenis Barang', 2),
@@ -589,7 +587,9 @@ class _Omset extends ConsumerWidget {
                           widthFactor: (persen / 100).clamp(0.0, 1.0),
                           child: Container(
                             height: 4,
-                            color: tercapai ? context.warna.aksen : context.warna.bahaya,
+                            color: tercapai
+                                ? context.warna.aksen
+                                : context.warna.bahaya,
                           ),
                         ),
                       ],
@@ -603,7 +603,9 @@ class _Omset extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
-                        color: tercapai ? context.warna.aksen : context.warna.teksLembut,
+                        color: tercapai
+                            ? context.warna.aksen
+                            : context.warna.teksLembut,
                       ),
                     ),
                   ],
@@ -619,7 +621,9 @@ class _Omset extends ConsumerWidget {
             padding: const EdgeInsets.all(AppSpacing.s),
             decoration: BoxDecoration(
               color: context.warna.bahaya.withValues(alpha: 0.05),
-              border: Border(left: BorderSide(color: context.warna.bahaya, width: 3)),
+              border: Border(
+                left: BorderSide(color: context.warna.bahaya, width: 3),
+              ),
             ),
             child: Text(
               '${hasil.notaTanpaTeknisi} nota selesai belum ada teknisinya. '

@@ -46,10 +46,9 @@ ServiceOrderEntry _nota({
 
 /// Tanggal yang dipakai seluruh berkas ini.
 ///
-/// Dulu DateTime.now(). Itu bekerja sampai hari kerja toko berhenti
-/// berganti tengah malam: sesudah jam 17.00 tab ini membuka tanggal
-/// berikutnya, dan tesnya lulus atau gagal tergantung jam berapa ia
-/// dijalankan. Tanggal tetap membuat yang diuji tetap tata letaknya.
+/// Tetap, bukan DateTime.now(): tes yang hasilnya bergantung pada jam
+/// berapa ia dijalankan akan lulus pagi dan gagal malam, dan yang diuji
+/// di sini isi dan tata letaknya, bukan jamnya.
 final _hari = DateTime(2026, 9, 6, 9, 0);
 final _kemarin = DateTime(2026, 9, 5, 9, 0);
 
@@ -84,6 +83,26 @@ Future<void> _bukaTabMasuk(WidgetTester tester) async {
 
 void main() {
   setUpAll(() => initializeDateFormatting('id', null));
+
+  group('Batas hari nota masuk', () {
+    testWidgets('nota masuk malam tetap di tab hari itu', (tester) async {
+      // Unit yang diterima jam 19.45 diterima hari itu juga. Jam tutup
+      // 17.00 hanya milik nota keluar; nota masuk yang ikut digeser
+      // lenyap dari tab hari ini tepat saat admin baru saja mengetiknya.
+      await _lukis(tester, [
+        _nota(
+          noNota: 'SRV-09092628292',
+          nama: 'Joe Topan',
+          status: 'masuk',
+          masuk: DateTime(_hari.year, _hari.month, _hari.day, 19, 45),
+        ),
+      ]);
+      await _bukaTabMasuk(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Joe Topan'), findsOneWidget);
+    });
+  });
 
   group('Tab harian', () {
     testWidgets('terlukis penuh tanpa galat tata letak', (tester) async {

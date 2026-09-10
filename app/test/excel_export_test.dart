@@ -235,7 +235,11 @@ void main() {
     test('menempel di bawah data dengan garis', () {
       final sheet = _bolakBalik(
         _contoh(
-          penutup: [null, TextCellValue('TOTAL'), const DoubleCellValue(240000)],
+          penutup: [
+            null,
+            TextCellValue('TOTAL'),
+            const DoubleCellValue(240000),
+          ],
         ),
       );
       final total = sheet.cell(
@@ -306,33 +310,51 @@ void main() {
       expect(lembar[1].tabel[0].baris.length, 0, reason: 'tanggal 2');
     });
 
-    test('nota sesudah jam tutup masuk tab hari berikutnya', () {
-      // Laporan ini yang dikirim ke pusat, dan pusat membacanya menurut
-      // hari kerja toko: ditutup jam 17.00, unit yang datang sesudahnya
-      // dicatat sebagai unit besok. Tab tanggal 4 yang memuat nota jam
-      // 18.30 tanggal 4 akan berselisih dengan buku di meja depan.
+    test('nota masuk malam tetap di tab hari itu', () {
+      // Nota masuk memakai hari kalender. Unit yang diterima jam 19.45
+      // tanggal 4 diterima tanggal 4, dan tab tanggal 5 yang memuatnya
+      // akan berselisih dengan buku di meja depan.
+      //
+      // Sempat digeser di jam 17.00 bersama nota keluar. Jam tutup itu
+      // milik laporan keluar -- yang dikirim ke pusat sore hari --
+      // bukan milik penerimaan barang.
       final lembar = ExcelExport.lembarHarianBulanan(
         semua: [
-          _nota(noNota: 'SORE', masuk: DateTime(2026, 9, 4, 9, 0)),
-          _nota(noNota: 'MALAM', masuk: DateTime(2026, 9, 4, 18, 30)),
+          _nota(noNota: 'PAGI', masuk: DateTime(2026, 9, 4, 9, 0)),
+          _nota(noNota: 'MALAM', masuk: DateTime(2026, 9, 4, 19, 45)),
+          _nota(noNota: 'AKHIR', masuk: DateTime(2026, 9, 4, 23, 59)),
         ],
         bulan: DateTime(2026, 9),
       );
 
       // Tabel kedua tiap lembar adalah nota masuk.
-      expect(lembar[3].tabel[1].baris.length, 1, reason: 'tanggal 4');
-      expect(lembar[4].tabel[1].baris.length, 1, reason: 'tanggal 5');
+      expect(lembar[3].tabel[1].baris.length, 3, reason: 'tanggal 4');
+      expect(lembar[4].tabel[1].baris.length, 0, reason: 'tanggal 5');
     });
 
-    test('jam tutup 24 mengembalikannya ke hari kalender', () {
+    test('nota keluar ikut tanggal selesai yang distempel server', () {
+      // Jam tutup nota keluar dijalankan server waktu menstempel
+      // tanggal_selesai. Ekspor ini tidak menggeser apa pun lagi --
+      // menggeser dua kali memindahkan unit sehari terlalu jauh.
+      //
+      // Unit ini masuk tanggal 4 pagi dan selesai sesudah jam 17.00
+      // tanggal 4, jadi server menstempelnya tanggal 5: masuknya di tab
+      // 4, keluarnya di tab 5.
       final lembar = ExcelExport.lembarHarianBulanan(
-        semua: [_nota(noNota: 'MALAM', masuk: DateTime(2026, 9, 4, 18, 30))],
+        semua: [
+          _nota(
+            noNota: 'SORE',
+            masuk: DateTime(2026, 9, 4, 10, 0),
+            selesai: DateTime(2026, 9, 5),
+          ),
+        ],
         bulan: DateTime(2026, 9),
-        jamTutup: 24,
       );
 
-      expect(lembar[3].tabel[1].baris.length, 1, reason: 'tanggal 4');
-      expect(lembar[4].tabel[1].baris.length, 0, reason: 'tanggal 5');
+      expect(lembar[3].tabel[1].baris.length, 1, reason: 'masuk tanggal 4');
+      expect(lembar[3].tabel[0].baris.length, 0, reason: 'keluar tanggal 4');
+      expect(lembar[4].tabel[0].baris.length, 1, reason: 'keluar tanggal 5');
+      expect(lembar[4].tabel[1].baris.length, 0, reason: 'masuk tanggal 5');
     });
   });
 
@@ -451,7 +473,11 @@ void main() {
     });
 
     LembarExcel lembar() => ExcelExport.lembarKeseluruhan(
-      nota: [n(), n(garansi: true), n(status: 'batal')],
+      nota: [
+        n(),
+        n(garansi: true),
+        n(status: 'batal'),
+      ],
       teknisi: const {},
       periode: 'September 2026',
     );

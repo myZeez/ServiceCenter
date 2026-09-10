@@ -576,7 +576,9 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         AppSpacing.s,
       ),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: context.warna.teks, width: 1.5)),
+        border: Border(
+          bottom: BorderSide(color: context.warna.teks, width: 1.5),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,9 +595,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                 Text(
                   n == null
                       ? 'Nomor nota diberikan otomatis saat disimpan'
-                      // Sampai jamnya, karena hari kerja berganti jam
-                      // tutup: nota ini bisa tercatat sebagai nota besok
-                      // walau tanggalnya hari ini.
+                      // Sampai jamnya, supaya lebih rinci.
                       : _tglJamFmt.format(n.tanggalMasuk),
                   style: Theme.of(context).textTheme.labelSmall,
                 ),

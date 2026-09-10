@@ -11,7 +11,7 @@
 ; =====================================================================
 
 #define NamaApp        "Klaim Garansi"
-#define Versi          "2.24.0"
+#define Versi          "2.25.0"
 #define Penerbit       "Cellcom PLK"
 #define NamaExe        "sc_management.exe"
 #define SumberRelease  "..\app\build\windows\x64\runner\Release"

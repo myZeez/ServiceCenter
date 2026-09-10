@@ -5,7 +5,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:intl/intl.dart';
 
 import '../data/models.dart';
-import '../hari_laporan.dart';
 import '../nota/nomor_nota.dart';
 
 final _tgl = DateFormat('dd/MM/yyyy');
@@ -125,8 +124,11 @@ class ExcelExport {
   /// tanpa galat apa pun -- dan itu baru terlihat saat berkasnya dibuka.
   static void _gaya(Sheet sheet, int kolom, int baris, CellStyle gaya) {
     sheet
-        .cell(CellIndex.indexByColumnRow(columnIndex: kolom, rowIndex: baris))
-        .cellStyle = gaya;
+            .cell(
+              CellIndex.indexByColumnRow(columnIndex: kolom, rowIndex: baris),
+            )
+            .cellStyle =
+        gaya;
   }
 
   /// Berapa karakter yang ditempati sebuah nilai saat ditampilkan. Dipakai
@@ -634,16 +636,14 @@ class ExcelExport {
   static Future<String?> harianBulanan({
     required List<ServiceOrderEntry> semua,
     required DateTime bulan,
-    int jamTutup = jamTutupBawaan,
   }) => simpanBanyak(
     namaBerkas: 'SVS ${_aman(_bulanTahun.format(bulan)).toUpperCase()}.xlsx',
-    lembar: lembarHarianBulanan(semua: semua, bulan: bulan, jamTutup: jamTutup),
+    lembar: lembarHarianBulanan(semua: semua, bulan: bulan),
   );
 
   static List<LembarExcel> lembarHarianBulanan({
     required List<ServiceOrderEntry> semua,
     required DateTime bulan,
-    int jamTutup = jamTutupBawaan,
   }) {
     final jumlahHari = DateTime(bulan.year, bulan.month + 1, 0).day;
 
@@ -653,30 +653,30 @@ class ExcelExport {
           semua: semua,
           tanggal: DateTime(bulan.year, bulan.month, h),
           namaLembar: '$h',
-          jamTutup: jamTutup,
         ),
     ];
   }
 
   /// Satu tanggal: dua tabel bertumpuk, nota keluar lalu nota masuk.
   ///
-  /// Harinya hari kerja, bukan hari kalender: laporan ini ditutup pada jam
-  /// tutup toko, dan unit yang masuk sesudahnya sudah tercatat sebagai
-  /// unit hari berikutnya. Yang keluar dibandingkan apa adanya --
-  /// tanggal_selesai sudah distempel server dengan aturan yang sama.
+  /// Batas harinya berbeda untuk keduanya. Nota keluar ditutup jam 17.00,
+  /// saat laporannya dikirim ke pusat: unit yang selesai sesudahnya masuk
+  /// laporan besok. Aturan itu sudah dijalankan server waktu menstempel
+  /// tanggal_selesai, jadi di sini tanggalnya dibandingkan apa adanya --
+  /// menggesernya sekali lagi memindahkan unit sehari terlalu jauh.
+  ///
+  /// Nota masuk memakai hari kalender: unit yang diterima jam 19.45
+  /// tercatat hari itu juga, sama seperti di buku meja depan.
   static LembarExcel lembarHarian({
     required List<ServiceOrderEntry> semua,
     required DateTime tanggal,
     String? namaLembar,
-    int jamTutup = jamTutupBawaan,
   }) {
     final keluar =
         semua.where((n) => _hariSama(n.tanggalSelesai, tanggal)).toList()
           ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
     final masuk =
-        semua
-            .where((n) => hariLaporanSama(n.tanggalMasuk, tanggal, jamTutup))
-            .toList()
+        semua.where((n) => _hariSama(n.tanggalMasuk, tanggal)).toList()
           ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
 
     final judul = 'LAPORAN PERHARI TGL ${_tgl.format(tanggal)}';

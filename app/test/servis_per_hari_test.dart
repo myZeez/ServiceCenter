@@ -127,9 +127,7 @@ void main() {
     testWidgets('menyebut jam masuknya, bukan tanggalnya saja', (tester) async {
       await _lukis(tester, const ServiceView());
 
-      // Sejak hari kerja berganti jam tutup, tanggal saja tidak cukup:
-      // nota bisa muncul di bawah tanggal 7 sementara kertasnya tertulis
-      // 6, dan jamnya yang menjelaskan kenapa.
+      // Jamnya ikut disebut supaya lebih rinci, bukan tanggalnya saja.
       expect(find.text('06/09/26'), findsWidgets);
       expect(find.text('14:25'), findsOneWidget);
     });

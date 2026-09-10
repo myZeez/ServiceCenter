@@ -1,8 +1,10 @@
-// Hari kerja toko berganti jam 17.00, bukan tengah malam.
+// Nota keluar ditutup jam 17.00; nota masuk memakai hari kalender.
 //
 // Aturannya sepele dibaca dan mudah salah dipasang: satu tanda lebih-dari
 // yang keliru menggeser seluruh laporan sehari penuh, dan yang menemukannya
-// adalah pusat, bukan yang membuatnya.
+// adalah pusat, bukan yang membuatnya. Memasangnya di sisi yang salah sama
+// mahalnya -- nota masuk sempat ikut digeser, dan unit yang diterima jam
+// 19.45 lenyap dari halaman hari itu.
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -91,18 +93,36 @@ void main() {
     });
   });
 
-  group('Halaman Servis mengikuti hari kerja', () {
+  group('Halaman Servis memakai hari kalender', () {
     final sore = _nota(DateTime(2026, 9, 6, 9, 0), id: 'pagi');
     final malam = _nota(DateTime(2026, 9, 6, 19, 30), id: 'malam');
+    final akhir = _nota(DateTime(2026, 9, 6, 23, 59), id: 'akhir');
+    final lewat = _nota(DateTime(2026, 9, 7, 0, 0), id: 'lewat');
 
-    test('nota sore masuk hari itu, nota malam masuk besok', () {
+    test('nota malam tetap di hari diterimanya', () {
+      // Jam tutup 17.00 milik nota keluar. Unit yang diterima jam 19.30
+      // diterima hari itu juga, dan halaman yang menyembunyikannya sampai
+      // besok membuat nota yang baru diketik seolah hilang.
       expect(
-        saringNota([sore, malam], hari: DateTime(2026, 9, 6)).map((n) => n.id),
-        ['pagi'],
+        saringNota([
+          sore,
+          malam,
+          akhir,
+          lewat,
+        ], hari: DateTime(2026, 9, 6)).map((n) => n.id),
+        ['pagi', 'malam', 'akhir'],
       );
+    });
+
+    test('batasnya tengah malam, bukan semenit sebelumnya', () {
       expect(
-        saringNota([sore, malam], hari: DateTime(2026, 9, 7)).map((n) => n.id),
-        ['malam'],
+        saringNota([
+          sore,
+          malam,
+          akhir,
+          lewat,
+        ], hari: DateTime(2026, 9, 7)).map((n) => n.id),
+        ['lewat'],
       );
     });
 

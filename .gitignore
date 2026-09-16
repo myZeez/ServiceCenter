@@ -14,3 +14,7 @@ DATASET/
 supabase/scripts/gen/node_modules/
 supabase/scripts/gen/work/
 supabase/scripts/gen/LAPORAN-VALIDASI.md
+
+# Dataset baru untuk isi ulang 2026 (Januari-September): laporan bulanan,
+# harian SVS, dan klaim garansi. Isinya nama, telepon, dan SN pelanggan.
+DATASET BARU/

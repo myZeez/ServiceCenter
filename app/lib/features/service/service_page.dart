@@ -330,12 +330,18 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
     text: widget.nota.keterangan ?? '',
   );
 
+  /// Keluhan garansi -- milik klaimnya, bukan nota ini. Diisi sekali saat
+  /// klaimnya pertama kali tersedia, lalu dibiarkan milik yang mengetik.
+  final _keluhanGaransi = TextEditingController();
+  String? _keluhanGaransiDari;
+
   bool _busy = false;
 
   @override
   void dispose() {
     _perbaikan.dispose();
     _keterangan.dispose();
+    _keluhanGaransi.dispose();
     super.dispose();
   }
 
@@ -355,11 +361,18 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
             ? null
             : _keterangan.text.trim(),
       });
-      final statusKlaim = _statusKlaim;
-      if (klaim != null &&
-          statusKlaim != null &&
-          statusKlaim != klaim.status) {
-        await db.gantiStatus(klaim.id, statusKlaim);
+      if (klaim != null) {
+        final statusKlaim = _statusKlaim;
+        final t = _keluhanGaransi.text.trim();
+        final keluhanGaransi = t.isEmpty ? null : t;
+        final perubahan = {
+          if (statusKlaim != null && statusKlaim != klaim.status)
+            'status': statusKlaim,
+          if (_keluhanGaransiDari == klaim.id &&
+              keluhanGaransi != klaim.keluhan)
+            'keluhan': keluhanGaransi,
+        };
+        if (perubahan.isNotEmpty) await db.ubahClaim(klaim.id, perubahan);
       }
     } catch (e) {
       if (!mounted) return;
@@ -386,8 +399,15 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
     // Diikuti, bukan dibaca sekali: daftar klaim bisa belum termuat saat
     // lembar ini dibuka.
     final klaim = ref.watch(klaimBrandNotaProvider(widget.nota.claimId));
+    if (klaim != null && _keluhanGaransiDari != klaim.id) {
+      _keluhanGaransiDari = klaim.id;
+      _keluhanGaransi.text = klaim.keluhan ?? '';
+    }
+    final keluhanPelanggan = (widget.nota.keluhan ?? '').trim();
 
-    return Padding(
+    // Bisa digulir: nota garansi punya satu kolom lebih banyak, dan begitu
+    // papan ketik terbuka layar HP tidak lagi cukup memuat semuanya.
+    return SingleChildScrollView(
       padding: EdgeInsets.only(
         left: AppSpacing.sm,
         right: AppSpacing.sm,
@@ -451,6 +471,25 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
             ),
           const SizedBox(height: AppSpacing.s),
 
+          if (klaim != null) ...[
+            LabeledField(
+              label: 'Keluhan Garansi',
+              // Keluhan pelanggan disebut sebagai pembanding, bukan disalin:
+              // yang ditulis di sini adalah hasil pengecekan, dan itu yang
+              // dibaca brand di laporan garansi.
+              hint: keluhanPelanggan.isEmpty
+                  ? 'Hasil pengecekanmu — dipakai di laporan garansi.'
+                  : 'Keluhan pelanggan: $keluhanPelanggan',
+              child: TextField(
+                controller: _keluhanGaransi,
+                maxLines: 2,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(hintText: 'NO POWER'),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s),
+          ],
+
           LabeledField(
             label: 'Teknisi',
             child: DropdownButtonFormField<String>(
@@ -492,7 +531,9 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
             padding: const EdgeInsets.all(AppSpacing.xs),
             decoration: BoxDecoration(
               color: context.warna.aksen.withValues(alpha: 0.05),
-              border: Border(left: BorderSide(color: context.warna.aksen, width: 3)),
+              border: Border(
+                left: BorderSide(color: context.warna.aksen, width: 3),
+              ),
             ),
             child: Text(
               'Biaya, cara bayar, dan data pelanggan diubah dari meja depan.',

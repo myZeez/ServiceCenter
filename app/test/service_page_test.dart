@@ -104,6 +104,7 @@ void main() {
       tanggalMasuk: DateTime(2026, 9, 4),
       customerNama: 'Rara',
       barangNama: 'ASUS',
+      keluhan: 'Mati total',
       teknisiId: 't1',
       status: 'dikerjakan',
       garansi: true,
@@ -156,6 +157,11 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('STATUS GARANSI'), findsOneWidget);
     expect(find.text('Part Ready'), findsOneWidget);
+
+    // Teknisi menulis hasil pengecekannya di sini. Keluhan pelanggan
+    // disebut sebagai pembanding, tidak disalin ke kolomnya.
+    expect(find.text('KELUHAN GARANSI'), findsOneWidget);
+    expect(find.text('Keluhan pelanggan: Mati total'), findsOneWidget);
   });
 
   testWidgets('daftar kosong tetap bisa ditarik untuk disegarkan', (

@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/providers.dart';
 import 'package:sc_management/core/theme.dart';
+import 'package:sc_management/core/widgets/swiss_widgets.dart';
 import 'package:sc_management/features/claims/claim_form_page.dart';
 import 'package:sc_management/features/claims/widgets/kolom_nota.dart';
 
@@ -28,7 +29,7 @@ ServiceOrderEntry _nota({String? claimId, String id = 'nota-1'}) =>
       barangNama: 'Laptop Asus',
       barangType: 'X441BA',
       barangSn: 'X1Y2Z3',
-      keluhan: 'NO POWER',
+      keluhan: 'MATI TIBA-TIBA',
       teknisiId: 't1',
       status: 'dikerjakan',
       garansi: claimId != null,
@@ -103,7 +104,23 @@ void main() {
     expect(find.text('UDIN SAPUTRA'), findsWidgets);
     expect(find.text('081255500011'), findsWidgets);
     expect(find.text('X1Y2Z3'), findsWidgets);
-    expect(find.text('NO POWER'), findsWidgets);
+    // Keluhannya TIDAK. Yang di nota kata-kata pelanggan saat unit datang;
+    // yang di klaim hasil pengecekan teknisi, dan itu yang dibaca brand.
+    // Keluhan nota hanya jadi pembanding di bawah kolomnya.
+    final keluhanGaransi = tester.widget<TextField>(
+      find.descendant(
+        of: find.ancestor(
+          of: find.text('KELUHAN GARANSI'),
+          matching: find.byType(LabeledField),
+        ),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(keluhanGaransi.controller!.text, isEmpty);
+    expect(
+      find.text('Keluhan pelanggan di nota: MATI TIBA-TIBA'),
+      findsOneWidget,
+    );
     // Brand ditebak dari sebutan unitnya, teknisi dibawa dari notanya.
     expect(find.text('ASUS'), findsWidgets);
     expect(find.text('Reza Teknisi'), findsWidgets);

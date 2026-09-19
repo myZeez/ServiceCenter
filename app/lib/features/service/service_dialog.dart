@@ -108,6 +108,15 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   final _keterangan = TextEditingController();
   final _partReq = TextEditingController();
 
+  /// Keluhan garansi -- milik KLAIMNYA, bukan nota ini. Hanya tampil pada
+  /// nota garansi brand. Lihat [_kolomKeluhanGaransi].
+  final _keluhanGaransi = TextEditingController();
+
+  /// Klaim yang isinya sudah dimuat ke [_keluhanGaransi]. Diisi sekali saat
+  /// klaimnya pertama kali tersedia; sesudah itu yang diketik tidak
+  /// ditimpa kabar dari server.
+  String? _keluhanGaransiDari;
+
   final _namaFokus = FocusNode();
 
   /// Pelanggan lama yang tertaut. Null berarti akan dibuatkan yang baru.
@@ -188,6 +197,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       _biaya,
       _keterangan,
       _partReq,
+      _keluhanGaransi,
     ]) {
       c.dispose();
     }
@@ -331,7 +341,11 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         'email': _kosongNull(_email),
         'sn': _sn.text.trim(),
         'teknisi_id': _teknisiId,
-        'keluhan': _kosongNull(_keluhan),
+        // Keluhan klaim sengaja TIDAK disalin dari nota. Yang di nota
+        // adalah kata-kata pelanggan saat unit datang; yang di klaim
+        // adalah hasil pengecekan teknisi, dan itu yang dibaca brand.
+        // Menyalinnya membuat laporan garansi berisi "mati tiba-tiba"
+        // sampai ada yang ingat menggantinya.
         'status': 'open',
         'created_by': user!.id,
       };
@@ -393,13 +407,19 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       // Sesudah notanya, bukan sebelumnya: server menurunkan status nota
       // dari klaim ini, dan saat itu cara bayar yang baru saja diubah
       // harus sudah tersimpan -- dari situlah tanggal lunas distempel.
-      final statusKlaim = _statusKlaim;
-      if (klaimBrand != null &&
-          statusKlaim != null &&
-          statusKlaim != klaimBrand.status) {
-        await ref
-            .read(databaseProvider)
-            .gantiStatus(klaimBrand.id, statusKlaim);
+      if (klaimBrand != null) {
+        final statusKlaim = _statusKlaim;
+        final keluhanGaransi = _kosongNull(_keluhanGaransi);
+        final perubahan = {
+          if (statusKlaim != null && statusKlaim != klaimBrand.status)
+            'status': statusKlaim,
+          if (_keluhanGaransiDari == klaimBrand.id &&
+              keluhanGaransi != klaimBrand.keluhan)
+            'keluhan': keluhanGaransi,
+        };
+        if (perubahan.isNotEmpty) {
+          await ref.read(databaseProvider).ubahClaim(klaimBrand.id, perubahan);
+        }
       }
 
       // Nota yang ternyata bergaransi. Klaimnya lahir belakangan, lalu
@@ -778,13 +798,15 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         const SectionLabel('Servis'),
         const SizedBox(height: AppSpacing.s),
         LabeledField(
-          label: 'Kerusakan / Keluhan',
+          label: 'Keluhan Pelanggan',
+          hint: 'Yang disampaikan pelanggan saat unit datang.',
           child: TextFormField(
             controller: _keluhan,
             maxLines: 2,
             textCapitalization: TextCapitalization.characters,
           ),
         ),
+        _kolomKeluhanGaransi(),
         const SizedBox(height: AppSpacing.s),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1038,6 +1060,38 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     );
   }
 
+  /// Keluhan garansi, pada nota garansi brand saja.
+  ///
+  /// Berdampingan dengan keluhan pelanggan, bukan menggantikannya: yang
+  /// satu kata-kata pelanggan saat unit datang ("mati tiba-tiba"), yang
+  /// satu hasil pengecekan teknisi ("NO POWER") -- dan yang kedua itulah
+  /// yang dibaca brand di laporan garansi.
+  Widget _kolomKeluhanGaransi() {
+    final klaim = ref.watch(klaimBrandNotaProvider(widget.nota?.claimId));
+    if (klaim == null) return const SizedBox.shrink();
+
+    if (_keluhanGaransiDari != klaim.id) {
+      _keluhanGaransiDari = klaim.id;
+      _keluhanGaransi.text = klaim.keluhan ?? '';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.s),
+      child: LabeledField(
+        label: 'Keluhan Garansi',
+        hint:
+            'Hasil pengecekan teknisi — ini yang dipakai di laporan '
+            'garansi.',
+        child: TextFormField(
+          controller: _keluhanGaransi,
+          maxLines: 2,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(hintText: 'NO POWER'),
+        ),
+      ),
+    );
+  }
+
   /// Status nota biasa -- atau, pada nota garansi brand, status klaimnya.
   ///
   /// Klaimnya diikuti, bukan dibaca sekali saat formulir dibuka: daftar
@@ -1064,7 +1118,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     final brand = ref.watch(namaBrandProvider)[klaim.brandId];
     return LabeledField(
       label: 'Status Garansi',
-      hint: 'Sama dengan status klaimnya — mengubahnya di sini ikut '
+      hint:
+          'Sama dengan status klaimnya — mengubahnya di sini ikut '
           'mengubah klaim.',
       child: DropdownButtonFormField<String>(
         key: ValueKey(klaim.id),

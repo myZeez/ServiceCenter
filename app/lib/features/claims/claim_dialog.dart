@@ -172,11 +172,24 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
   String? _nullIfEmpty(TextEditingController c) =>
       c.text.trim().isEmpty ? null : c.text.trim();
 
+  /// Keterangan di bawah kolom keluhan garansi: keluhan pelanggan dari
+  /// notanya, sebagai pembanding -- bukan untuk disalin.
+  String _hintKeluhanGaransi() {
+    final c = widget.claim;
+    final nota =
+        _nota ?? (c == null ? null : ref.watch(notaOfClaimProvider(c.id)));
+    final k = (nota?.keluhan ?? '').trim();
+    return k.isEmpty
+        ? 'Hasil pengecekan teknisi — dipakai di laporan garansi.'
+        : 'Keluhan pelanggan di nota: $k';
+  }
+
   /// Mengambil alih isi formulir dari sebuah nota servis.
   ///
-  /// Keluhan tidak ditimpa kalau sudah diketik: yang ada di layar biasanya
-  /// hasil pengamatan setelah unitnya dibongkar, dan itu lebih akurat
-  /// daripada yang tercatat saat unitnya diterima.
+  /// Keluhannya TIDAK ikut. Keluhan nota adalah kata-kata pelanggan saat
+  /// unit datang; keluhan klaim adalah hasil pengecekan teknisi, dan itu
+  /// yang dibaca brand. Keluhan nota hanya ditampilkan sebagai pembanding
+  /// di bawah kolomnya.
   void _pilihNota(ServiceOrderEntry n) {
     final brands = ref.read(brandsProvider).valueOrNull ?? const <Brand>[];
 
@@ -186,7 +199,6 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
       _telp.text = n.customerTelp ?? '';
       if (_email.text.trim().isEmpty) _email.text = n.customerEmail ?? '';
       _snUnit.text = n.barangSn ?? '';
-      if (_keluhan.text.trim().isEmpty) _keluhan.text = n.keluhan ?? '';
       _teknisiId = n.teknisiId ?? _teknisiId;
       // Tanggal masuk unitnya, bukan hari orang menyadarinya bergaransi.
       _tanggal = n.tanggalMasuk;
@@ -298,6 +310,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
       await db.ubahClaim(c.id, {
         'teknisi_id': _teknisiId,
         'status': _status,
+        'keluhan': _nullIfEmpty(_keluhan),
         'catatan': _nullIfEmpty(_catatan),
       });
 
@@ -424,7 +437,9 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
         AppSpacing.s,
       ),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: context.warna.teks, width: 1.5)),
+        border: Border(
+          bottom: BorderSide(color: context.warna.teks, width: 1.5),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -656,10 +671,12 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
         ),
         const SizedBox(height: AppSpacing.s),
         LabeledField(
-          label: 'Keluhan',
+          label: 'Keluhan Garansi',
+          // Terbuka untuk teknisi: dialah yang tahu kerusakan sebenarnya
+          // setelah unitnya dibongkar.
+          hint: _hintKeluhanGaransi(),
           child: TextFormField(
             controller: _keluhan,
-            readOnly: !editable,
             maxLines: 2,
             textCapitalization: TextCapitalization.characters,
             decoration: const InputDecoration(hintText: 'NO POWER, MATI TOTAL'),

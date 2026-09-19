@@ -146,11 +146,11 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
 
   /// Mengambil alih isi formulir dari sebuah nota servis.
   ///
-  /// Yang sudah diketik tidak ditimpa begitu saja pada kolom yang sifatnya
-  /// pengamatan teknisi -- keluhan bisa saja sudah dilengkapi setelah
-  /// unitnya dibongkar, dan itu lebih akurat daripada yang tercatat di
-  /// meja depan. Identitas unitnya sendiri diambil dari nota, karena di
-  /// situlah kebenarannya.
+  /// Identitas unitnya diambil dari nota, karena di situlah kebenarannya.
+  /// Keluhannya TIDAK: keluhan nota adalah kata-kata pelanggan saat unit
+  /// datang, keluhan klaim adalah hasil pengecekan teknisi, dan yang
+  /// kedua itulah yang dibaca brand. Keluhan nota hanya ditampilkan
+  /// sebagai pembanding di bawah kolomnya.
   void _pilihNota(ServiceOrderEntry n) {
     final brands = ref.read(brandsProvider).valueOrNull ?? const <Brand>[];
 
@@ -160,7 +160,6 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
       _telp.text = n.customerTelp ?? '';
       if (_email.text.trim().isEmpty) _email.text = n.customerEmail ?? '';
       _sn.text = n.barangSn ?? '';
-      if (_keluhan.text.trim().isEmpty) _keluhan.text = n.keluhan ?? '';
       _teknisiId = n.teknisiId ?? _teknisiId;
       // Tanggal masuk unitnya, bukan hari orang menyadarinya bergaransi.
       _tanggal = n.tanggalMasuk;
@@ -174,6 +173,18 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
   /// Melepas tautannya tanpa mengosongkan kolom. Yang dibatalkan adalah
   /// hubungannya ke nota itu, bukan data yang sudah terlanjur benar.
   void _lepasNota() => setState(() => _nota = null);
+
+  /// Keterangan di bawah kolom keluhan garansi: keluhan pelanggan dari
+  /// notanya, sebagai pembanding -- bukan untuk disalin.
+  String _hintKeluhanGaransi() {
+    final c = widget.claim;
+    final nota =
+        _nota ?? (c == null ? null : ref.watch(notaOfClaimProvider(c.id)));
+    final k = (nota?.keluhan ?? '').trim();
+    return k.isEmpty
+        ? 'Hasil pengecekan teknisi — dipakai di laporan garansi.'
+        : 'Keluhan pelanggan di nota: $k';
+  }
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -504,7 +515,8 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                     ),
                     const SizedBox(height: AppSpacing.s),
                     LabeledField(
-                      label: 'Keluhan',
+                      label: 'Keluhan Garansi',
+                      hint: _hintKeluhanGaransi(),
                       child: TextFormField(
                         controller: _keluhan,
                         textCapitalization: TextCapitalization.characters,

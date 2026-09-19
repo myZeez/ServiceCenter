@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/fitur.dart';
 import 'package:sc_management/core/providers.dart';
+import 'package:sc_management/core/widgets/swiss_widgets.dart';
 import 'package:sc_management/features/service/service_dialog.dart';
 
 ServiceOrderEntry _nota({String? claimId, bool garansi = false}) =>
@@ -298,19 +299,23 @@ void main() {
   // klaimnya. Servis reguler dan garansi toko tetap memakai status nota.
   // -------------------------------------------------------------------
   group('status nota garansi', () {
-    Claim klaim({String jenis = 'brand', String status = 'wait_approval'}) =>
-        Claim(
-          id: 'klaim-1',
-          tanggal: DateTime(2026, 9, 5),
-          brandId: 1,
-          namaPelanggan: 'Irwan',
-          sn: 'OSIA0J09U309JOI3',
-          jenis: jenis,
-          status: status,
-          createdBy: 'a',
-          createdAt: DateTime(2026, 9, 5),
-          updatedAt: DateTime(2026, 9, 5),
-        );
+    Claim klaim({
+      String jenis = 'brand',
+      String status = 'wait_approval',
+      String? keluhan,
+    }) => Claim(
+      id: 'klaim-1',
+      keluhan: keluhan,
+      tanggal: DateTime(2026, 9, 5),
+      brandId: 1,
+      namaPelanggan: 'Irwan',
+      sn: 'OSIA0J09U309JOI3',
+      jenis: jenis,
+      status: status,
+      createdBy: 'a',
+      createdAt: DateTime(2026, 9, 5),
+      updatedAt: DateTime(2026, 9, 5),
+    );
 
     testWidgets('garansi brand memilih dari status klaimnya', (tester) async {
       await _lukis(
@@ -352,6 +357,39 @@ void main() {
 
       expect(find.text('STATUS GARANSI'), findsNothing);
       expect(find.text('Masuk'), findsOneWidget);
+    });
+
+    // Keluhan nota adalah kata-kata pelanggan saat unit datang; keluhan
+    // garansi adalah hasil pengecekan teknisi, dan itu yang dibaca brand.
+    // Keduanya tampil berdampingan, masing-masing dari tempatnya sendiri.
+    TextField kolom(WidgetTester tester, String label) => tester.widget(
+      find.descendant(
+        of: find.ancestor(
+          of: find.text(label),
+          matching: find.byType(LabeledField),
+        ),
+        matching: find.byType(TextField),
+      ),
+    );
+
+    testWidgets('garansi brand punya keluhan garansi milik klaimnya', (
+      tester,
+    ) async {
+      await _lukis(
+        tester,
+        nota: _nota(claimId: 'klaim-1'),
+        klaim: [klaim(keluhan: 'NO POWER')],
+      );
+
+      expect(kolom(tester, 'KELUHAN PELANGGAN').controller!.text, 'LCD PECAH');
+      expect(kolom(tester, 'KELUHAN GARANSI').controller!.text, 'NO POWER');
+    });
+
+    testWidgets('servis reguler hanya punya keluhan pelanggan', (tester) async {
+      await _lukis(tester, nota: _nota());
+
+      expect(find.text('KELUHAN PELANGGAN'), findsOneWidget);
+      expect(find.text('KELUHAN GARANSI'), findsNothing);
     });
   });
 

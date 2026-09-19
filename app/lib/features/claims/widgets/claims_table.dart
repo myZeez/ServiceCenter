@@ -42,7 +42,7 @@ const _allColumns = [
   _Col(_ColId.telp, 'Telp', width: 108, showAt: 1180),
   _Col(_ColId.sn, 'SN', width: 150, showAt: 620),
   _Col(_ColId.teknisi, 'Teknisi', width: 92, showAt: 880),
-  _Col(_ColId.keluhan, 'Keluhan', flex: 3, showAt: 1000),
+  _Col(_ColId.keluhan, 'Keluhan Garansi', flex: 3, showAt: 1000),
   _Col(_ColId.rma, 'No Perbaikan', width: 112, showAt: 1320),
   _Col(_ColId.status, 'Status', width: 124),
 ];
@@ -117,7 +117,9 @@ class _HeaderRow extends StatelessWidget {
       // Garis tebal di bawah kepala tabel: pembatas paling kuat di halaman,
       // menandai awal data.
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: context.warna.teks, width: 1.5)),
+        border: Border(
+          bottom: BorderSide(color: context.warna.teks, width: 1.5),
+        ),
       ),
       padding: EdgeInsets.fromLTRB(pad, AppSpacing.s, pad, AppSpacing.xs),
       child: Row(

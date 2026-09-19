@@ -128,18 +128,24 @@ class ClaimDetailPage extends ConsumerWidget {
                     ),
                   ),
                   _Editable(
-                    label: 'Keluhan',
+                    label: 'Keluhan Garansi',
                     value: claim.keluhan ?? '—',
-                    editable: isAdmin,
+                    // Terbuka untuk teknisi: hasil pengecekannya sendiri,
+                    // dan itu yang dibaca brand di laporan garansi.
+                    editable: true,
                     onEdit: () => _editText(
                       context,
                       ref,
                       claim,
-                      label: 'Keluhan',
+                      label: 'Keluhan Garansi',
                       initial: claim.keluhan ?? '',
+                      hint: 'NO POWER',
                       multiline: true,
                       build: (v) => {'keluhan': v},
                     ),
+                    hint: (nota?.keluhan ?? '').trim().isEmpty
+                        ? null
+                        : 'Keluhan pelanggan di nota: ${nota!.keluhan!.trim()}',
                   ),
                   _Editable(
                     label: 'No Perbaikan / RMA',
@@ -498,7 +504,9 @@ class ClaimDetailPage extends ConsumerWidget {
             child: const Text('BATAL'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: context.warna.bahaya),
+            style: FilledButton.styleFrom(
+              backgroundColor: context.warna.bahaya,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('HAPUS'),
           ),
@@ -921,7 +929,9 @@ class _PickerDialog extends StatelessWidget {
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(
-                    color: o.selected ? context.warna.bahaya : Colors.transparent,
+                    color: o.selected
+                        ? context.warna.bahaya
+                        : Colors.transparent,
                     width: 3,
                   ),
                 ),

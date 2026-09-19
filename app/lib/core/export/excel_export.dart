@@ -289,7 +289,11 @@ class ExcelExport {
       }
 
       var maks = t.kolom[c].judul.length;
-      for (final r in t.baris) {
+      // Baris total ikut diukur. Totalnya hampir selalu angka terpanjang
+      // di kolomnya -- satu bulan penuh, bukan satu nota -- dan angka yang
+      // tidak muat tidak meluber seperti teks: Excel menggantinya dengan
+      // "########".
+      for (final r in [...t.baris, ?t.penutup]) {
         if (c >= r.length) continue;
         final n = _panjang(r[c]);
         if (n > maks) maks = n;
@@ -457,7 +461,6 @@ class ExcelExport {
     // pun, jadi nomornya tampak acak persis di kolom pertama.
     final urut = [...nota]
       ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
-    final total = urut.fold<double>(0, (a, n) => a + n.biaya);
 
     return LembarExcel(
       nama: 'Penerimaan Servis',
@@ -512,8 +515,13 @@ class ExcelExport {
               ],
           ],
           warnaBaris: [for (final n in urut) warnaServis(n)],
+          // Labelnya tepat di kiri angkanya, seperti "Total Mei" di lembar
+          // pelunasan toko. Sempat ditulis "TOTAL 39.865.000" di kolom
+          // keterangan -- empat kolom jauhnya dari uang yang dijumlahkan,
+          // di bawah tulisan perbaikan.
           penutup: [
-            for (var i = 0; i < 7; i++) null,
+            for (var i = 0; i < 6; i++) null,
+            TextCellValue('TOTAL'),
             DoubleCellValue(
               urut
                   .where((n) => n.tanggalLunas != null)
@@ -524,8 +532,6 @@ class ExcelExport {
                   .where((n) => n.tanggalLunas == null)
                   .fold<double>(0, (a, n) => a + n.biaya),
             ),
-            null,
-            TextCellValue('TOTAL ${_angka.format(total)}'),
           ],
         ),
       ],

@@ -250,6 +250,24 @@ void main() {
       expect(total.cellStyle?.isBold, isTrue);
       expect(total.cellStyle?.numberFormat.formatCode, '"Rp"#,##0');
     });
+
+    test('kolomnya cukup lebar untuk totalnya, bukan hanya isinya', () {
+      // Total sebulan jauh lebih panjang daripada biaya satu nota. Angka
+      // yang tidak muat tidak meluber seperti teks -- Excel menggantinya
+      // dengan "########".
+      final sheet = _bolakBalik(
+        _contoh(
+          penutup: [
+            null,
+            TextCellValue('TOTAL'),
+            const DoubleCellValue(39865000),
+          ],
+        ),
+      );
+
+      // "Rp39.865.000" -- dua belas huruf, ditambah ruang untuk tebalnya.
+      expect(sheet.getColumnWidths[2]!, greaterThan(12));
+    });
   });
 
   group('Laporan harian sebulan', () {
@@ -470,6 +488,51 @@ void main() {
         ExcelExport.warnaServis(n(status: 'batal', garansi: true)),
         ExcelColor.red300,
       );
+    });
+
+    test('TOTAL tepat di kiri angkanya, dan angkanya terbaca utuh', () {
+      // Sempat ditulis "TOTAL 39.865.000" di kolom keterangan, jauh dari
+      // uangnya, sementara total cash di bawahnya tampil "########".
+      ServiceOrderEntry lunas(int i) => ServiceOrderEntry(
+        id: 'l$i',
+        noNota: 'SVR-010926${28000 + i}',
+        tanggalMasuk: DateTime(2026, 9, 1),
+        customerNama: 'Budi',
+        barangNama: 'Laptop',
+        status: 'diambil',
+        biaya: 950000,
+        caraBayar: 'cash',
+        tanggalLunas: DateTime(2026, 9, 2),
+        tanggalSelesai: DateTime(2026, 9, 2),
+        perbaikan: 'Instal Ulang',
+        updatedAt: DateTime(2026, 9, 2),
+      );
+
+      final lembar = ExcelExport.lembarKeseluruhan(
+        nota: [for (var i = 0; i < 42; i++) lunas(i), n()],
+        teknisi: const {},
+        periode: 'September 2026',
+      );
+      final t = lembar.tabel.single;
+      final judul = t.kolom.map((k) => k.judul).toList();
+      final iCash = judul.indexOf('CASH');
+      final penutup = t.penutup!;
+
+      expect((penutup[iCash - 1] as TextCellValue).value.text, 'TOTAL');
+      expect((penutup[iCash] as DoubleCellValue).value, 42 * 950000);
+      expect(
+        (penutup[judul.indexOf('PIUTANG')] as DoubleCellValue).value,
+        200000,
+      );
+      // Tidak ada total kedua yang tercecer di kolom teks.
+      for (final k in ['KETERANGAN', 'STATUS']) {
+        final i = judul.indexOf(k);
+        expect(i < penutup.length ? penutup[i] : null, isNull, reason: k);
+      }
+
+      final sheet = _bolakBalik(lembar);
+      // "Rp39.900.000": dua belas huruf.
+      expect(sheet.getColumnWidths[iCash]!, greaterThan(12));
     });
 
     LembarExcel lembar() => ExcelExport.lembarKeseluruhan(

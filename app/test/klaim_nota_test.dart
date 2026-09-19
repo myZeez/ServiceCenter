@@ -18,6 +18,7 @@ import 'package:sc_management/core/providers.dart';
 import 'package:sc_management/core/theme.dart';
 import 'package:sc_management/core/widgets/swiss_widgets.dart';
 import 'package:sc_management/features/claims/claim_detail_page.dart';
+import 'package:sc_management/features/claims/claim_dialog.dart';
 import 'package:sc_management/features/claims/claim_form_page.dart';
 
 final _tgl = DateTime(2026, 9, 4);
@@ -200,5 +201,53 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Sejalan dengan nota'), findsNothing);
+  });
+
+  // Hanya sebagian brand yang meminta email di portal RMA-nya. Klaim ke
+  // brand lain, atau pelanggan yang tidak punya email, tidak boleh
+  // membuat klaimnya gagal disimpan.
+  group('email klaim tidak pernah wajib', () {
+    Future<void> simpanKosong(
+      WidgetTester tester,
+      Widget halaman,
+      Size ukuran,
+    ) async {
+      await tester.binding.setSurfaceSize(ukuran);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ..._dasar(),
+            allClaimsProvider.overrideWith((ref) => Stream.value(const [])),
+            serviceOrdersProvider.overrideWith((ref) => Stream.value(const [])),
+          ],
+          child: MaterialApp(theme: AppTheme.terang(), home: halaman),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final simpan = find.widgetWithText(FilledButton, 'SIMPAN KLAIM');
+      await tester.ensureVisible(simpan);
+      await tester.pumpAndSettle();
+      await tester.tap(simpan);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('formulir klaim di HP', (tester) async {
+      await simpanKosong(tester, const ClaimFormPage(), const Size(420, 900));
+
+      expect(tester.takeException(), isNull);
+      expect(find.textContaining('Email wajib'), findsNothing);
+      expect(find.text('Isi kalau portal brand-nya meminta.'), findsOneWidget);
+    });
+
+    testWidgets('dialog klaim di layar lebar', (tester) async {
+      await simpanKosong(tester, const ClaimDialog(), const Size(1400, 1000));
+
+      expect(tester.takeException(), isNull);
+      expect(find.textContaining('Email wajib'), findsNothing);
+      expect(find.text('Isi kalau portal brand-nya meminta.'), findsOneWidget);
+    });
   });
 }

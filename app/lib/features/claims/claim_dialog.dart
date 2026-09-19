@@ -531,17 +531,16 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
       const SizedBox(height: AppSpacing.s),
       LabeledField(
         label: 'Email',
-        // Wajib pada klaim baru: portal RMA sebagian brand menuntutnya.
-        // Klaim lama yang disunting tidak dipaksa.
-        required: widget.isNew,
+        // Tidak pernah wajib. Sempat dipaksa pada klaim baru karena portal
+        // RMA sebagian brand menuntutnya -- tetapi hanya sebagian. Klaim
+        // ke brand yang tidak memintanya, dan pelanggan yang tidak punya
+        // email, tidak boleh membuat klaimnya gagal disimpan.
+        hint: 'Isi kalau portal brand-nya meminta.',
         child: TextFormField(
           controller: _email,
           readOnly: !editable,
           keyboardType: TextInputType.emailAddress,
           decoration: const InputDecoration(hintText: 'nama@email.com'),
-          validator: (v) => widget.isNew && (v ?? '').trim().isEmpty
-              ? 'Email wajib untuk klaim garansi'
-              : null,
         ),
       ),
     ];

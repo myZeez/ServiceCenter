@@ -365,17 +365,13 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
       const SizedBox(height: AppSpacing.s),
       LabeledField(
         label: 'Email',
-        // Wajib pada klaim baru: portal RMA beberapa brand menuntutnya
-        // saat unit didaftarkan. Klaim lama yang disunting tidak dipaksa
-        // -- kolomnya memang belum ada saat itu dicatat.
-        required: !widget.isEdit,
+        // Tidak pernah wajib -- sama seperti di dialog klaim layar lebar.
+        // Hanya sebagian brand yang memintanya di portal RMA-nya.
+        hint: 'Isi kalau portal brand-nya meminta.',
         child: TextFormField(
           controller: _email,
           keyboardType: TextInputType.emailAddress,
           decoration: const InputDecoration(hintText: 'nama@email.com'),
-          validator: (v) => !widget.isEdit && (v ?? '').trim().isEmpty
-              ? 'Email wajib untuk klaim garansi'
-              : null,
         ),
       ),
     ];

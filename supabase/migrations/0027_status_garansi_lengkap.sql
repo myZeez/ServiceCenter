@@ -43,6 +43,30 @@
 
 
 -- ---------------------------------------------------------------------
+--  0. SISA RANCANGAN AWAL
+-- ---------------------------------------------------------------------
+--  Perhitungan bagi hasil versi SQL. Migrasi 0003 sudah membuangnya --
+--  perhitungannya pindah ke aplikasi, dan dua rumus untuk hal yang sama
+--  pasti berselisih suatu saat -- tetapi di database ini ia ternyata
+--  masih hidup, entah terpasang lagi dari skrip lama. Tidak ada satu pun
+--  bagian aplikasi yang membacanya.
+--
+--  View-nya yang menghalangi langkah 1: ia membaca claims.status, dan
+--  Postgres menolak mengubah tipe kolom yang dipakai sebuah view. Ia juga
+--  masih menghitung hanya klaim 'close', jadi sesudah migrasi ini
+--  angkanya akan diam-diam salah.
+--
+--  Ada alasan kedua untuk membuangnya: view berjalan dengan hak
+--  pemiliknya, bukan hak yang membacanya. Fee brand yang dikunci aturan
+--  akses hanya untuk admin bisa terbaca siapa pun yang login lewat view
+--  ini.
+drop view if exists v_nilai_klaim;
+drop function if exists ringkasan_pendapatan(date, date);
+drop function if exists pendapatan_teknisi(date, date);
+drop function if exists pendapatan_brand(date, date);
+
+
+-- ---------------------------------------------------------------------
 --  1. STATUS KLAIM JADI TEKS
 -- ---------------------------------------------------------------------
 --  Teks dengan check, bukan enum -- alasan yang sama dengan jenis garansi

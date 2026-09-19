@@ -178,15 +178,26 @@ class _Garansi extends StatelessWidget {
                 if ((perStatus[s] ?? 0) > 0)
                   Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    // Chip mengambil seluruh sisa lebar, angkanya menempel
+                    // di tepi kanan. Sempat Flexible + Spacer, yang membagi
+                    // sisa ruang dua -- dan angkanya ikut bergeser menurut
+                    // panjang labelnya.
                     child: Row(
                       children: [
-                        Flexible(child: StatusChip(s, compact: true)),
-                        const Spacer(),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: StatusChip(s, compact: true),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.s),
                         Text(
                           '${perStatus[s]}',
+                          textAlign: TextAlign.right,
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
+                            fontFeatures: [FontFeature.tabularFigures()],
                           ),
                         ),
                       ],

@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/omset/omset_providers.dart';
 import 'package:sc_management/core/providers.dart';
 import 'package:sc_management/core/theme.dart';
+import 'package:sc_management/core/widgets/bento.dart';
 import 'package:sc_management/features/mywork/my_work_view.dart';
 import 'package:sc_management/features/service/service_view.dart';
 import 'package:sc_management/features/service/teknisi_ringkas.dart';
@@ -227,5 +229,79 @@ void main() {
     expect(find.text('SERVIS BULAN INI'), findsNothing);
     expect(find.text('LAPORAN GARANSI'), findsOneWidget);
     expect(find.text('UNIT GARANSI SELESAI'), findsOneWidget);
+  });
+
+  testWidgets('angka status klaim rata di tepi kanan, apa pun labelnya', (
+    tester,
+  ) async {
+    // Pernah bergeser mengikuti panjang label chip di sebelahnya: angka di
+    // samping "TUNGGU PART" terdorong ke kanan, di samping "CLOSE" tertarik
+    // ke kiri.
+    await tester.binding.setSurfaceSize(const Size(400, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final kini = DateTime.now();
+    Claim klaim(String id, String status) => Claim(
+      id: id,
+      tanggal: kini,
+      brandId: 1,
+      namaPelanggan: 'P',
+      sn: 'SN',
+      teknisiId: 't1',
+      status: status,
+      createdBy: 'a',
+      createdAt: kini,
+      updatedAt: kini,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserProvider.overrideWithValue(
+            const User(
+              id: 't1',
+              appMetadata: {},
+              userMetadata: {},
+              aud: 'authenticated',
+              createdAt: '2026-01-01T00:00:00Z',
+            ),
+          ),
+          allClaimsProvider.overrideWith(
+            (ref) => Stream.value([
+              klaim('1', 'proses'),
+              for (var i = 0; i < 3; i++) klaim('t$i', 'tunggu_part'),
+              klaim('2', 'selesai'),
+              for (var i = 0; i < 27; i++) klaim('c$i', 'close'),
+              klaim('3', 'batal'),
+            ]),
+          ),
+          allBrandsProvider.overrideWith((ref) => Stream.value(const [])),
+          ringkasSayaProvider.overrideWithValue(null),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.terang(),
+          home: const Scaffold(body: MyWorkView()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final kartu = find.ancestor(
+      of: find.text('STATUS KLAIM'),
+      matching: find.byType(BentoCard),
+    );
+    expect(tester.takeException(), isNull);
+    final angka = find.descendant(
+      of: kartu,
+      matching: find.byWidgetPredicate(
+        (w) => w is Text && RegExp(r'^\d+$').hasMatch(w.data ?? ''),
+      ),
+    );
+    // 1, 3, 1, 27, 1 -- lima baris status.
+    expect(angka, findsNWidgets(5));
+    final tepi = {
+      for (final e in angka.evaluate()) tester.getTopRight(find.byWidget(e.widget)).dx,
+    };
+    expect(tepi, hasLength(1), reason: 'tepi kanan tiap angka: $tepi');
   });
 }

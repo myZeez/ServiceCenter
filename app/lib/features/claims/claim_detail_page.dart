@@ -93,7 +93,10 @@ class ClaimDetailPage extends ConsumerWidget {
                       const SizedBox(width: AppSpacing.s),
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: StatusChip(claim.status),
+                        child: StatusChip(
+                          claim.status,
+                          brand: brands[claim.brandId],
+                        ),
                       ),
                     ],
                   ),
@@ -314,7 +317,10 @@ class ClaimDetailPage extends ConsumerWidget {
 
                   _Editable(
                     label: 'Status',
-                    value: ClaimStatus.label(claim.status),
+                    value: ClaimStatus.label(
+                      claim.status,
+                      brand: brands[claim.brandId],
+                    ),
                     // Terbuka untuk teknisi: ia menutup pekerjaannya
                     // sendiri, dan klaim tanpa nota tidak punya jalur lain.
                     editable: true,
@@ -546,6 +552,7 @@ class ClaimDetailPage extends ConsumerWidget {
     WidgetRef ref,
     Claim claim,
   ) async {
+    final brand = ref.read(namaBrandProvider)[claim.brandId];
     final picked = await _pick(
       context,
       title: 'Ubah Status',
@@ -553,9 +560,9 @@ class ClaimDetailPage extends ConsumerWidget {
         for (final s in ClaimStatus.all)
           _Opt(
             value: s,
-            label: ClaimStatus.label(s),
+            label: ClaimStatus.label(s, brand: brand),
             selected: s == claim.status,
-            chip: StatusChip(s),
+            chip: StatusChip(s, brand: brand),
           ),
       ],
     );

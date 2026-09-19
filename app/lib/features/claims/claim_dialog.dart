@@ -454,7 +454,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
             ),
           ),
           if (!widget.isNew) ...[
-            StatusChip(_status),
+            StatusChip(_status, brand: brandName),
             const SizedBox(width: AppSpacing.s),
           ],
           if (!isAdmin && !widget.isNew)
@@ -720,7 +720,12 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                     for (final s in ClaimStatus.all)
                       DropdownMenuItem(
                         value: s,
-                        child: Text(ClaimStatus.label(s)),
+                        child: Text(
+                          ClaimStatus.label(
+                            s,
+                            brand: ref.watch(namaBrandProvider)[_brandId],
+                          ),
+                        ),
                       ),
                   ],
                 ),

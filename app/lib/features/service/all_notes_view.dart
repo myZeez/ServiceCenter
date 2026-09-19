@@ -547,7 +547,7 @@ class _BarisState extends State<_Baris> {
                 width: 116,
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: ServiceStatusChip(n.status, compact: true),
+                  child: StatusNotaChip(n, compact: true),
                 ),
               ),
             ],

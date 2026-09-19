@@ -637,7 +637,12 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                           for (final s in ClaimStatus.all)
                             DropdownMenuItem(
                               value: s,
-                              child: Text(ClaimStatus.label(s)),
+                              child: Text(
+                                ClaimStatus.label(
+                                  s,
+                                  brand: ref.watch(namaBrandProvider)[_brandId],
+                                ),
+                              ),
                             ),
                         ],
                         onChanged: (v) => setState(() => _status = v!),

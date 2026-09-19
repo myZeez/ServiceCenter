@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/data/models.dart';
+import '../../core/providers.dart';
+import '../../core/status.dart';
 import '../../core/theme.dart';
 
 /// Nilai status harus sama persis dengan enum service_status di Postgres.
@@ -86,6 +90,31 @@ class ServiceStatusChip extends StatelessWidget {
           height: 1.2,
         ),
       ),
+    );
+  }
+}
+
+/// Status sebuah nota seperti yang dibaca di meja depan.
+///
+/// Nota garansi brand memakai status klaimnya -- Wait Approval Warranty,
+/// Ship ASUS Pusat, Part Ready -- karena di sanalah pekerjaannya benar-
+/// benar tertahan, dan "Dikerjakan" saja tidak menceritakan apa pun.
+/// Servis reguler dan garansi toko tetap memakai status nota biasa.
+class StatusNotaChip extends ConsumerWidget {
+  const StatusNotaChip(this.nota, {super.key, this.compact = false});
+
+  final ServiceOrderEntry nota;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final klaim = ref.watch(klaimBrandNotaProvider(nota.claimId));
+    if (klaim == null) return ServiceStatusChip(nota.status, compact: compact);
+
+    return StatusChip(
+      klaim.status,
+      compact: compact,
+      brand: ref.watch(namaBrandProvider)[klaim.brandId],
     );
   }
 }

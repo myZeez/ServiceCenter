@@ -135,6 +135,16 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   String? _caraBayar;
   DateTime? _tanggalLunas;
 
+  /// Status klaim yang dipilih di formulir. Kosong berarti belum disentuh
+  /// -- dan klaim yang tidak disentuh tidak ditulis, supaya perubahan dari
+  /// layar lain selama formulir ini terbuka tidak tertimpa nilai lama.
+  ///
+  /// Hanya berlaku untuk nota garansi brand. Pada nota seperti itu status
+  /// nota tidak dikirim sama sekali: server yang menurunkannya dari klaim
+  /// (migrasi 0027). Mengirim keduanya berarti dua penulisan yang saling
+  /// menimpa, dan yang kalah adalah status yang lebih rinci.
+  String? _statusKlaim;
+
   bool _busy = false;
   String? _error;
 
@@ -332,6 +342,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         await ref.read(databaseProvider).simpanClaim(isiKlaim());
       }
 
+      final klaimBrand = ref.read(klaimBrandNotaProvider(widget.nota?.claimId));
+
       final data = {
         'estimasi_selesai': _estimasi == null ? null : _iso.format(_estimasi!),
         'customer_nama': _nama.text.trim(),
@@ -354,7 +366,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         // penjaganya membandingkan nilai, bukan niat.
         'garansi': widget.isNew ? _garansi : widget.nota!.garansi,
         'claim_id': widget.isNew ? claimId : widget.nota!.claimId,
-        'status': _status,
+        if (klaimBrand == null) 'status': _status,
         'biaya': double.tryParse(_biaya.text) ?? 0,
         'cara_bayar': _caraBayar,
         'tanggal_lunas': _tanggalLunas == null
@@ -376,6 +388,18 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       } else {
         notaId = widget.nota!.id;
         await client.from('service_orders').update(data).eq('id', notaId);
+      }
+
+      // Sesudah notanya, bukan sebelumnya: server menurunkan status nota
+      // dari klaim ini, dan saat itu cara bayar yang baru saja diubah
+      // harus sudah tersimpan -- dari situlah tanggal lunas distempel.
+      final statusKlaim = _statusKlaim;
+      if (klaimBrand != null &&
+          statusKlaim != null &&
+          statusKlaim != klaimBrand.status) {
+        await ref
+            .read(databaseProvider)
+            .gantiStatus(klaimBrand.id, statusKlaim);
       }
 
       // Nota yang ternyata bergaransi. Klaimnya lahir belakangan, lalu
@@ -603,7 +627,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             ),
           ),
           if (n != null) ...[
-            ServiceStatusChip(n.status),
+            StatusNotaChip(n),
             const SizedBox(width: AppSpacing.s),
           ],
           IconButton(
@@ -906,23 +930,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: LabeledField(
-                label: 'Status',
-                child: DropdownButtonFormField<String>(
-                  initialValue: _status,
-                  isExpanded: true,
-                  items: [
-                    for (final s in ServiceStatus.all)
-                      DropdownMenuItem(
-                        value: s,
-                        child: Text(ServiceStatus.label(s)),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() => _status = v!),
-                ),
-              ),
-            ),
+            Expanded(child: _kolomStatus()),
             const SizedBox(width: AppSpacing.s),
             Expanded(
               child: LabeledField(
@@ -1027,6 +1035,50 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
           child: TextFormField(controller: _keterangan, maxLines: 2),
         ),
       ],
+    );
+  }
+
+  /// Status nota biasa -- atau, pada nota garansi brand, status klaimnya.
+  ///
+  /// Klaimnya diikuti, bukan dibaca sekali saat formulir dibuka: daftar
+  /// klaim bisa saja belum termuat saat itu, dan formulir yang terlanjur
+  /// memilih daftar status nota biasa tidak akan pernah berpindah.
+  Widget _kolomStatus() {
+    final klaim = ref.watch(klaimBrandNotaProvider(widget.nota?.claimId));
+
+    if (klaim == null) {
+      return LabeledField(
+        label: 'Status',
+        child: DropdownButtonFormField<String>(
+          initialValue: _status,
+          isExpanded: true,
+          items: [
+            for (final s in ServiceStatus.all)
+              DropdownMenuItem(value: s, child: Text(ServiceStatus.label(s))),
+          ],
+          onChanged: (v) => setState(() => _status = v!),
+        ),
+      );
+    }
+
+    final brand = ref.watch(namaBrandProvider)[klaim.brandId];
+    return LabeledField(
+      label: 'Status Garansi',
+      hint: 'Sama dengan status klaimnya — mengubahnya di sini ikut '
+          'mengubah klaim.',
+      child: DropdownButtonFormField<String>(
+        key: ValueKey(klaim.id),
+        initialValue: _statusKlaim ?? klaim.status,
+        isExpanded: true,
+        items: [
+          for (final s in ClaimStatus.all)
+            DropdownMenuItem(
+              value: s,
+              child: Text(ClaimStatus.label(s, brand: brand)),
+            ),
+        ],
+        onChanged: (v) => setState(() => _statusKlaim = v),
+      ),
     );
   }
 

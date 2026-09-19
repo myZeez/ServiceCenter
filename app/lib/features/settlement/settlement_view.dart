@@ -51,7 +51,7 @@ final _bulanTersediaProvider = Provider.autoDispose<List<DateTime>>((ref) {
 
   final bulan = <DateTime>{_awalBulan(DateTime.now())};
   for (final c in claims) {
-    if (c.status != ClaimStatus.close) continue;
+    if (!ClaimStatus.isTuntas(c.status)) continue;
     final t = c.tanggalClose;
     if (t != null) bulan.add(_awalBulan(t));
   }
@@ -119,7 +119,7 @@ final unitRekapProvider = Provider.autoDispose<List<UnitRekap>?>((ref) {
 
   final out = <UnitRekap>[];
   for (final c in claims) {
-    if (c.status != ClaimStatus.close) continue;
+    if (!ClaimStatus.isTuntas(c.status)) continue;
     // Garansi toko tidak pernah ditagihkan: unitnya ditanggung toko
     // sendiri, dan tidak ada fee brand yang bisa direkap. Memasukkannya
     // ke sini berarti menagih brand atas pekerjaan yang tidak pernah

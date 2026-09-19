@@ -51,6 +51,7 @@ Future<void> _lukis(
   WidgetTester tester, {
   ServiceOrderEntry? nota,
   List<PartOrder> pesanan = const [],
+  List<Claim> klaim = const [],
   bool adaTanyaHarga = true,
 }) async {
   await tester.binding.setSurfaceSize(const Size(1400, 1400));
@@ -63,6 +64,7 @@ Future<void> _lukis(
         customersProvider.overrideWith((ref) => Stream.value(const [])),
         serviceOrdersProvider.overrideWith((ref) => Stream.value(const [])),
         partOrdersProvider.overrideWith((ref) => Stream.value(pesanan)),
+        allClaimsProvider.overrideWith((ref) => Stream.value(klaim)),
         allBrandsProvider.overrideWith(
           (ref) => Stream.value([const Brand(id: 1, nama: 'ASUS')]),
         ),
@@ -288,6 +290,68 @@ void main() {
       expect(centang(tester).onChanged, isNull);
       expect(find.textContaining('Sudah bertanda garansi'), findsOneWidget);
       expect(find.text('BRAND UNTUK KLAIM'), findsNothing);
+    });
+  });
+
+  // -------------------------------------------------------------------
+  // Nota garansi brand memakai status garansi -- daftar yang sama dengan
+  // klaimnya. Servis reguler dan garansi toko tetap memakai status nota.
+  // -------------------------------------------------------------------
+  group('status nota garansi', () {
+    Claim klaim({String jenis = 'brand', String status = 'wait_approval'}) =>
+        Claim(
+          id: 'klaim-1',
+          tanggal: DateTime(2026, 9, 5),
+          brandId: 1,
+          namaPelanggan: 'Irwan',
+          sn: 'OSIA0J09U309JOI3',
+          jenis: jenis,
+          status: status,
+          createdBy: 'a',
+          createdAt: DateTime(2026, 9, 5),
+          updatedAt: DateTime(2026, 9, 5),
+        );
+
+    testWidgets('garansi brand memilih dari status klaimnya', (tester) async {
+      await _lukis(
+        tester,
+        nota: _nota(claimId: 'klaim-1'),
+        klaim: [klaim()],
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('STATUS GARANSI'), findsOneWidget);
+      expect(find.text('Wait Approval Warranty'), findsOneWidget);
+    });
+
+    testWidgets('daftarnya memuat Ship dengan nama brand klaimnya', (
+      tester,
+    ) async {
+      await _lukis(
+        tester,
+        nota: _nota(claimId: 'klaim-1'),
+        klaim: [klaim(status: 'ship_pusat')],
+      );
+
+      expect(find.text('Ship ASUS Pusat'), findsOneWidget);
+    });
+
+    testWidgets('garansi toko tetap memakai status nota', (tester) async {
+      await _lukis(
+        tester,
+        nota: _nota(claimId: 'klaim-1'),
+        klaim: [klaim(jenis: 'toko')],
+      );
+
+      expect(find.text('STATUS GARANSI'), findsNothing);
+      expect(find.text('Masuk'), findsOneWidget);
+    });
+
+    testWidgets('servis reguler tetap memakai status nota', (tester) async {
+      await _lukis(tester, nota: _nota());
+
+      expect(find.text('STATUS GARANSI'), findsNothing);
+      expect(find.text('Masuk'), findsOneWidget);
     });
   });
 

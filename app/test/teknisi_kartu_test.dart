@@ -153,8 +153,54 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Rp1.000.000'), findsOneWidget);
-    expect(find.text('3 NOTA SELESAI  ·  2 UNIT DIKERJAKAN'), findsOneWidget);
     expect(find.textContaining('Kurang Rp3.000.000'), findsOneWidget);
+
+    // Unit yang selesai berdiri sebagai angka sendiri, sejajar dengan
+    // yang masih dipegang -- bukan kalimat kecil di bawah omset.
+    expect(find.text('UNIT SELESAI DIKERJAKAN'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+    expect(find.text('MASIH DIKERJAKAN'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+  });
+
+  testWidgets('pilihan kuartal tinggal di bagian garansi, di bawah omset', (
+    tester,
+  ) async {
+    // Dulu pilihannya di pojok kanan atas halaman, dan teknisi mengira
+    // omsetnya ikut berganti kuartal. Omset selalu bulan berjalan.
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserProvider.overrideWithValue(null),
+          allClaimsProvider.overrideWith((ref) => Stream.value([])),
+          ringkasSayaProvider.overrideWithValue(
+            const RingkasTeknisi(
+              teknisi: Profile(id: 't1', nama: 'Reza', role: 'teknisi'),
+              unitBerjalan: 0,
+              notaSelesai: 0,
+              omset: 1000000,
+              target: 4000000,
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.terang(),
+          home: const Scaffold(body: MyWorkView()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final omset = tester.getBottomLeft(find.text('Rp1.000.000')).dy;
+    final garansi = tester.getTopLeft(find.text('LAPORAN GARANSI')).dy;
+    final kuartal = tester.getTopLeft(find.byType(DropdownButton<String>)).dy;
+
+    expect(garansi, greaterThan(omset));
+    expect(kuartal, greaterThan(omset));
+    expect(find.text('SERVIS BULAN INI'), findsOneWidget);
   });
 
   testWidgets('yang bukan teknisi tidak melihat kartu omset', (tester) async {
@@ -178,7 +224,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('OMSET SERVIS BULAN INI'), findsNothing);
-    expect(find.text('UNIT SELESAI'), findsOneWidget);
+    expect(find.text('SERVIS BULAN INI'), findsNothing);
+    expect(find.text('LAPORAN GARANSI'), findsOneWidget);
+    expect(find.text('UNIT GARANSI SELESAI'), findsOneWidget);
   });
 }

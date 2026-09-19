@@ -119,12 +119,18 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
                       .update((s) => s.copyWith(clearStatus: true)),
                 ),
               ),
-              for (final s in ClaimStatus.all) ...[
+              // Status dasar selalu tampil; status menunggu brand hanya
+              // saat memang ada klaim di sana. Tiga belas kotak sekaligus
+              // terlalu sempit untuk dibaca, dan kebanyakan isinya nol.
+              for (final s in ClaimStatus.all)
+                if (ClaimStatus.utama.contains(s) ||
+                    (counts[s] ?? 0) > 0 ||
+                    filter.status == s) ...[
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: StatTile(
                     value: '${counts[s] ?? 0}',
-                    label: ClaimStatus.label(s),
+                    label: ClaimStatus.pendek(s),
                     accent: ClaimStatus.color(context, s),
                     selected: filter.status == s,
                     onTap: () => ref

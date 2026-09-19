@@ -53,7 +53,7 @@ final _closedClaimsProvider = Provider.autoDispose<AsyncValue<List<Claim>>>((
               // menghasilkan fee dari siapa pun -- memasukkannya berarti
               // membagi uang yang tidak pernah diterima.
               (c) =>
-                  c.status == 'close' &&
+                  ClaimStatus.isTuntas(c.status) &&
                   ClaimJenis.ditagihkan(c.jenis) &&
                   !c.tanggal.isBefore(p.dari) &&
                   !c.tanggal.isAfter(p.sampai),

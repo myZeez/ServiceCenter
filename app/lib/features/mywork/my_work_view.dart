@@ -8,6 +8,7 @@ import '../../core/revenue/revenue_providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
+import '../../core/widgets/swiss_widgets.dart';
 import '../service/teknisi_ringkas.dart';
 
 final _rpOmset = NumberFormat.currency(
@@ -40,6 +41,14 @@ final _klaimSayaProvider = Provider.autoDispose<AsyncValue<List<Claim>>>((ref) {
       );
 });
 
+/// Dua bagian dengan dua rentang waktu, dan masing-masing menyebut
+/// rentangnya sendiri.
+///
+/// Dulu pilihan kuartalnya duduk di pojok kanan atas halaman, dan itu
+/// terbaca seperti berlaku untuk seluruh isinya -- termasuk omset, yang
+/// sebenarnya selalu bulan berjalan. Teknisi yang memilih Q2 mengira
+/// sedang melihat omset kuartal kedua. Sekarang pilihan kuartal tinggal di
+/// dalam bagian garansi, satu-satunya bagian yang memakainya.
 class MyWorkView extends ConsumerWidget {
   const MyWorkView({super.key});
 
@@ -48,11 +57,7 @@ class MyWorkView extends ConsumerWidget {
     final periode = ref.watch(periodeProvider);
     final klaim = ref.watch(_klaimSayaProvider).valueOrNull;
     final profile = ref.watch(currentProfileProvider);
-    final brands = {
-      for (final b
-          in ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[])
-        b.id: b.nama,
-    };
+    final brands = ref.watch(namaBrandProvider);
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -62,26 +67,45 @@ class MyWorkView extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          PageHeader(
-            title: 'Pekerjaanku',
-            subtitle: profile == null
-                ? null
-                : '${profile.nama}  ·  '
-                      '${DateFormat('d MMM').format(periode.dari)} — '
-                      '${DateFormat('d MMM yyyy').format(periode.sampai)}',
-            actions: const [_PeriodeDropdown()],
-          ),
+          PageHeader(title: 'Pekerjaanku', subtitle: profile?.nama),
           const SizedBox(height: AppSpacing.s),
           Expanded(
-            child: klaim == null
-                ? const Center(
-                    child: SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              children: [
+                const _OmsetServis(),
+
+                const SizedBox(height: AppSpacing.s),
+                SectionLabel(
+                  'Laporan Garansi',
+                  trailing: const _PeriodeDropdown(),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Klaim atas namamu yang masuk '
+                  '${DateFormat('d MMM', 'id').format(periode.dari)} — '
+                  '${DateFormat('d MMM yyyy', 'id').format(periode.sampai)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.warna.teksLembut,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.s),
+                if (klaim == null)
+                  const Padding(
+                    padding: EdgeInsets.all(AppSpacing.md),
+                    child: Center(
+                      child: SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
                   )
-                : _Isi(klaim: klaim, brands: brands),
+                else
+                  _Garansi(klaim: klaim, brands: brands),
+              ],
+            ),
           ),
         ],
       ),
@@ -89,15 +113,15 @@ class MyWorkView extends ConsumerWidget {
   }
 }
 
-class _Isi extends StatelessWidget {
-  const _Isi({required this.klaim, required this.brands});
+class _Garansi extends StatelessWidget {
+  const _Garansi({required this.klaim, required this.brands});
 
   final List<Claim> klaim;
   final Map<int, String> brands;
 
   @override
   Widget build(BuildContext context) {
-    final selesai = klaim.where((c) => c.status == ClaimStatus.close).toList();
+    final selesai = klaim.where((c) => ClaimStatus.isTuntas(c.status)).toList();
 
     final perStatus = <String, int>{};
     for (final c in klaim) {
@@ -115,13 +139,11 @@ class _Isi extends StatelessWidget {
       ..sort((a, b) => perBrand[b]!.compareTo(perBrand[a]!));
     final tertinggi = urut.isEmpty ? 1 : perBrand[urut.first]!;
 
-    return ListView(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _OmsetServis(),
-
         BentoCard(
-          title: 'Unit Selesai',
+          title: 'Unit Garansi Selesai',
           accent: context.warna.bahaya,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,7 +169,7 @@ class _Isi extends StatelessWidget {
         const SizedBox(height: AppSpacing.s),
 
         BentoCard(
-          title: 'Status Pekerjaan',
+          title: 'Status Klaim',
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -158,7 +180,7 @@ class _Isi extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                     child: Row(
                       children: [
-                        StatusChip(s, compact: true),
+                        Flexible(child: StatusChip(s, compact: true)),
                         const Spacer(),
                         Text(
                           '${perStatus[s]}',
@@ -208,11 +230,14 @@ class _Isi extends StatelessWidget {
   }
 }
 
-/// Omset jasa servis milik teknisi yang sedang login, bulan berjalan.
+/// Omset jasa servis milik teknisi yang sedang login, bulan berjalan --
+/// berikut berapa unit yang sudah ia selesaikan untuk mencapainya.
 ///
-/// Terpisah dari kartu klaim di bawahnya, dan memang harus terpisah: yang
-/// ini jasa yang dibayar pelanggan, yang itu unit garansi yang fee-nya
-/// datang dari brand. Dua kantong berbeda yang tidak saling memotong.
+/// Terpisah dari laporan garansi di bawahnya, dan memang harus terpisah:
+/// yang ini jasa yang dibayar pelanggan, yang itu unit garansi yang fee-nya
+/// datang dari brand. Dua kantong berbeda yang tidak saling memotong, dan
+/// dua rentang waktu yang berbeda pula -- bulan ini di sini, kuartal di
+/// sana.
 class _OmsetServis extends ConsumerWidget {
   const _OmsetServis();
 
@@ -224,60 +249,118 @@ class _OmsetServis extends ConsumerWidget {
     if (r == null) return const SizedBox.shrink();
 
     final persen = (r.persenTarget / 100).clamp(0.0, 1.0);
+    final kini = DateTime.now();
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s),
-      child: BentoCard(
-        title: 'Omset Servis Bulan Ini',
-        accent: context.warna.aksen,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _rpOmset.format(r.omset),
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1.2,
-                height: 1.1,
+    return BentoCard(
+      title: 'Servis Bulan Ini',
+      trailing: Text(
+        DateFormat('MMMM yyyy', 'id').format(kini).toUpperCase(),
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
+      accent: context.warna.aksen,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('OMSET', style: Theme.of(context).textTheme.labelSmall),
+          const SizedBox(height: 2),
+          Text(
+            _rpOmset.format(r.omset),
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -1.2,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s),
+
+          // Batangnya memakai tinggi penuh, bukan garis tipis: ini angka
+          // yang dicari orang begitu membuka halaman, dan harus terbaca
+          // sekilas tanpa mendekatkan layar.
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: persen,
+              minHeight: 8,
+              backgroundColor: context.warna.teredam,
+              valueColor: AlwaysStoppedAnimation(
+                persen >= 1 ? context.warna.aksen : context.warna.teks,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              '${r.notaSelesai} NOTA SELESAI  ·  '
-              '${r.unitBerjalan} UNIT DIKERJAKAN',
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-            const SizedBox(height: AppSpacing.s),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            r.kurang <= 0
+                ? 'Target ${_rpOmset.format(r.target)} sudah tercapai'
+                : 'Kurang ${_rpOmset.format(r.kurang)} dari target '
+                      '${_rpOmset.format(r.target)}',
+            style: TextStyle(fontSize: 11.5, color: context.warna.teksLembut),
+          ),
 
-            // Batangnya memakai tinggi penuh, bukan garis tipis: ini angka
-            // yang dicari orang begitu membuka halaman, dan harus terbaca
-            // sekilas tanpa mendekatkan layar.
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
-                value: persen,
-                minHeight: 8,
-                backgroundColor: context.warna.teredam,
-                valueColor: AlwaysStoppedAnimation(
-                  persen >= 1 ? context.warna.aksen : context.warna.teks,
+          const SizedBox(height: AppSpacing.sm),
+          Container(height: 1, color: context.warna.garisHalus),
+          const SizedBox(height: AppSpacing.s),
+
+          // Dua angka yang sejajar, bukan satu kalimat kecil di bawah
+          // omset: berapa unit yang sudah dirampungkan adalah pertanyaan
+          // kedua yang ditanyakan orang begitu melihat omsetnya.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _AngkaBesar(
+                  nilai: r.notaSelesai,
+                  label: 'Unit selesai dikerjakan',
                 ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              r.kurang <= 0
-                  ? 'Target ${_rpOmset.format(r.target)} sudah tercapai'
-                  : 'Kurang ${_rpOmset.format(r.kurang)} dari target '
-                        '${_rpOmset.format(r.target)}',
-              style: TextStyle(fontSize: 11.5, color: context.warna.teksLembut),
-            ),
-          ],
-        ),
+              Expanded(
+                child: _AngkaBesar(
+                  nilai: r.unitBerjalan,
+                  label: 'Masih dikerjakan',
+                  lembut: true,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
+}
+
+class _AngkaBesar extends StatelessWidget {
+  const _AngkaBesar({
+    required this.nilai,
+    required this.label,
+    this.lembut = false,
+  });
+
+  final int nilai;
+  final String label;
+
+  /// Angka pendamping, bukan angka utama.
+  final bool lembut;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        '$nilai',
+        style: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -1.2,
+          height: 1,
+          color: lembut ? context.warna.teksLembut : context.warna.teks,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(label.toUpperCase(), style: Theme.of(context).textTheme.labelSmall),
+    ],
+  );
 }
 
 class _PeriodeDropdown extends ConsumerWidget {

@@ -425,7 +425,7 @@ class _ClaimCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  StatusChip(claim.status, compact: true),
+                  StatusChip(claim.status, compact: true, brand: brand),
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),

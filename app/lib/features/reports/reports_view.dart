@@ -171,6 +171,7 @@ class _SummaryCard extends ConsumerWidget {
           const Divider(),
           const SizedBox(height: AppSpacing.s),
           for (final s in ClaimStatus.all)
+            if (ClaimStatus.utama.contains(s) || (counts[s] ?? 0) > 0)
             BentoBarRow(
               label: ClaimStatus.label(s),
               value: '${counts[s] ?? 0}',

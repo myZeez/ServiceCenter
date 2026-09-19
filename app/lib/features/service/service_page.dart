@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/data/galat.dart';
 import '../../core/data/models.dart';
 import '../../core/providers.dart';
+import '../../core/status.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/gagal_muat.dart';
 import '../../core/widgets/koneksi.dart';
@@ -237,7 +238,7 @@ class _KartuNota extends ConsumerWidget {
                     ),
                   ),
                 ),
-                ServiceStatusChip(nota.status, compact: true),
+                StatusNotaChip(nota, compact: true),
               ],
             ),
             const SizedBox(height: 5),
@@ -317,6 +318,11 @@ class _UbahKerjaan extends ConsumerStatefulWidget {
 class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
   late String _status = widget.nota.status;
   late String? _teknisiId = widget.nota.teknisiId;
+
+  /// Status klaim yang dipilih, pada nota garansi brand. Kosong berarti
+  /// belum disentuh, dan yang belum disentuh tidak ditulis -- sama seperti
+  /// di formulir nota lengkap.
+  String? _statusKlaim;
   late final _perbaikan = TextEditingController(
     text: widget.nota.perbaikan ?? '',
   );
@@ -336,8 +342,11 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
   Future<void> _simpan() async {
     setState(() => _busy = true);
     try {
-      await ref.read(databaseProvider).ubahNota(widget.nota.id, {
-        'status': _status,
+      final db = ref.read(databaseProvider);
+      final klaim = ref.read(klaimBrandNotaProvider(widget.nota.claimId));
+      await db.ubahNota(widget.nota.id, {
+        // Nota garansi brand: status notanya diturunkan server dari klaim.
+        if (klaim == null) 'status': _status,
         'teknisi_id': _teknisiId,
         'perbaikan': _perbaikan.text.trim().isEmpty
             ? null
@@ -346,6 +355,12 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
             ? null
             : _keterangan.text.trim(),
       });
+      final statusKlaim = _statusKlaim;
+      if (klaim != null &&
+          statusKlaim != null &&
+          statusKlaim != klaim.status) {
+        await db.gantiStatus(klaim.id, statusKlaim);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -368,6 +383,9 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
   Widget build(BuildContext context) {
     final techs =
         ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
+    // Diikuti, bukan dibaca sekali: daftar klaim bisa belum termuat saat
+    // lembar ini dibuka.
+    final klaim = ref.watch(klaimBrandNotaProvider(widget.nota.claimId));
 
     return Padding(
       padding: EdgeInsets.only(
@@ -392,21 +410,45 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          LabeledField(
-            label: 'Status',
-            child: DropdownButtonFormField<String>(
-              initialValue: _status,
-              isExpanded: true,
-              items: [
-                for (final s in ServiceStatus.all)
-                  DropdownMenuItem(
-                    value: s,
-                    child: Text(ServiceStatus.label(s)),
-                  ),
-              ],
-              onChanged: (v) => setState(() => _status = v ?? _status),
+          if (klaim == null)
+            LabeledField(
+              label: 'Status',
+              child: DropdownButtonFormField<String>(
+                initialValue: _status,
+                isExpanded: true,
+                items: [
+                  for (final s in ServiceStatus.all)
+                    DropdownMenuItem(
+                      value: s,
+                      child: Text(ServiceStatus.label(s)),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _status = v ?? _status),
+              ),
+            )
+          else
+            LabeledField(
+              label: 'Status Garansi',
+              hint: 'Ikut mengubah status klaimnya.',
+              child: DropdownButtonFormField<String>(
+                key: ValueKey(klaim.id),
+                initialValue: _statusKlaim ?? klaim.status,
+                isExpanded: true,
+                items: [
+                  for (final s in ClaimStatus.all)
+                    DropdownMenuItem(
+                      value: s,
+                      child: Text(
+                        ClaimStatus.label(
+                          s,
+                          brand: ref.watch(namaBrandProvider)[klaim.brandId],
+                        ),
+                      ),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _statusKlaim = v),
+              ),
             ),
-          ),
           const SizedBox(height: AppSpacing.s),
 
           LabeledField(

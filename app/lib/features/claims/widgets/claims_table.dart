@@ -44,7 +44,7 @@ const _allColumns = [
   _Col(_ColId.teknisi, 'Teknisi', width: 92, showAt: 880),
   _Col(_ColId.keluhan, 'Keluhan', flex: 3, showAt: 1000),
   _Col(_ColId.rma, 'No Perbaikan', width: 112, showAt: 1320),
-  _Col(_ColId.status, 'Status', width: 104),
+  _Col(_ColId.status, 'Status', width: 124),
 ];
 
 class ClaimsTable extends StatelessWidget {
@@ -293,7 +293,7 @@ class _DataRowState extends State<_DataRow> {
       ),
       _ColId.status => Align(
         alignment: Alignment.centerLeft,
-        child: StatusChip(c.status, compact: true),
+        child: StatusChip(c.status, compact: true, brand: widget.brand),
       ),
     };
   }

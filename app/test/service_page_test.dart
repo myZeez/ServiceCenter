@@ -97,6 +97,67 @@ void main() {
     expect(find.textContaining('diubah dari meja depan'), findsOneWidget);
   });
 
+  testWidgets('nota garansi brand memakai status klaimnya', (tester) async {
+    final nota = ServiceOrderEntry(
+      id: 'n1',
+      noNota: 'SRV-009',
+      tanggalMasuk: DateTime(2026, 9, 4),
+      customerNama: 'Rara',
+      barangNama: 'ASUS',
+      teknisiId: 't1',
+      status: 'dikerjakan',
+      garansi: true,
+      claimId: 'k1',
+      updatedAt: DateTime(2026, 9, 4),
+    );
+
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          serviceOrdersProvider.overrideWith((ref) => Stream.value([nota])),
+          allProfilesProvider.overrideWith(
+            (ref) => Stream.value([
+              const Profile(id: 't1', nama: 'Reza', role: 'teknisi'),
+            ]),
+          ),
+          allClaimsProvider.overrideWith(
+            (ref) => Stream.value([
+              Claim(
+                id: 'k1',
+                tanggal: DateTime(2026, 9, 4),
+                brandId: 1,
+                namaPelanggan: 'Rara',
+                sn: 'SN1',
+                status: 'part_ready',
+                createdBy: 'a',
+                createdAt: DateTime(2026, 9, 4),
+                updatedAt: DateTime(2026, 9, 4),
+              ),
+            ]),
+          ),
+          allBrandsProvider.overrideWith(
+            (ref) => Stream.value([const Brand(id: 1, nama: 'ASUS')]),
+          ),
+          koneksiProvider.overrideWith((ref) => Stream.value(true)),
+        ],
+        child: const MaterialApp(home: ServicePage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Di daftar, chip-nya membaca status klaim, bukan "Dikerjakan".
+    expect(find.text('PART READY'), findsOneWidget);
+
+    await tester.tap(find.text('Rara'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('STATUS GARANSI'), findsOneWidget);
+    expect(find.text('Part Ready'), findsOneWidget);
+  });
+
   testWidgets('daftar kosong tetap bisa ditarik untuk disegarkan', (
     tester,
   ) async {

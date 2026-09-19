@@ -917,7 +917,7 @@ class _Keseluruhan extends ConsumerWidget {
                 else
                   const _Tanda('NON GARANSI'),
                 const SizedBox(width: 4),
-                ServiceStatusChip(n.status, compact: true),
+                StatusNotaChip(n, compact: true),
               ],
             ),
           );

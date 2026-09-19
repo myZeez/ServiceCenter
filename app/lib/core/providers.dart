@@ -7,6 +7,7 @@ import 'data/db.dart';
 import 'data/models.dart';
 import 'data/prefs.dart';
 import 'hari_laporan.dart';
+import 'status.dart';
 import 'widgets/grid_canvas.dart';
 
 final supabaseProvider = Provider<SupabaseClient>(
@@ -315,6 +316,38 @@ final claimByIdProvider = Provider.family<AsyncValue<Claim?>, String>(
     }
     return null;
   }),
+);
+
+/// claimId -> klaim. Satu peta untuk seluruh daftar nota, bukan satu
+/// pencarian per baris: daftar Semua Nota memuat ribuan baris.
+final klaimPerIdProvider = Provider<Map<String, Claim>>(
+  (ref) => {
+    for (final c in ref.watch(allClaimsProvider).valueOrNull ?? const <Claim>[])
+      c.id: c,
+  },
+);
+
+/// Klaim garansi BRAND yang menaungi sebuah nota, kalau ada.
+///
+/// Nota seperti ini tidak lagi memakai status nota biasa: statusnya adalah
+/// status klaimnya -- Wait Approval Warranty, Ship ASUS Pusat, dan
+/// seterusnya. Garansi toko tidak termasuk; ia tidak berurusan dengan
+/// brand mana pun, dan status nota biasa sudah cukup menceritakannya.
+final klaimBrandNotaProvider = Provider.family<Claim?, String?>((
+  ref,
+  claimId,
+) {
+  if (claimId == null) return null;
+  final c = ref.watch(klaimPerIdProvider)[claimId];
+  return c != null && ClaimJenis.ditagihkan(c.jenis) ? c : null;
+});
+
+/// brandId -> nama brand.
+final namaBrandProvider = Provider<Map<int, String>>(
+  (ref) => {
+    for (final b in ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[])
+      b.id: b.nama,
+  },
 );
 
 // ---------------------------------------------------------------------

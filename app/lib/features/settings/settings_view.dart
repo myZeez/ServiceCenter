@@ -9,6 +9,7 @@ import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
 import '../../core/widgets/grid_canvas.dart';
 import '../../core/widgets/swiss_widgets.dart';
+import 'cabang_card.dart';
 import 'hari_kerja_card.dart';
 import 'nomor_nota_card.dart';
 import 'omset_card.dart';
@@ -200,6 +201,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         child: HariKerjaCard(),
                       ),
                       GridArea(
+                        id: 'cabang',
+                        colSpan: 6,
+                        rowSpan: 8,
+                        child: CabangCard(),
+                      ),
+                      GridArea(
                         id: 'tampilan',
                         colSpan: 6,
                         rowSpan: 9,
@@ -233,6 +240,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     SizedBox(height: 440, child: MetodeBayarCard()),
                     SizedBox(height: AppSpacing.s),
                     SizedBox(height: 480, child: HariKerjaCard()),
+                    SizedBox(height: AppSpacing.s),
+                    SizedBox(height: 420, child: CabangCard()),
                     SizedBox(height: AppSpacing.s),
                     SizedBox(height: 540, child: TampilanCard()),
                     SizedBox(height: AppSpacing.sm),

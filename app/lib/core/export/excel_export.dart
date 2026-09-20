@@ -573,10 +573,15 @@ class ExcelExport {
     if (n.status == 'batal') return 'Cancel';
 
     final tanggungan = n.garansi ? 'Garansi' : 'Non Garansi';
-    final diambil = n.status == 'diambil'
-        ? 'Barang Sudah Diambil'
-        : 'Barang Belum Diambil';
-    return '$tanggungan ($diambil)';
+    // Unit yang sedang dikerjakan di cabang lain menyebut ke mana dan kapan
+    // dikirim -- "Barang Belum Diambil" benar, tetapi tidak menjawab
+    // pertanyaan pertama yang diajukan pelanggan: unitnya di mana.
+    final keadaan =
+        n.keteranganKirim ??
+        (n.status == 'diambil'
+            ? 'Barang Sudah Diambil'
+            : 'Barang Belum Diambil');
+    return '$tanggungan ($keadaan)';
   }
 
   // ------------------------------------------------------------------
@@ -928,11 +933,17 @@ class ExcelExport {
     if ((n.barangType ?? '').isNotEmpty) n.barangType!,
   ].join(' ');
 
-  /// Kolom keterangan pada laporan harian menampung tiga hal berbeda:
-  /// pembatalan, status garansi, dan cara bayar. Urutannya disengaja --
-  /// yang paling menjelaskan kenapa biayanya nol didahulukan.
+  /// Kolom keterangan pada laporan harian menampung empat hal berbeda:
+  /// pembatalan, pengiriman ke cabang, status garansi, dan cara bayar.
+  /// Urutannya disengaja -- yang paling menjelaskan kenapa biayanya nol
+  /// atau kenapa unitnya tidak ada di rak didahulukan.
+  ///
+  /// Unit garansi yang dikirim ke cabang menyebut keduanya: kata Garansi
+  /// menjelaskan biayanya, kalimat pengirimannya menjelaskan unitnya.
   static String keteranganHarian(ServiceOrderEntry n) {
     if (n.status == 'batal') return 'Cancel';
+    final kirim = n.keteranganKirim;
+    if (kirim != null) return n.garansi ? 'Garansi. $kirim' : kirim;
     if (n.garansi) return 'Garansi';
     return n.keterangan ?? '';
   }

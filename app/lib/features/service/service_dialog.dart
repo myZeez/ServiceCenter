@@ -19,6 +19,7 @@ import '../../core/widgets/swiss_widgets.dart';
 import '../parts/part_dialog.dart';
 import '../scan/scan_page.dart';
 import 'customer_field.dart';
+import 'kirim_cabang_fields.dart';
 import 'service_status.dart';
 
 const _uuid = Uuid();
@@ -144,6 +145,12 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   String? _caraBayar;
   DateTime? _tanggalLunas;
 
+  /// Ke mana unit dikirim, dan kapan -- hanya dipakai saat statusnya
+  /// Dikirim ke Cabang. Tanggalnya terisi hari ini sejak awal; ia baru
+  /// diambil dari nota kalau nota itu memang sedang dalam pengiriman.
+  String? _cabang;
+  DateTime _tanggalKirim = hariIniKalender();
+
   /// Status klaim yang dipilih di formulir. Kosong berarti belum disentuh
   /// -- dan klaim yang tidak disentuh tidak ditulis, supaya perubahan dari
   /// layar lain selama formulir ini terbuka tidak tertimpa nilai lama.
@@ -180,6 +187,24 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     _status = n.status;
     _caraBayar = n.caraBayar;
     _tanggalLunas = n.tanggalLunas;
+    _cabang = n.cabangTujuan;
+    if (n.status == ServiceStatus.dikirimCabang && n.tanggalKirim != null) {
+      _tanggalKirim = n.tanggalKirim!;
+    }
+  }
+
+  /// Status nota diganti. Memilih Dikirim ke Cabang dari status lain
+  /// berarti unitnya dikirim SEKARANG, jadi tanggalnya kembali ke hari
+  /// ini -- bukan tanggal pengiriman lama yang masih tersimpan sebagai
+  /// jejak.
+  void _gantiStatus(String baru) {
+    setState(() {
+      if (baru == ServiceStatus.dikirimCabang &&
+          widget.nota?.status != ServiceStatus.dikirimCabang) {
+        _tanggalKirim = hariIniKalender();
+      }
+      _status = baru;
+    });
   }
 
   @override
@@ -381,6 +406,13 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         'garansi': widget.isNew ? _garansi : widget.nota!.garansi,
         'claim_id': widget.isNew ? claimId : widget.nota!.claimId,
         if (klaimBrand == null) 'status': _status,
+        // Cabang dan tanggal hanya ditulis saat statusnya memang Dikirim
+        // ke Cabang. Di status lain dibiarkan seperti yang tersimpan --
+        // itu jejak ke mana unitnya pernah dikirim.
+        if (klaimBrand == null && _status == ServiceStatus.dikirimCabang) ...{
+          'cabang_tujuan': _cabang,
+          'tanggal_kirim': _iso.format(_tanggalKirim),
+        },
         'biaya': double.tryParse(_biaya.text) ?? 0,
         'cara_bayar': _caraBayar,
         'tanggal_lunas': _tanggalLunas == null
@@ -978,6 +1010,17 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             ),
           ],
         ),
+        if (_status == ServiceStatus.dikirimCabang &&
+            ref.watch(klaimBrandNotaProvider(widget.nota?.claimId)) ==
+                null) ...[
+          const SizedBox(height: AppSpacing.s),
+          KirimCabangFields(
+            cabang: _cabang,
+            tanggal: _tanggalKirim,
+            onCabang: (v) => setState(() => _cabang = v),
+            onTanggal: (d) => setState(() => _tanggalKirim = d),
+          ),
+        ],
         const SizedBox(height: AppSpacing.s),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1101,6 +1144,11 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     final klaim = ref.watch(klaimBrandNotaProvider(widget.nota?.claimId));
 
     if (klaim == null) {
+      // Nota yang akan menjadi garansi brand memakai status klaimnya, dan
+      // klaim tidak mengenal pengiriman ke cabang: nota yang terlanjur
+      // Dikirim ke Cabang akan ditarik kembali begitu status klaimnya
+      // digerakkan.
+      final garansiBrand = _garansi && _jenisGaransi == ClaimJenis.brand;
       return LabeledField(
         label: 'Status',
         child: DropdownButtonFormField<String>(
@@ -1108,9 +1156,12 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
           isExpanded: true,
           items: [
             for (final s in ServiceStatus.all)
-              DropdownMenuItem(value: s, child: Text(ServiceStatus.label(s))),
+              if (!(garansiBrand &&
+                  s == ServiceStatus.dikirimCabang &&
+                  _status != s))
+                DropdownMenuItem(value: s, child: Text(ServiceStatus.label(s))),
           ],
-          onChanged: (v) => setState(() => _status = v!),
+          onChanged: (v) => _gantiStatus(v!),
         ),
       );
     }

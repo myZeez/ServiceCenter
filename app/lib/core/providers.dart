@@ -487,6 +487,14 @@ final hariLiburProvider = Provider<Set<int>>(
       hariLiburBawaan,
 );
 
+/// Cabang tujuan pengiriman unit, dari pengaturan toko.
+///
+/// Di Pengaturan dan bukan di kode: cabang bisa bertambah, dan yang
+/// menambahkannya orang yang berdiri di toko.
+final cabangProvider = Provider<List<String>>(
+  (ref) => ref.watch(storeSettingsProvider).valueOrNull?.cabang ?? cabangBawaan,
+);
+
 // ---------------------------------------------------------------------
 // Pengaturan yang melekat pada perangkat
 // ---------------------------------------------------------------------

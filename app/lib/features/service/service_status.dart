@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/data/models.dart';
+import '../../core/nota/kirim_cabang.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
@@ -11,18 +12,34 @@ class ServiceStatus {
   static const masuk = 'masuk';
   static const dikerjakan = 'dikerjakan';
   static const tungguPart = 'tunggu_part';
+
+  /// Unit dikerjakan di cabang lain. Membawa cabang tujuan dan tanggal
+  /// kirim -- lihat [keteranganKirim].
+  static const dikirimCabang = statusDikirimCabang;
   static const selesai = 'selesai';
   static const diambil = 'diambil';
   static const batal = 'batal';
 
-  static const all = [masuk, dikerjakan, tungguPart, selesai, diambil, batal];
+  static const all = [
+    masuk,
+    dikerjakan,
+    tungguPart,
+    dikirimCabang,
+    selesai,
+    diambil,
+    batal,
+  ];
 
-  /// Unit yang masih ada di meja: sudah diterima, belum tuntas.
+  /// Unit yang pekerjaannya belum tuntas: sudah diterima, belum rampung.
   ///
   /// 'selesai' sengaja tidak termasuk -- pekerjaannya sudah rampung, yang
   /// tersisa hanya menunggu pelanggan datang mengambil, dan itu bukan lagi
   /// beban teknisi.
-  static const berjalan = [masuk, dikerjakan, tungguPart];
+  ///
+  /// Yang dikirim ke cabang ikut: unitnya tidak ada di rak, tetapi
+  /// pekerjaannya belum selesai, dan tetap teknisi yang menerimanya dulu
+  /// yang ditanya kalau pelanggan menelepon.
+  static const berjalan = [masuk, dikerjakan, tungguPart, dikirimCabang];
 
   static bool sedangDikerjakan(String status) => berjalan.contains(status);
 
@@ -30,6 +47,7 @@ class ServiceStatus {
     masuk: 'Masuk',
     dikerjakan: 'Dikerjakan',
     tungguPart: 'Tunggu Part',
+    dikirimCabang: 'Dikirim ke Cabang',
     selesai: 'Selesai',
     diambil: 'Sudah Diambil',
     batal: 'Batal',
@@ -39,6 +57,9 @@ class ServiceStatus {
     masuk: false,
     dikerjakan: true,
     tungguPart: true,
+    // Sama seperti Tunggu Part: unit yang tertahan di luar meja paling mudah
+    // terlupakan justru karena tidak ada yang bisa dikerjakan atasnya.
+    dikirimCabang: true,
     // Selesai tapi belum diambil justru perlu ditagih -- itu unit yang
     // menumpuk di rak dan uangnya belum masuk.
     selesai: true,
@@ -47,6 +68,12 @@ class ServiceStatus {
   };
 
   static String label(String s) => _labels[s] ?? s;
+
+  /// Kalimat yang dibaca di nota dan laporan -- lihat
+  /// [keteranganKirimCabang].
+  static String keteranganKirim(String cabang, DateTime tanggal) =>
+      keteranganKirimCabang(cabang, tanggal);
+
   /// Mengikuti pola yang sama dengan status klaim: yang menuntut tindakan
   /// diberi bobot visual paling besar, yang sudah tuntas mundur ke
   /// belakang. Rupanya ikut palet yang sedang berlaku.
@@ -54,26 +81,45 @@ class ServiceStatus {
     final w = context.warna;
     return switch (s) {
       masuk || dikerjakan => w.aksen,
-      tungguPart || selesai => w.bahaya,
+      tungguPart || dikirimCabang || selesai => w.bahaya,
       diambil => w.teks,
       _ => w.teksLembut,
     };
   }
+
   static bool isFilled(String s) => _filled[s] ?? false;
 }
 
 class ServiceStatusChip extends StatelessWidget {
-  const ServiceStatusChip(this.status, {super.key, this.compact = false});
+  const ServiceStatusChip(
+    this.status, {
+    super.key,
+    this.compact = false,
+    this.cabang,
+    this.tanggalKirim,
+  });
 
   final String status;
   final bool compact;
+
+  /// Cabang tujuan dan tanggal kirim, hanya dipakai status Dikirim ke
+  /// Cabang. Yang pertama menggantikan kata "Cabang" di chip; yang kedua
+  /// muncul sebagai keterangan saat chip ditahan atau diarahi kursor.
+  final String? cabang;
+  final DateTime? tanggalKirim;
 
   @override
   Widget build(BuildContext context) {
     final c = ServiceStatus.color(context, status);
     final filled = ServiceStatus.isFilled(status);
 
-    return Container(
+    final tujuan = (cabang ?? '').trim();
+    final kirim = status == ServiceStatus.dikirimCabang && tujuan.isNotEmpty;
+    final teks = kirim
+        ? (compact ? 'Ke $tujuan' : 'Dikirim ke $tujuan')
+        : ServiceStatus.label(status);
+
+    final chip = Container(
       padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8, vertical: 3),
       decoration: BoxDecoration(
         color: filled ? c : Colors.transparent,
@@ -81,7 +127,9 @@ class ServiceStatusChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.small),
       ),
       child: Text(
-        ServiceStatus.label(status).toUpperCase(),
+        teks.toUpperCase(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: filled ? context.warna.permukaan : c,
           fontSize: compact ? 9 : 10,
@@ -90,6 +138,12 @@ class ServiceStatusChip extends StatelessWidget {
           height: 1.2,
         ),
       ),
+    );
+
+    if (!kirim || tanggalKirim == null) return chip;
+    return Tooltip(
+      message: ServiceStatus.keteranganKirim(tujuan, tanggalKirim!),
+      child: chip,
     );
   }
 }
@@ -109,7 +163,14 @@ class StatusNotaChip extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final klaim = ref.watch(klaimBrandNotaProvider(nota.claimId));
-    if (klaim == null) return ServiceStatusChip(nota.status, compact: compact);
+    if (klaim == null) {
+      return ServiceStatusChip(
+        nota.status,
+        compact: compact,
+        cabang: nota.cabangTujuan,
+        tanggalKirim: nota.tanggalKirim,
+      );
+    }
 
     return StatusChip(
       klaim.status,

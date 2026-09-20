@@ -10,6 +10,7 @@ import '../../core/theme.dart';
 import '../../core/widgets/gagal_muat.dart';
 import '../../core/widgets/koneksi.dart';
 import '../../core/widgets/swiss_widgets.dart';
+import 'kirim_cabang_fields.dart';
 import 'service_status.dart';
 import 'waktu_masuk.dart';
 
@@ -323,6 +324,17 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
   /// belum disentuh, dan yang belum disentuh tidak ditulis -- sama seperti
   /// di formulir nota lengkap.
   String? _statusKlaim;
+
+  /// Cabang tujuan dan tanggal kirim, untuk status Dikirim ke Cabang.
+  /// Tanggalnya diambil dari nota hanya kalau nota itu memang sedang
+  /// dalam pengiriman; selain itu hari ini.
+  late String? _cabang = widget.nota.cabangTujuan;
+  late DateTime _tanggalKirim =
+      widget.nota.status == ServiceStatus.dikirimCabang &&
+          widget.nota.tanggalKirim != null
+      ? widget.nota.tanggalKirim!
+      : hariIniKalender();
+
   late final _perbaikan = TextEditingController(
     text: widget.nota.perbaikan ?? '',
   );
@@ -346,13 +358,31 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
   }
 
   Future<void> _simpan() async {
+    final klaim = ref.read(klaimBrandNotaProvider(widget.nota.claimId));
+    final kirim = klaim == null && _status == ServiceStatus.dikirimCabang;
+
+    // Lembar ini bukan Form, jadi cabang yang belum dipilih dicegat di
+    // sini -- server menolaknya juga, tetapi dengan pesan yang tidak
+    // menyebut cabang sama sekali.
+    if (kirim && (_cabang == null || _cabang!.trim().isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih cabang tujuan dulu.')),
+      );
+      return;
+    }
+
     setState(() => _busy = true);
     try {
       final db = ref.read(databaseProvider);
-      final klaim = ref.read(klaimBrandNotaProvider(widget.nota.claimId));
       await db.ubahNota(widget.nota.id, {
         // Nota garansi brand: status notanya diturunkan server dari klaim.
         if (klaim == null) 'status': _status,
+        // Cabang dan tanggal hanya ditulis saat statusnya Dikirim ke
+        // Cabang; di status lain dibiarkan sebagai jejak.
+        if (kirim) ...{
+          'cabang_tujuan': _cabang,
+          'tanggal_kirim': DateFormat('yyyy-MM-dd').format(_tanggalKirim),
+        },
         'teknisi_id': _teknisiId,
         'perbaikan': _perbaikan.text.trim().isEmpty
             ? null
@@ -443,7 +473,17 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
                       child: Text(ServiceStatus.label(s)),
                     ),
                 ],
-                onChanged: (v) => setState(() => _status = v ?? _status),
+                onChanged: (v) => setState(() {
+                  if (v == null) return;
+                  // Dikirim ke Cabang dari status lain berarti unitnya
+                  // dikirim sekarang, bukan pada tanggal pengiriman lama
+                  // yang masih tersimpan sebagai jejak.
+                  if (v == ServiceStatus.dikirimCabang &&
+                      widget.nota.status != ServiceStatus.dikirimCabang) {
+                    _tanggalKirim = hariIniKalender();
+                  }
+                  _status = v;
+                }),
               ),
             )
           else
@@ -469,6 +509,15 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
                 onChanged: (v) => setState(() => _statusKlaim = v),
               ),
             ),
+          if (klaim == null && _status == ServiceStatus.dikirimCabang) ...[
+            const SizedBox(height: AppSpacing.s),
+            KirimCabangFields(
+              cabang: _cabang,
+              tanggal: _tanggalKirim,
+              onCabang: (v) => setState(() => _cabang = v),
+              onTanggal: (d) => setState(() => _tanggalKirim = d),
+            ),
+          ],
           const SizedBox(height: AppSpacing.s),
 
           if (klaim != null) ...[

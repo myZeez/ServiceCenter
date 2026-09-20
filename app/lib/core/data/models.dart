@@ -1,3 +1,5 @@
+import '../nota/kirim_cabang.dart';
+
 // Bentuk baris yang datang dari Supabase.
 //
 // Dulu kelas-kelas ini dibuatkan drift dari cerminan SQLite di perangkat.
@@ -47,6 +49,66 @@ List<double> _daftarAngka(Object? v) => switch (v) {
   ],
   _ => const [],
 };
+
+/// Kolom bertipe array teks, dengan dua bentuk kiriman yang sama seperti
+/// [_daftarAngka]: larik JSON, atau literal array Postgres.
+///
+/// Literal Postgres tidak bisa dipecah dengan `split(',')` begitu saja:
+/// elemen yang memuat spasi atau koma dikutip, seperti
+/// `{"Pangkalan Bun",Sampit}`, dan nama cabang justru sering berspasi.
+/// Yang dipecah asal-asalan menghasilkan `"Pangkalan` dan `Bun"` -- dua
+/// cabang yang tidak ada.
+List<String> _daftarTeks(Object? v) {
+  switch (v) {
+    case final List<dynamic> l:
+      return [
+        for (final e in l)
+          if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
+      ];
+    case final String s:
+      final isi = s.trim();
+      if (!isi.startsWith('{') || !isi.endsWith('}')) return const [];
+
+      final hasil = <String>[];
+      final unsur = StringBuffer();
+      var dikutip = false;
+      var pernahDikutip = false;
+
+      void tutup() {
+        final t = unsur.toString().trim();
+        // NULL tanpa kutip bukan teks; "NULL" dengan kutip adalah teks.
+        if (t.isNotEmpty && (pernahDikutip || t.toUpperCase() != 'NULL')) {
+          hasil.add(t);
+        }
+        unsur.clear();
+        pernahDikutip = false;
+      }
+
+      for (var i = 1; i < isi.length - 1; i++) {
+        final c = isi[i];
+        if (dikutip) {
+          if (c == r'\' && i + 1 < isi.length - 1) {
+            unsur.write(isi[++i]);
+          } else if (c == '"') {
+            dikutip = false;
+          } else {
+            unsur.write(c);
+          }
+        } else if (c == '"') {
+          dikutip = true;
+          pernahDikutip = true;
+        } else if (c == ',') {
+          tutup();
+        } else {
+          unsur.write(c);
+        }
+      }
+      tutup();
+      return hasil;
+    default:
+      return const [];
+  }
+}
 
 class Brand {
   const Brand({required this.id, required this.nama, this.aktif = true});
@@ -349,6 +411,8 @@ class ServiceOrderEntry {
     this.caraBayar,
     this.tanggalLunas,
     this.tanggalSelesai,
+    this.cabangTujuan,
+    this.tanggalKirim,
     this.keterangan,
     required this.updatedAt,
   });
@@ -391,6 +455,24 @@ class ServiceOrderEntry {
   /// Kapan pekerjaannya dinyatakan rampung. Dasar perhitungan omset --
   /// bukan tanggal masuk, bukan pula tanggal pelunasan.
   final DateTime? tanggalSelesai;
+
+  /// Ke mana unit dikirim, dan kapan. Bermakna hanya selama statusnya
+  /// Dikirim ke Cabang; sesudahnya dibiarkan sebagai jejak.
+  final String? cabangTujuan;
+  final DateTime? tanggalKirim;
+
+  /// "Unit dikirim ke Cabang ... Tanggal ..." selama unitnya memang sedang
+  /// dikirim dan keterangannya lengkap; selain itu kosong -- cabang dan
+  /// tanggal yang tersisa dari pengiriman lama hanya jejak, bukan keadaan
+  /// unit sekarang.
+  String? get keteranganKirim {
+    final c = (cabangTujuan ?? '').trim();
+    if (status != statusDikirimCabang || c.isEmpty || tanggalKirim == null) {
+      return null;
+    }
+    return keteranganKirimCabang(c, tanggalKirim!);
+  }
+
   final String? keterangan;
 
   final DateTime updatedAt;
@@ -420,6 +502,8 @@ class ServiceOrderEntry {
         caraBayar: r['cara_bayar'] as String?,
         tanggalLunas: _tgl(r['tanggal_lunas']),
         tanggalSelesai: _tgl(r['tanggal_selesai']),
+        cabangTujuan: r['cabang_tujuan'] as String?,
+        tanggalKirim: _tgl(r['tanggal_kirim']),
         keterangan: r['keterangan'] as String?,
         updatedAt: _ts(r['updated_at']),
       );
@@ -537,6 +621,7 @@ class StoreSetting {
     this.ketentuan,
     this.tutupJam = 17,
     this.hariLibur = const {DateTime.saturday},
+    this.cabang = cabangBawaan,
   });
 
   final int id;
@@ -554,6 +639,10 @@ class StoreSetting {
   /// menerbitkan tabnya.
   final Set<int> hariLibur;
 
+  /// Cabang tujuan pengiriman unit, sesuai urutan yang diatur di
+  /// Pengaturan.
+  final List<String> cabang;
+
   factory StoreSetting.fromMap(Map<String, dynamic> r) => StoreSetting(
     id: r['id'] as int,
     nama: r['nama'] as String,
@@ -567,8 +656,15 @@ class StoreSetting {
     hariLibur: r.containsKey('hari_libur')
         ? {for (final n in _daftarAngka(r['hari_libur'])) n.toInt()}
         : const {DateTime.saturday},
+    // Kolomnya belum ada di database yang belum dimigrasi: cabang bawaan
+    // dipakai, supaya cabang tujuan tetap bisa dipilih.
+    cabang: r.containsKey('cabang') ? _daftarTeks(r['cabang']) : cabangBawaan,
   );
 }
+
+/// Cabang yang sama dengan bawaan kolom store_settings.cabang di migrasi
+/// 0032. Dipakai selama pengaturannya belum termuat.
+const cabangBawaan = ['Pangkalan Bun', 'Sampit', 'Kasongan', 'Lamandau'];
 
 // ---------------------------------------------------------------------
 // Tanya harga dan pemesanan part

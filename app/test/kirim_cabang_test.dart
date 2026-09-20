@@ -580,6 +580,66 @@ void main() {
       );
     });
 
+    Future<void> bukaDaftarStatus(WidgetTester tester, String nilai) async {
+      final dropdown = find.widgetWithText(
+        DropdownButtonFormField<String>,
+        nilai,
+      );
+      await tester.ensureVisible(dropdown);
+      await tester.pumpAndSettle();
+      await tester.tap(dropdown);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('nota arsip bertanda garansi tanpa klaim tetap bisa dikirim '
+        'ke cabang', (tester) async {
+      // Bentuk nota bergaransi di arsip 2026: bertanda garansi, klaimnya
+      // dicatat terpisah atau tidak ada. Tidak ada klaim yang akan
+      // menurunkan statusnya, jadi tidak ada alasan menyembunyikan pilihannya.
+      // Dulu tersembunyi karena jenis garansi yang bawaannya "brand" ikut
+      // dibaca, padahal pemilihnya sendiri tidak tampil di nota seperti ini.
+      await lukis(tester, nota: _nota(garansi: true));
+      await bukaDaftarStatus(tester, 'Masuk');
+
+      expect(find.text('Dikirim ke Cabang'), findsOneWidget);
+    });
+
+    testWidgets('nota baru bergaransi brand tidak menawarkannya, '
+        'bergaransi toko menawarkannya', (tester) async {
+      await lukis(tester);
+
+      // Sebelum garansi dicentang: ada.
+      await bukaDaftarStatus(tester, 'Masuk');
+      expect(find.text('Dikirim ke Cabang'), findsOneWidget);
+      await tester.tap(find.text('Masuk').last);
+      await tester.pumpAndSettle();
+
+      // Garansi brand: klaimnya akan lahir dan memegang statusnya.
+      final centang = find.text('Unit bergaransi');
+      await tester.ensureVisible(centang);
+      await tester.pumpAndSettle();
+      await tester.tap(centang);
+      await tester.pumpAndSettle();
+      await bukaDaftarStatus(tester, 'Masuk');
+      expect(find.text('Dikirim ke Cabang'), findsNothing);
+      await tester.tap(find.text('Masuk').last);
+      await tester.pumpAndSettle();
+
+      // Garansi toko: tidak ada klaim ke brand, status nota berlaku.
+      final jenis = find.widgetWithText(
+        DropdownButtonFormField<String>,
+        'Garansi Brand',
+      );
+      await tester.ensureVisible(jenis);
+      await tester.pumpAndSettle();
+      await tester.tap(jenis);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Garansi Toko').last);
+      await tester.pumpAndSettle();
+      await bukaDaftarStatus(tester, 'Masuk');
+      expect(find.text('Dikirim ke Cabang'), findsOneWidget);
+    });
+
     testWidgets('nota garansi brand memakai status klaimnya, tanpa pilihan '
         'kirim ke cabang', (tester) async {
       await lukis(

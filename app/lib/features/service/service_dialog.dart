@@ -1148,7 +1148,13 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       // klaim tidak mengenal pengiriman ke cabang: nota yang terlanjur
       // Dikirim ke Cabang akan ditarik kembali begitu status klaimnya
       // digerakkan.
-      final garansiBrand = _garansi && _jenisGaransi == ClaimJenis.brand;
+      // Hanya bila klaim brand memang akan lahir dari simpanan ini --
+      // pemilih jenis garansi hanya tampil dalam keadaan itu. Nota arsip
+      // yang sudah bertanda garansi tanpa klaim tidak punya klaim yang
+      // akan menurunkan statusnya, dan jenis garansi bawaannya ("brand")
+      // tidak berarti apa-apa di sana.
+      final garansiBrand =
+          _garansi && _bolehUbahGaransi && _jenisGaransi == ClaimJenis.brand;
       return LabeledField(
         label: 'Status',
         child: DropdownButtonFormField<String>(

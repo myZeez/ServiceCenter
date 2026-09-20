@@ -1,42 +1,87 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/data/models.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
+import '../../core/widgets/filter_dropdown.dart';
 
 /// Rekap dibaca dari view di Postgres, bukan dihitung ulang di aplikasi.
 /// Inilah bagian yang di sistem lama butuh rumus di file Excel terpisah.
-final _brandReport = FutureProvider.autoDispose<List<Map<String, dynamic>>>(
-  (ref) async => List<Map<String, dynamic>>.from(
-    await ref
-        .watch(supabaseProvider)
-        .from('v_rekap_brand_kuartal')
-        .select()
-        .order('kuartal', ascending: false),
-  ),
-);
+final rekapBrandKuartalProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>(
+      (ref) async => List<Map<String, dynamic>>.from(
+        await ref
+            .watch(supabaseProvider)
+            .from('v_rekap_brand_kuartal')
+            .select()
+            .order('kuartal', ascending: false),
+      ),
+    );
 
-final _techReport = FutureProvider.autoDispose<List<Map<String, dynamic>>>(
-  (ref) async => List<Map<String, dynamic>>.from(
-    await ref
-        .watch(supabaseProvider)
-        .from('v_rekap_teknisi_brand')
-        .select()
-        .order('kuartal', ascending: false),
-  ),
-);
+final rekapTeknisiBrandProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>(
+      (ref) async => List<Map<String, dynamic>>.from(
+        await ref
+            .watch(supabaseProvider)
+            .from('v_rekap_teknisi_brand')
+            .select()
+            .order('kuartal', ascending: false),
+      ),
+    );
 
-final _reassignments = FutureProvider.autoDispose<List<Map<String, dynamic>>>(
-  (ref) async => List<Map<String, dynamic>>.from(
-    await ref
-        .watch(supabaseProvider)
-        .from('v_riwayat_pindah_teknisi')
-        .select()
-        .limit(50),
-  ),
-);
+final riwayatPindahTeknisiProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>(
+      (ref) async => List<Map<String, dynamic>>.from(
+        await ref
+            .watch(supabaseProvider)
+            .from('v_riwayat_pindah_teknisi')
+            .select()
+            .limit(50),
+      ),
+    );
+
+/// Brand yang sedang disaring di halaman Rekap. null berarti semua brand.
+///
+/// Milik halaman ini sendiri, terpisah dari saringan di Rekap Brand: yang
+/// dicari di sini adalah angka satu brand di seluruh kuartal, sedangkan di
+/// sana unit-unit satu bulan.
+final brandKlaimRekapProvider = StateProvider<int?>((ref) => null);
+
+/// Jumlah klaim per status, untuk satu brand atau -- tanpa [brandId] --
+/// semuanya.
+Map<String, int> hitungStatusKlaim(Iterable<Claim> klaim, {int? brandId}) {
+  final hasil = <String, int>{};
+  for (final c in klaim) {
+    if (brandId != null && c.brandId != brandId) continue;
+    hasil[c.status] = (hasil[c.status] ?? 0) + 1;
+  }
+  return hasil;
+}
+
+/// Baris view rekap yang brand-nya [brand]; semuanya kalau [brand] kosong.
+///
+/// View di Postgres hanya membawa NAMA brand, bukan idnya, jadi
+/// pencocokannya menurut nama -- tanpa peduli huruf besar kecil.
+List<Map<String, dynamic>> saringMenurutBrand(
+  List<Map<String, dynamic>> baris,
+  String? brand,
+) {
+  if (brand == null) return baris;
+  final b = brand.trim().toLowerCase();
+  return [
+    for (final r in baris)
+      if (((r['brand'] as String?) ?? '').trim().toLowerCase() == b) r,
+  ];
+}
+
+/// Nama brand yang sedang disaring, atau null kalau semuanya.
+final _brandTerpilihProvider = Provider<String?>((ref) {
+  final id = ref.watch(brandKlaimRekapProvider);
+  return id == null ? null : ref.watch(namaBrandProvider)[id];
+});
 
 String _quarter(String isoDate) {
   final d = DateTime.parse(isoDate);
@@ -53,33 +98,72 @@ class ReportsView extends ConsumerWidget {
         horizontal: AppSpacing.s,
         vertical: AppSpacing.xs,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          PageHeader(
-            title: 'Rekap',
-            subtitle: 'Ringkasan klaim per brand, kuartal, dan teknisi',
-            actions: [
-              OutlinedButton.icon(
-                onPressed: () {
-                  ref.invalidate(_brandReport);
-                  ref.invalidate(_techReport);
-                  ref.invalidate(_reassignments);
-                },
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('MUAT ULANG'),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, c) =>
-                  c.maxWidth > 900 ? const _WideGrid() : const _NarrowStack(),
-            ),
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, lebar) => _isi(context, ref, lebar.maxWidth > 900),
       ),
+    );
+  }
+
+  Widget _isi(BuildContext context, WidgetRef ref, bool lebar) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PageHeader(
+          title: 'Rekap',
+          subtitle: 'Ringkasan klaim per brand, kuartal, dan teknisi',
+          actions: [
+            // Penyaring brand di kepala halaman, seperti di Rekap Brand.
+            // Di layar sempit ia pindah ke bawah kepala, karena judul dan
+            // dua kotak tidak muat sebaris.
+            if (lebar) ...const [
+              _FilterBrand(),
+              SizedBox(width: AppSpacing.xs),
+            ],
+            OutlinedButton.icon(
+              onPressed: () {
+                ref.invalidate(rekapBrandKuartalProvider);
+                ref.invalidate(rekapTeknisiBrandProvider);
+                ref.invalidate(riwayatPindahTeknisiProvider);
+              },
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('MUAT ULANG'),
+            ),
+          ],
+        ),
+        if (!lebar) ...const [
+          SizedBox(height: AppSpacing.s),
+          Row(children: [Expanded(child: _FilterBrand())]),
+        ],
+        const SizedBox(height: AppSpacing.sm),
+        Expanded(child: lebar ? const _WideGrid() : const _NarrowStack()),
+      ],
+    );
+  }
+}
+
+/// Memilih satu brand untuk seluruh kartu di halaman ini.
+///
+/// Brand yang nonaktif ikut ditawarkan: klaim lamanya tetap ada, dan justru
+/// itu yang sering dicari.
+class _FilterBrand extends ConsumerWidget {
+  const _FilterBrand();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final brands = [
+      ...(ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[]),
+    ]..sort((a, b) => a.nama.toLowerCase().compareTo(b.nama.toLowerCase()));
+
+    final terpilih = ref.watch(brandKlaimRekapProvider);
+
+    // Dropdown yang nilainya tidak ada di antara pilihannya melempar galat.
+    final ada = terpilih == null || brands.any((b) => b.id == terpilih);
+
+    return FilterDropdown<int?>(
+      value: ada ? terpilih : null,
+      placeholder: 'SEMUA BRAND',
+      items: [for (final b in brands) (b.id, b.nama.toUpperCase())],
+      onChanged: (v) => ref.read(brandKlaimRekapProvider.notifier).state = v,
     );
   }
 }
@@ -128,7 +212,9 @@ class _NarrowStack extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       children: const [
-        SizedBox(height: 260, child: _SummaryCard()),
+        // Cukup tinggi untuk enam status utama beserta angka totalnya. Dulu 260 dan
+        // isinya meluap 136 piksel di bawah -- terlihat sebagai garis kuning-hitam.
+        SizedBox(height: 420, child: _SummaryCard()),
         SizedBox(height: AppSpacing.s),
         SizedBox(height: 320, child: _BrandCard()),
         SizedBox(height: AppSpacing.s),
@@ -147,7 +233,12 @@ class _SummaryCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final counts = ref.watch(statusCountsProvider).valueOrNull ?? const {};
+    final brandId = ref.watch(brandKlaimRekapProvider);
+    final brand = ref.watch(_brandTerpilihProvider);
+    final counts = hitungStatusKlaim(
+      ref.watch(allClaimsProvider).valueOrNull ?? const <Claim>[],
+      brandId: brandId,
+    );
     final total = counts.values.fold(0, (a, b) => a + b);
 
     return BentoCard(
@@ -166,18 +257,23 @@ class _SummaryCard extends ConsumerWidget {
               height: 1,
             ),
           ),
-          Text('TOTAL KLAIM', style: Theme.of(context).textTheme.labelSmall),
+          Text(
+            brand == null
+                ? 'TOTAL KLAIM'
+                : 'TOTAL KLAIM  ·  ${brand.toUpperCase()}',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
           const SizedBox(height: AppSpacing.s),
           const Divider(),
           const SizedBox(height: AppSpacing.s),
           for (final s in ClaimStatus.all)
             if (ClaimStatus.utama.contains(s) || (counts[s] ?? 0) > 0)
-            BentoBarRow(
-              label: ClaimStatus.label(s),
-              value: '${counts[s] ?? 0}',
-              fraction: total == 0 ? 0 : (counts[s] ?? 0) / total,
-              color: ClaimStatus.color(context, s),
-            ),
+              BentoBarRow(
+                label: ClaimStatus.label(s),
+                value: '${counts[s] ?? 0}',
+                fraction: total == 0 ? 0 : (counts[s] ?? 0) / total,
+                color: ClaimStatus.color(context, s),
+              ),
         ],
       ),
     );
@@ -189,12 +285,18 @@ class _BrandCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final brand = ref.watch(_brandTerpilihProvider);
+
     return BentoCard(
       title: 'Klaim per Brand',
       padding: EdgeInsets.zero,
       child: _AsyncBody(
-        value: ref.watch(_brandReport),
-        emptyText: 'Rekap terisi setelah ada klaim tercatat.',
+        value: ref
+            .watch(rekapBrandKuartalProvider)
+            .whenData((r) => saringMenurutBrand(r, brand)),
+        emptyText: brand == null
+            ? 'Rekap terisi setelah ada klaim tercatat.'
+            : 'Belum ada klaim tercatat untuk $brand.',
         builder: (rows) {
           final quarters = <String>{};
           final byBrand = <String, Map<String, int>>{};
@@ -233,12 +335,18 @@ class _TechCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final brand = ref.watch(_brandTerpilihProvider);
+
     return BentoCard(
       title: 'Teknisi per Brand',
       padding: EdgeInsets.zero,
       child: _AsyncBody(
-        value: ref.watch(_techReport),
-        emptyText: 'Belum ada pekerjaan yang tercatat atas nama teknisi.',
+        value: ref
+            .watch(rekapTeknisiBrandProvider)
+            .whenData((r) => saringMenurutBrand(r, brand)),
+        emptyText: brand == null
+            ? 'Belum ada pekerjaan yang tercatat atas nama teknisi.'
+            : 'Belum ada teknisi yang mengerjakan klaim $brand.',
         builder: (rows) {
           final brands = <String>{};
           final byTech = <String, Map<String, int>>{};
@@ -277,12 +385,18 @@ class _ReassignCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final brand = ref.watch(_brandTerpilihProvider);
+
     return BentoCard(
       title: 'Riwayat Pindah Teknisi',
       padding: EdgeInsets.zero,
       child: _AsyncBody(
-        value: ref.watch(_reassignments),
-        emptyText: 'Belum ada klaim yang berpindah teknisi.',
+        value: ref
+            .watch(riwayatPindahTeknisiProvider)
+            .whenData((r) => saringMenurutBrand(r, brand)),
+        emptyText: brand == null
+            ? 'Belum ada klaim yang berpindah teknisi.'
+            : 'Belum ada klaim $brand yang berpindah teknisi.',
         builder: (rows) => ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           itemCount: rows.length,
@@ -336,7 +450,10 @@ class _ReassignCard extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(
                     'oleh ${r['diubah_oleh']} · ${at.day}/${at.month}/${at.year}',
-                    style: TextStyle(fontSize: 11, color: context.warna.teksLembut),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: context.warna.teksLembut,
+                    ),
                   ),
                 ],
               ),

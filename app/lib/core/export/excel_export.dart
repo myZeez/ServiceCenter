@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../data/models.dart';
 import '../hari_laporan.dart';
 import '../nota/nomor_nota.dart';
+import '../nota/urutan_harian.dart';
 
 final _tgl = DateFormat('dd/MM/yyyy');
 final _bulanTahun = DateFormat('MMMM yyyy', 'id');
@@ -486,8 +487,9 @@ class ExcelExport {
             KolomExcel('PIUTANG', jenis: JenisKolom.rupiah, grup: 'BIAYA'),
             KolomExcel('PELUNASAN', jenis: JenisKolom.tanggal, grup: 'BIAYA'),
             // Dua kolom, dua pertanyaan yang berbeda. Keterangan menjawab
-            // "apa yang dikerjakan", status menjawab "ditanggung siapa,
-            // dan unitnya sudah diambil belum". Keduanya sempat tertukar:
+            // "apa yang dikerjakan" -- dan apakah servisnya dibatalkan --
+            // status menjawab "ditanggung siapa, dan unitnya sudah diambil
+            // belum". Keduanya sempat tertukar:
             // kolom keterangan diisi "Service Garansi" dan "Biaya
             // Service" -- jawaban atas pertanyaan yang kedua -- sementara
             // perbaikan yang benar-benar dikerjakan tidak muncul di mana
@@ -511,7 +513,7 @@ class ExcelExport {
                 else
                   null,
                 _tanggal(n.tanggalLunas),
-                TextCellValue(n.perbaikan ?? ''),
+                TextCellValue(keteranganPenerimaan(n)),
                 TextCellValue(statusServis(n)),
               ],
           ],
@@ -539,17 +541,6 @@ class ExcelExport {
     );
   }
 
-  /// Kolom STATUS pada laporan penerimaan: ditanggung siapa, dan apakah
-  /// unitnya sudah diambil.
-  ///
-  /// Keduanya digabung dalam satu kalimat karena begitulah bentuknya di
-  /// lembar yang dipakai toko selama ini -- "Non Garansi (Barang Sudah
-  /// Diambil)".
-  ///
-  /// Nota batal berhenti di kata itu saja. Statusnya bukan 'diambil',
-  /// tetapi unitnya hampir selalu sudah dikembalikan; menuliskan "Barang
-  /// Belum Diambil" di sana berarti menyatakan sesuatu yang tidak
-  /// diketahui aplikasi ini.
   /// Warna latar satu baris laporan penerimaan.
   ///
   /// Merah untuk nota batal, hijau untuk unit bergaransi, sisanya polos --
@@ -557,8 +548,7 @@ class ExcelExport {
   /// mencari baris berwarna lebih dulu, sebelum membaca satu kata pun,
   /// karena keduanyalah baris yang uangnya tidak masuk.
   ///
-  /// Batal diperiksa duluan: nota garansi yang dibatalkan tetap merah,
-  /// sama seperti kolom STATUS yang berhenti di kata "Cancel".
+  /// Batal diperiksa duluan: nota garansi yang dibatalkan tetap merah.
   ///
   /// Nadanya sengaja satu tingkat lebih muda dari hijau dan merah penuh.
   /// Laporan ini dicetak lalu difoto, dan tulisan hitam 9pt di atas warna
@@ -569,9 +559,31 @@ class ExcelExport {
     return null;
   }
 
-  static String statusServis(ServiceOrderEntry n) {
-    if (n.status == 'batal') return 'Cancel';
+  /// Kolom KETERANGAN pada laporan penerimaan: apa yang dikerjakan, dan
+  /// apakah servisnya dibatalkan.
+  ///
+  /// "Cancel" tinggal di sini, bukan di kolom STATUS -- status hanya
+  /// menjawab ditanggung siapa dan sudah diambil atau belum. Yang
+  /// dibatalkan terbaca "Servis Cancel Battery Problem": kata pembatalannya
+  /// di depan, alasan atau pekerjaan yang batal dikerjakan mengikutinya.
+  static String keteranganPenerimaan(ServiceOrderEntry n) {
+    final isi = (n.perbaikan ?? '').trim();
+    if (n.status != 'batal') return isi;
+    return isi.isEmpty ? 'Servis Cancel' : 'Servis Cancel $isi';
+  }
 
+  /// Kolom STATUS pada laporan penerimaan: ditanggung siapa, dan apakah
+  /// unitnya sudah diambil.
+  ///
+  /// Keduanya digabung dalam satu kalimat karena begitulah bentuknya di
+  /// lembar yang dipakai toko selama ini -- "Non Garansi (Barang Sudah
+  /// Diambil)".
+  ///
+  /// Nota batal ikut aturan yang sama dan TIDAK lagi berhenti di kata
+  /// "Cancel": pembatalannya ada di kolom keterangan. Statusnya bukan
+  /// 'diambil', jadi ia terbaca "Belum Diambil" -- aplikasi ini tidak
+  /// mencatat apakah unit yang batal sudah dikembalikan ke pelanggan.
+  static String statusServis(ServiceOrderEntry n) {
     final tanggungan = n.garansi ? 'Garansi' : 'Non Garansi';
     // Unit yang sedang dikerjakan di cabang lain menyebut ke mana dan kapan
     // dikirim -- "Barang Belum Diambil" benar, tetapi tidak menjawab
@@ -601,7 +613,9 @@ class ExcelExport {
         TabelExcel(
           judul: 'LAPORAN KIRIM UNIT',
           kolom: const [
-            KolomExcel('TANGGAL KIRIM', jenis: JenisKolom.tanggal),
+            // Unit yang dikirim cabang lain ke sini: tanggal ia diterima,
+            // lalu (di kolom ke-10) tanggal ia dikirim balik.
+            KolomExcel('TANGGAL TERIMA', jenis: JenisKolom.tanggal),
             KolomExcel('DARI BRANCH', jenis: JenisKolom.kode),
             KolomExcel('KE BRANCH', jenis: JenisKolom.kode),
             KolomExcel('NAMA USER'),
@@ -624,7 +638,7 @@ class ExcelExport {
                 TextCellValue(k.serialNumber ?? ''),
                 TextCellValue(k.keluhan ?? ''),
                 TextCellValue(k.kelengkapan ?? ''),
-                TextCellValue(k.status == 'ship' ? 'SHIP' : 'RETURN'),
+                TextCellValue(k.sudahKembali ? 'RETURN' : 'SHIP'),
                 _tanggal(k.tanggalKembali),
                 TextCellValue(
                   (k.keterangan ?? '').replaceAll('_', ' ').toUpperCase(),
@@ -693,9 +707,12 @@ class ExcelExport {
     required DateTime tanggal,
     String? namaLembar,
   }) {
+    // Nota keluar dikelompokkan menurut uangnya -- berbiaya, piutang, garansi,
+    // cancel -- baru menurut nomor nota di dalam tiap kelompok. Nota masuk
+    // tidak punya biaya untuk dikelompokkan, jadi tetap menurut nomor nota.
     final keluar =
         semua.where((n) => _hariSama(n.tanggalSelesai, tanggal)).toList()
-          ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
+          ..sort(bandingHarian);
     final masuk =
         semua.where((n) => _hariSama(n.tanggalMasuk, tanggal)).toList()
           ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));

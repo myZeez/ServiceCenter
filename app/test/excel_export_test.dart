@@ -408,8 +408,7 @@ void main() {
 
       // Dicari menurut nama tabnya, bukan urutannya: hari libur membuat
       // nomor tab dan urutan daftar tidak lagi sama.
-      LembarExcel tab(String nama) =>
-          lembar.firstWhere((l) => l.nama == nama);
+      LembarExcel tab(String nama) => lembar.firstWhere((l) => l.nama == nama);
 
       expect(tab('4').tabel[1].baris.length, 1, reason: 'masuk tanggal 4');
       expect(tab('4').tabel[0].baris.length, 0, reason: 'keluar tanggal 4');
@@ -481,11 +480,55 @@ void main() {
       );
     });
 
-    test('nota batal berhenti di kata itu saja', () {
-      // Statusnya bukan 'diambil', tetapi unitnya hampir selalu sudah
-      // dikembalikan. Menuliskan "Barang Belum Diambil" berarti
-      // menyatakan sesuatu yang tidak diketahui aplikasi ini.
-      expect(ExcelExport.statusServis(n(status: 'batal')), 'Cancel');
+    test('nota batal tidak lagi menulis Cancel di kolom status', () {
+      // Status hanya menjawab ditanggung siapa, dan sudah diambil atau
+      // belum. Pembatalannya ada di kolom keterangan.
+      expect(
+        ExcelExport.statusServis(n(status: 'batal')),
+        'Non Garansi (Barang Belum Diambil)',
+      );
+      expect(
+        ExcelExport.statusServis(n(status: 'batal', garansi: true)),
+        'Garansi (Barang Belum Diambil)',
+      );
+    });
+
+    test('Cancel tinggal di keterangan, diikuti perbaikannya', () {
+      expect(
+        ExcelExport.keteranganPenerimaan(
+          n(status: 'batal', perbaikan: 'Battery Problem'),
+        ),
+        'Servis Cancel Battery Problem',
+      );
+      // Tanpa perbaikan, kata pembatalannya berdiri sendiri.
+      expect(
+        ExcelExport.keteranganPenerimaan(n(status: 'batal', perbaikan: null)),
+        'Servis Cancel',
+      );
+      // Nota biasa: keterangannya tetap perbaikan apa adanya.
+      expect(ExcelExport.keteranganPenerimaan(n()), 'Biaya Pasang Keyboard');
+    });
+
+    test('baris batal di lembar: status polos, keterangan memuat Cancel', () {
+      final lembar = ExcelExport.lembarKeseluruhan(
+        nota: [n(status: 'batal', perbaikan: 'Windows Problem')],
+        teknisi: const {},
+        periode: 'September 2026',
+      );
+      final t = lembar.tabel.single;
+      final iKet = t.kolom.indexWhere((k) => k.judul == 'KETERANGAN');
+      final iSts = t.kolom.indexWhere((k) => k.judul == 'STATUS');
+
+      expect(
+        (t.baris.single[iKet] as TextCellValue).value.text,
+        'Servis Cancel Windows Problem',
+      );
+      expect(
+        (t.baris.single[iSts] as TextCellValue).value.text,
+        isNot(contains('Cancel')),
+      );
+      // Barisnya tetap merah: yang membaca mencari warna lebih dulu.
+      expect(t.warnaBaris!.single, ExcelColor.red300);
     });
 
     test('keterangan berisi perbaikannya, status berdiri sendiri', () {
@@ -524,8 +567,7 @@ void main() {
       expect(ExcelExport.warnaServis(n(garansi: true)), ExcelColor.green300);
       expect(ExcelExport.warnaServis(n(status: 'batal')), ExcelColor.red300);
 
-      // Nota garansi yang dibatalkan tetap merah, sama seperti kolom
-      // STATUS yang berhenti di kata "Cancel".
+      // Nota garansi yang dibatalkan tetap merah.
       expect(
         ExcelExport.warnaServis(n(status: 'batal', garansi: true)),
         ExcelColor.red300,

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/export/excel_export.dart';
 import '../../core/data/models.dart';
 import '../../core/nota/nomor_nota.dart';
+import '../../core/nota/urutan_harian.dart';
 import '../../core/omset/omset_providers.dart';
 import '../../core/hari_laporan.dart';
 import '../../core/providers.dart';
@@ -158,9 +159,12 @@ class _Harian extends ConsumerWidget {
     // laporan besok -- tanggal_selesai sudah distempel server dengan
     // aturan itu, dan dibandingkan apa adanya. Nota masuk memakai hari
     // kalender: unit yang diterima jam 19.45 diterima hari itu juga.
+    //
+    // Nota keluar dikelompokkan menurut uangnya -- berbiaya, piutang,
+    // garansi, cancel -- baru menurut nomor nota di dalam tiap kelompok.
     final keluar =
         semua.where((n) => _hariSama(n.tanggalSelesai, tanggal)).toList()
-          ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
+          ..sort(bandingHarian);
     final masuk =
         semua.where((n) => _hariSama(n.tanggalMasuk, tanggal)).toList()
           ..sort((a, b) => bandingNomorNota(a.noNota, b.noNota));
@@ -1001,6 +1005,53 @@ class _Keseluruhan extends ConsumerWidget {
 // Laporan kirim antar cabang
 // =====================================================================
 
+/// Judul kolom daftar kirim. Lebarnya harus sama dengan sel di bawahnya.
+///
+/// Dua tanggal di satu baris tanpa judul tidak bisa dibedakan: yang pertama
+/// kapan unit diterima dari cabang pengirim, yang kedua kapan ia dikirim
+/// balik ke sana.
+class _KepalaKirim extends StatelessWidget {
+  const _KepalaKirim();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget sel(String judul, {double? lebar, int flex = 1}) {
+      final isi = Padding(
+        padding: const EdgeInsets.only(right: AppSpacing.s),
+        child: Text(
+          judul.toUpperCase(),
+          overflow: TextOverflow.clip,
+          softWrap: false,
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+      );
+      return lebar != null
+          ? SizedBox(width: lebar, child: isi)
+          : Expanded(flex: flex, child: isi);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        AppSpacing.xs,
+        AppSpacing.sm,
+        6,
+      ),
+      child: Row(
+        children: [
+          sel('Terima', lebar: 88),
+          sel('Dari → Ke', lebar: 150),
+          sel('Nama User', lebar: 96),
+          sel('Barang', flex: 2),
+          sel('Keluhan', flex: 2),
+          sel('Kembali', lebar: 104),
+          sel('Status', lebar: 150),
+        ],
+      ),
+    );
+  }
+}
+
 class _Kirim extends ConsumerWidget {
   const _Kirim();
 
@@ -1008,11 +1059,15 @@ class _Kirim extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final kirim =
         ref.watch(shipmentsProvider).valueOrNull ?? const <ShipmentEntry>[];
-    final terkirim = kirim.where((k) => k.status == 'ship').length;
+
+    // Belum kembali dihitung dari tanggal kembali, bukan dari status: arsip
+    // impor menandai hampir semua catatan 'ship' walau unitnya sudah
+    // dikirim balik, dan angkanya jadi ratusan yang tidak pernah berkurang.
+    final belumKembali = kirim.where((k) => !k.sudahKembali).length;
 
     return _Kartu(
       judul: 'Pengiriman',
-      ringkas: '${kirim.length} catatan  ·  $terkirim belum kembali',
+      ringkas: '${kirim.length} catatan  ·  $belumKembali belum dikirim balik',
       aksi: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1028,56 +1083,70 @@ class _Kirim extends ConsumerWidget {
         ],
       ),
       kosong: kirim.isEmpty,
-      pesanKosong: 'Belum ada barang yang dikirim atau diterima dari cabang.',
-      child: ListView.builder(
-        padding: const EdgeInsets.only(bottom: AppSpacing.s),
-        itemCount: kirim.length,
-        itemBuilder: (context, i) {
-          final k = kirim[i];
-          return _BarisKlik(
-            onTap: () => showShipmentDialog(context, kirim: k),
-            children: [
-              _Sel(width: 88, teks: _tgl.format(k.tanggalKirim)),
-              _Sel(
-                width: 150,
-                teks: '${k.dariCabang} → ${k.keCabang}',
-                tebal: true,
-              ),
-              _Sel(width: 96, teks: k.userNama ?? '—'),
-              _Sel(
-                flex: 2,
-                teks: [
-                  k.barangNama,
-                  if (k.serialNumber != null) k.serialNumber!,
-                ].join('  '),
-              ),
-              _Sel(flex: 2, teks: k.keluhan ?? '—'),
-              _Sel(
-                width: 104,
-                teks: k.tanggalKembali == null
-                    ? '—'
-                    : _tgl.format(k.tanggalKembali!),
-              ),
-              SizedBox(
-                width: 150,
-                child: Row(
+      pesanKosong: 'Belum ada unit yang diterima dari cabang.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _KepalaKirim(),
+          const Divider(),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.only(bottom: AppSpacing.s),
+              itemCount: kirim.length,
+              itemBuilder: (context, i) {
+                final k = kirim[i];
+                return _BarisKlik(
+                  onTap: () => showShipmentDialog(context, kirim: k),
                   children: [
-                    _Tanda(
-                      k.status == 'ship' ? 'DIKIRIM' : 'DITERIMA',
-                      warna: k.status == 'ship'
-                          ? context.warna.bahaya
-                          : context.warna.teks,
+                    _Sel(width: 88, teks: _tgl.format(k.tanggalKirim)),
+                    _Sel(
+                      width: 150,
+                      teks: '${k.dariCabang} → ${k.keCabang}',
+                      tebal: true,
                     ),
-                    if (k.keterangan != null) ...[
-                      const SizedBox(width: 4),
-                      _Tanda(k.keterangan!.replaceAll('_', ' ').toUpperCase()),
-                    ],
+                    _Sel(width: 96, teks: k.userNama ?? '—'),
+                    _Sel(
+                      flex: 2,
+                      teks: [
+                        k.barangNama,
+                        if (k.serialNumber != null) k.serialNumber!,
+                      ].join('  '),
+                    ),
+                    _Sel(flex: 2, teks: k.keluhan ?? '—'),
+                    _Sel(
+                      width: 104,
+                      teks: k.tanggalKembali == null
+                          ? '—'
+                          : _tgl.format(k.tanggalKembali!),
+                    ),
+                    SizedBox(
+                      width: 150,
+                      child: Row(
+                        children: [
+                          // Sudah dikirim balik berarti urusannya selesai;
+                          // yang masih di sini diberi warna, karena itu yang
+                          // ditanya cabang pengirimnya.
+                          _Tanda(
+                            k.sudahKembali ? 'DIKIRIM BALIK' : 'DITERIMA',
+                            warna: k.sudahKembali
+                                ? context.warna.teks
+                                : context.warna.bahaya,
+                          ),
+                          if (k.keterangan != null) ...[
+                            const SizedBox(width: 4),
+                            _Tanda(
+                              k.keterangan!.replaceAll('_', ' ').toUpperCase(),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ],
-                ),
-              ),
-            ],
-          );
-        },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

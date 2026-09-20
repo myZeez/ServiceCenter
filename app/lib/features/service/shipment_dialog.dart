@@ -179,7 +179,10 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
                     ),
                     decoration: BoxDecoration(
                       border: Border(
-                        bottom: BorderSide(color: context.warna.teks, width: 1.5),
+                        bottom: BorderSide(
+                          color: context.warna.teks,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                     child: Row(
@@ -262,7 +265,8 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
         ),
         const SizedBox(height: AppSpacing.s),
         LabeledField(
-          label: 'Tanggal Kirim',
+          label: 'Tanggal Terima',
+          hint: 'Kapan unit diterima dari cabang pengirim.',
           child: OutlinedButton(
             onPressed: () async {
               final p = await showDatePicker(
@@ -348,10 +352,10 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
                   initialValue: _status,
                   isExpanded: true,
                   items: const [
-                    DropdownMenuItem(value: 'ship', child: Text('Dikirim')),
+                    DropdownMenuItem(value: 'ship', child: Text('Diterima')),
                     DropdownMenuItem(
                       value: 'received',
-                      child: Text('Diterima'),
+                      child: Text('Dikirim Balik'),
                     ),
                   ],
                   onChanged: (v) => setState(() => _status = v!),
@@ -383,6 +387,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
         const SizedBox(height: AppSpacing.s),
         LabeledField(
           label: 'Tanggal Kembali',
+          hint: 'Kapan unit dikirim balik ke cabang pengirim.',
           child: OutlinedButton(
             onPressed: () async {
               final p = await showDatePicker(
@@ -391,7 +396,14 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
                 firstDate: DateTime(2020),
                 lastDate: DateTime.now().add(const Duration(days: 365)),
               );
-              if (p != null) setState(() => _tanggalKembali = p);
+              // Unit yang sudah punya tanggal kembali memang sudah dikirim
+              // balik -- statusnya ikut, supaya keduanya tidak berselisih.
+              if (p != null) {
+                setState(() {
+                  _tanggalKembali = p;
+                  _status = 'received';
+                });
+              }
             },
             style: _tombolTanggal(context),
             child: Align(

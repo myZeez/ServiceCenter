@@ -560,6 +560,16 @@ class ShipmentEntry {
   final DateTime? tanggalKembali;
   final String? keterangan;
 
+  /// Apakah unitnya sudah dikirim balik ke cabang yang mengirimnya.
+  ///
+  /// Catatan pengiriman adalah unit yang DITERIMA dari cabang lain untuk
+  /// dikerjakan di sini. Sudah kembali kalau ada tanggal kembalinya, atau
+  /// statusnya memang sudah 'received' (RETURN di lembar pusat). Keduanya
+  /// diperiksa karena arsip impor menandai hampir semuanya 'ship' walau
+  /// tanggal kembalinya terisi -- status saja tidak bisa dipercaya untuk
+  /// menghitung yang belum kembali.
+  bool get sudahKembali => tanggalKembali != null || status == 'received';
+
   final DateTime updatedAt;
 
   factory ShipmentEntry.fromMap(Map<String, dynamic> r) => ShipmentEntry(

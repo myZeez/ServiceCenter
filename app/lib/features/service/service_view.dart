@@ -460,17 +460,29 @@ class _BarisTeknisi extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Merah hanya saat antreannya menumpuk, supaya warnanya masih berarti
-    // sesuatu ketika muncul.
-    final penuh = r.unitBerjalan >= 5;
+    // Yang disorot yang omsetnya masih di bawah target, bukan yang
+    // unitnya banyak atau sedikit. Warnanya hanya satu arti -- "perlu
+    // dikejar" -- jadi jumlah unit di sebelah kanan sengaja tidak diberi
+    // warna: unit yang menumpuk adalah kabar yang berlawanan, dan dua
+    // arti dalam satu warna membuat keduanya tidak terbaca.
+    final kurang = r.dibawahTarget;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 9,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.sm - 3,
+        9,
+        AppSpacing.sm,
+        9,
       ),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: context.warna.garisHalus)),
+        color: kurang ? context.warna.bahaya.withValues(alpha: 0.06) : null,
+        border: Border(
+          bottom: BorderSide(color: context.warna.garisHalus),
+          left: BorderSide(
+            color: kurang ? context.warna.bahaya : Colors.transparent,
+            width: 3,
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -498,6 +510,20 @@ class _BarisTeknisi extends StatelessWidget {
                     color: context.warna.teksLembut,
                   ),
                 ),
+                if (kurang) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'KURANG ${_rp.format(r.kurang)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                      color: context.warna.bahaya,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -517,7 +543,7 @@ class _BarisTeknisi extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     height: 1,
                     letterSpacing: -0.5,
-                    color: penuh ? context.warna.bahaya : context.warna.teks,
+                    color: context.warna.teks,
                   ),
                 ),
                 const SizedBox(height: 2),

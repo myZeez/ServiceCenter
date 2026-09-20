@@ -12,6 +12,7 @@ import 'core/theme.dart';
 import 'features/auth/login_page.dart';
 import 'features/claims/claims_page.dart';
 import 'features/shell/admin_shell.dart';
+import 'features/shell/peringatan_omset.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -113,7 +114,13 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
     // Layar lebar memakai kerangka bersidebar; layar sempit memakai
     // navigasi berhalaman yang lebih cocok untuk satu tangan.
     final wide = MediaQuery.sizeOf(context).width > 900;
-    return wide ? const AdminShell() : const ClaimsPage();
+    //
+    // Dibungkus pemeriksa peringatan omset: setiap kali aplikasi dibuka, admin
+    // diingatkan siapa yang masih di bawah target pada hari-hari terakhir
+    // bulan.
+    return PeringatanOmsetPembuka(
+      child: wide ? const AdminShell() : const ClaimsPage(),
+    );
   }
 }
 

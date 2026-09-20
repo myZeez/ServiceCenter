@@ -18,6 +18,7 @@ import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import '../parts/part_dialog.dart';
 import '../scan/scan_page.dart';
+import 'antrian_teknisi.dart';
 import 'customer_field.dart';
 import 'kirim_cabang_fields.dart';
 import 'service_status.dart';
@@ -902,6 +903,16 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         ),
         _kolomKeluhanGaransi(),
         const SizedBox(height: AppSpacing.s),
+
+        // Antrian siapa yang sebaiknya diberi unit berikutnya. Hanya untuk
+        // nota baru: yang sudah punya teknisi tidak sedang membagi kerja.
+        if (widget.isNew) ...[
+          AntrianTeknisiPanel(
+            terpilih: _teknisiId,
+            onPilih: (id) => setState(() => _teknisiId = id),
+          ),
+          const SizedBox(height: AppSpacing.s),
+        ],
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -912,6 +923,10 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                     ? 'Belum ada teknisi. Tambahkan di Pengaturan → Pengguna.'
                     : null,
                 child: DropdownButtonFormField<String>(
+                  // Dibangun ulang saat pilihannya berubah dari luar -- dari
+                  // antrian di atasnya -- karena field ini hanya membaca
+                  // initialValue sekali.
+                  key: ValueKey('teknisi-$_teknisiId'),
                   initialValue: _teknisiId,
                   isExpanded: true,
                   hint: const Text('Pilih'),

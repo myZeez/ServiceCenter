@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/data/models.dart';
 import '../../core/omset/omset_providers.dart';
+import '../../core/omset/peringatan_omset.dart';
 import '../../core/providers.dart';
 import 'service_status.dart';
 
@@ -31,10 +32,20 @@ class RingkasTeknisi {
   final double target;
 
   double get persenTarget => target <= 0 ? 0 : (omset / target * 100);
-  double get kurang => (target - omset).clamp(0, double.infinity);
+  double get kurang => kurangDariTarget(omset, target);
+
+  /// Masih di bawah target omset bulan ini. Diukur dengan rupiah, bukan
+  /// jumlah unit selesai: dua unit besar bisa melampaui lima unit kecil.
+  bool get dibawahTarget => dibawahTargetOmset(omset, target);
 }
 
-/// Ringkasan tiap teknisi aktif, terbanyak omsetnya di depan.
+/// Ringkasan tiap teknisi aktif, YANG OMSETNYA TERENDAH DI DEPAN.
+///
+/// Urutannya sengaja begitu: yang paling tertinggal dari target adalah yang
+/// paling perlu diberi unit berikutnya, dan yang paling perlu perhatian
+/// ditaruh di atas, bukan di ujung daftar yang harus digulir untuk
+/// menemukannya. Sebelumnya urutannya menurut jumlah unit yang dipegang --
+/// yang paling penuh di depan -- dan itu menjawab pertanyaan yang salah.
 ///
 /// Omsetnya dihitung ulang lewat kalkulator yang sama dengan laporan, bukan
 /// dijumlahkan sendiri di sini. Dua rumus untuk satu angka adalah cara
@@ -76,12 +87,19 @@ final ringkasTeknisiProvider = Provider<List<RingkasTeknisi>>((ref) {
         target: aturan?.targetOmset ?? 4000000,
       ),
   ]..sort((a, b) {
-    // Yang sedang memegang unit didahulukan; di antara yang sama, yang
-    // omsetnya lebih besar di depan.
-    final beban = b.unitBerjalan.compareTo(a.unitBerjalan);
-    return beban != 0 ? beban : b.omset.compareTo(a.omset);
+    // Omset terendah di depan. Yang sama persis (mis. dua-duanya Rp0)
+    // diurutkan menurut nama, supaya urutannya tidak berubah-ubah setiap
+    // kali datanya dimuat ulang.
+    final omset = a.omset.compareTo(b.omset);
+    return omset != 0 ? omset : _menurutNama(a.teknisi, b.teknisi);
   });
 });
+
+/// Menurut nama tanpa membedakan huruf besar dan kecil: "admin" ditulis dengan
+/// huruf kecil dan "Aris" dengan huruf besar, dan dibandingkan apa adanya
+/// yang pertama jatuh ke paling belakang.
+int _menurutNama(Profile a, Profile b) =>
+    a.nama.toLowerCase().compareTo(b.nama.toLowerCase());
 
 /// Ringkasan milik pengguna yang sedang login. Null bila dia bukan teknisi
 /// atau datanya belum sampai.

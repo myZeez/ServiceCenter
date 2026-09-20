@@ -514,17 +514,27 @@ class ServiceSettingsRow {
     required this.id,
     required this.targetOmset,
     required this.feeAdminPerNota,
+    this.hariPeringatanOmset = 10,
   });
 
   final int id;
   final double targetOmset;
   final double feeAdminPerNota;
 
+  /// Berapa hari terakhir sebelum ganti bulan aplikasi mengingatkan yang
+  /// omsetnya masih di bawah target. Nol berarti mati.
+  final int hariPeringatanOmset;
+
   factory ServiceSettingsRow.fromMap(Map<String, dynamic> r) =>
       ServiceSettingsRow(
         id: r['id'] as int,
         targetOmset: _num(r['target_omset']),
         feeAdminPerNota: _num(r['fee_admin_per_nota']),
+        // Kolomnya belum ada di database yang belum dimigrasi (0034): bawaan
+        // dipakai, supaya aplikasi yang lebih baru dari databasenya tetap
+        // bisa membaca pengaturan.
+        hariPeringatanOmset:
+            (r['hari_peringatan_omset'] as num?)?.toInt() ?? 10,
       );
 }
 

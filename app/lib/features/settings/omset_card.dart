@@ -32,6 +32,7 @@ class OmsetCard extends ConsumerStatefulWidget {
 class _OmsetCardState extends ConsumerState<OmsetCard> {
   final _target = TextEditingController();
   final _feeAdmin = TextEditingController();
+  final _hariPeringatan = TextEditingController();
 
   bool _terisi = false;
   bool _busy = false;
@@ -40,6 +41,7 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
   void dispose() {
     _target.dispose();
     _feeAdmin.dispose();
+    _hariPeringatan.dispose();
     super.dispose();
   }
 
@@ -48,12 +50,21 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
   Future<void> _simpan() async {
     setState(() => _busy = true);
     try {
+      final hari = _n(_hariPeringatan).toInt().clamp(0, 28);
+      final aturan = ref.read(omsetSettingsProvider).valueOrNull;
+
       await ref
           .read(supabaseProvider)
           .from('service_settings')
           .update({
             'target_omset': _n(_target),
             'fee_admin_per_nota': _n(_feeAdmin),
+            // Hanya ditulis kalau berubah: database yang belum dimigrasi
+            // (0034) tidak punya kolomnya, dan menyertakannya setiap kali
+            // menggagalkan penyimpanan target dan fee yang tidak
+            // berhubungan dengannya.
+            if (hari != (aturan?.hariPeringatanOmset ?? 10))
+              'hari_peringatan_omset': hari,
             'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', 1);
@@ -83,6 +94,7 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
     if (!_terisi && aturan != null) {
       _target.text = aturan.targetOmset.toInt().toString();
       _feeAdmin.text = aturan.feeAdminPerNota.toInt().toString();
+      _hariPeringatan.text = aturan.hariPeringatanOmset.toString();
       _terisi = true;
     }
 
@@ -150,6 +162,33 @@ class _OmsetCardState extends ConsumerState<OmsetCard> {
                       ? 'Nol berarti admin tidak menerima fee per nota'
                       : '${_rp.format(_n(_feeAdmin))} × 40 nota = '
                             '${_rp.format(_n(_feeAdmin) * 40)}',
+                  helperStyle: TextStyle(
+                    fontSize: 10.5,
+                    color: context.warna.teksLembut,
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.s),
+
+            LabeledField(
+              label: 'Peringatan Akhir Bulan',
+              hint:
+                  'Berapa hari terakhir sebelum ganti bulan aplikasi mulai '
+                  'mengingatkan admin, setiap kali dibuka, siapa yang masih '
+                  'di bawah target. Nol mematikannya.',
+              child: TextField(
+                controller: _hariPeringatan,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  suffixText: 'hari',
+                  helperText: _n(_hariPeringatan) == 0
+                      ? 'Peringatan mati'
+                      : 'Mulai ${_n(_hariPeringatan).toInt().clamp(1, 28)} hari '
+                            'sebelum ganti bulan',
                   helperStyle: TextStyle(
                     fontSize: 10.5,
                     color: context.warna.teksLembut,

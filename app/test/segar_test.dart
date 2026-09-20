@@ -41,6 +41,8 @@ Future<void> _lukis(WidgetTester tester, List<Claim> klaim) async {
           (ref) => Stream.value([const Brand(id: 1, nama: 'ASUS')]),
         ),
         allProfilesProvider.overrideWith((ref) => Stream.value([])),
+        // Halaman utama memantau nota untuk lencana Servisku di dock.
+        serviceOrdersProvider.overrideWith((ref) => Stream.value([])),
         koneksiProvider.overrideWith((ref) => Stream.value(true)),
       ],
       child: MaterialApp(theme: AppTheme.terang(), home: const ClaimsPage()),

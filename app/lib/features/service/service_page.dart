@@ -4,12 +4,14 @@ import 'package:intl/intl.dart';
 
 import '../../core/data/galat.dart';
 import '../../core/data/models.dart';
+import '../../core/nota/cocok_cari.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/gagal_muat.dart';
 import '../../core/widgets/koneksi.dart';
 import '../../core/widgets/swiss_widgets.dart';
+import '../scan/scan_page.dart';
 import 'kirim_cabang_fields.dart';
 import 'service_status.dart';
 import 'waktu_masuk.dart';
@@ -36,10 +38,32 @@ class ServicePage extends ConsumerStatefulWidget {
 
 class _ServicePageState extends ConsumerState<ServicePage> {
   String? _status;
+  final _cari = TextEditingController();
+  String _kata = '';
+
+  @override
+  void dispose() {
+    _cari.dispose();
+    super.dispose();
+  }
+
+  void _setKata(String v) => setState(() => _kata = v);
 
   @override
   Widget build(BuildContext context) {
     final nota = ref.watch(serviceOrdersProvider);
+    // Kata pencarian menyaring lebih dulu, baru status. Angka di chip ikut
+    // hasil pencarian: chip yang menghitung sesuatu yang berbeda dari
+    // daftar di bawahnya adalah cara termudah membuat orang mengira ada
+    // nota yang hilang.
+    final semuaNota = nota.valueOrNull ?? const <ServiceOrderEntry>[];
+    final mencari = _kata.trim().isNotEmpty;
+    final cocok = mencari
+        ? [
+            for (final n in semuaNota)
+              if (cocokCariNota(n, _kata)) n,
+          ]
+        : semuaNota;
     final techs = {
       for (final p
           in ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[])
@@ -57,9 +81,18 @@ class _ServicePageState extends ConsumerState<ServicePage> {
       ),
       body: Column(
         children: [
+          _KotakCari(
+            controller: _cari,
+            adaIsi: mencari,
+            onUbah: _setKata,
+            onHapus: () {
+              _cari.clear();
+              _setKata('');
+            },
+          ),
           _Saringan(
             dipilih: _status,
-            jumlah: _perStatus(nota.valueOrNull ?? const []),
+            jumlah: _perStatus(cocok),
             onPilih: (s) => setState(() => _status = s),
           ),
           Expanded(
@@ -79,8 +112,8 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                 error: (e, _) => GagalMuat(e),
                 data: (semua) {
                   final tampil = _status == null
-                      ? semua
-                      : semua.where((n) => n.status == _status).toList();
+                      ? cocok
+                      : cocok.where((n) => n.status == _status).toList();
 
                   if (tampil.isEmpty) {
                     return ListView(
@@ -91,10 +124,15 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                             icon: Icons.receipt_long_outlined,
                             title: semua.isEmpty
                                 ? 'Belum ada nota'
+                                : mencari && cocok.isEmpty
+                                ? 'Tidak ada nota yang cocok'
                                 : 'Tidak ada nota berstatus ini',
                             description: semua.isEmpty
                                 ? 'Nota dibuat saat pelanggan menyerahkan '
                                       'unitnya di meja depan.'
+                                : mencari && cocok.isEmpty
+                                ? 'Coba nomor nota, nama, nomor seri, atau '
+                                      'telepon yang lain.'
                                 : 'Pilih status lain di atas.',
                           ),
                         ),
@@ -106,7 +144,7 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                     padding: const EdgeInsets.only(bottom: AppSpacing.md),
                     itemCount: tampil.length,
                     itemBuilder: (context, i) =>
-                        _KartuNota(nota: tampil[i], teknisi: techs),
+                        KartuNotaServis(nota: tampil[i], teknisi: techs),
                   );
                 },
               ),
@@ -123,6 +161,68 @@ class _ServicePageState extends ConsumerState<ServicePage> {
       h.update(n.status, (v) => v + 1, ifAbsent: () => 1);
     }
     return h;
+  }
+}
+
+/// Kotak pencarian di atas daftar. Sama dengan yang ada di halaman Klaim:
+/// ketik, atau pindai nomor seri dengan kamera.
+class _KotakCari extends StatelessWidget {
+  const _KotakCari({
+    required this.controller,
+    required this.adaIsi,
+    required this.onUbah,
+    required this.onHapus,
+  });
+
+  final TextEditingController controller;
+  final bool adaIsi;
+  final ValueChanged<String> onUbah;
+  final VoidCallback onHapus;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        0,
+        AppSpacing.sm,
+        AppSpacing.xs,
+      ),
+      child: TextField(
+        controller: controller,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: 'Cari no nota, nama, SN, telp',
+          prefixIcon: Icon(
+            Icons.search,
+            size: 18,
+            color: context.warna.teksLembut,
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 38),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (adaIsi)
+                IconButton(
+                  tooltip: 'Hapus kata pencarian',
+                  iconSize: 18,
+                  color: context.warna.teksLembut,
+                  icon: const Icon(Icons.close),
+                  onPressed: onHapus,
+                ),
+              ScanFieldButton(
+                title: 'Pindai SN untuk mencari',
+                onScanned: (v) {
+                  controller.text = v;
+                  onUbah(v);
+                },
+              ),
+            ],
+          ),
+        ),
+        onChanged: onUbah,
+      ),
+    );
   }
 }
 
@@ -150,17 +250,20 @@ class _Saringan extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           children: [
-            _Chip(
+            ChipSaringan(
               label: 'SEMUA',
               aktif: dipilih == null,
               onTap: () => onPilih(null),
             ),
             for (final s in ServiceStatus.all)
-              if ((jumlah[s] ?? 0) > 0)
-                _Chip(
+              // Yang sedang dipilih tetap tampil walau hasil pencarian tidak
+              // punya satu pun: chip yang lenyap sementara daftarnya masih
+              // tersaring olehnya membuat saringannya tak bisa dilepas.
+              if ((jumlah[s] ?? 0) > 0 || dipilih == s)
+                ChipSaringan(
                   label:
                       '${ServiceStatus.label(s).toUpperCase()}  '
-                      '${jumlah[s]}',
+                      '${jumlah[s] ?? 0}',
                   aktif: dipilih == s,
                   onTap: () => onPilih(s),
                 ),
@@ -171,8 +274,14 @@ class _Saringan extends StatelessWidget {
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.aktif, required this.onTap});
+/// Chip saringan status. Dipakai juga oleh Servisku.
+class ChipSaringan extends StatelessWidget {
+  const ChipSaringan({
+    super.key,
+    required this.label,
+    required this.aktif,
+    required this.onTap,
+  });
 
   final String label;
   final bool aktif;
@@ -207,11 +316,23 @@ class _Chip extends StatelessWidget {
   }
 }
 
-class _KartuNota extends ConsumerWidget {
-  const _KartuNota({required this.nota, required this.teknisi});
+/// Kartu satu nota di layar sempit; diketuk untuk membuka lembar ubah
+/// pekerjaan. Dipakai halaman Servis dan Servisku.
+class KartuNotaServis extends ConsumerWidget {
+  const KartuNotaServis({
+    super.key,
+    required this.nota,
+    required this.teknisi,
+    this.keteranganBaris,
+  });
 
   final ServiceOrderEntry nota;
   final Map<String, String> teknisi;
+
+  /// Menggantikan nama teknisi di baris tanggal. Dipakai Servisku: yang
+  /// membuka daftarnya sudah tahu itu miliknya, dan yang berguna di
+  /// situ adalah kapan unitnya selesai.
+  final String? keteranganBaris;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -269,12 +390,15 @@ class _KartuNota extends ConsumerWidget {
             const SizedBox(height: 6),
             Row(
               children: [
-                Text(
-                  '${tanggalJamMasuk(nota.tanggalMasuk)}  ·  '
-                  '${teknisi[nota.teknisiId] ?? 'belum ada teknisi'}',
-                  style: Theme.of(context).textTheme.labelSmall,
+                Expanded(
+                  child: Text(
+                    '${tanggalJamMasuk(nota.tanggalMasuk)}  ·  '
+                    '${keteranganBaris ?? teknisi[nota.teknisiId] ?? 'belum ada teknisi'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ),
-                const Spacer(),
                 if (nota.biaya > 0)
                   Text(
                     _rp.format(nota.biaya),

@@ -13,22 +13,40 @@ import '../../core/widgets/swiss_widgets.dart';
 import '../mywork/my_work_page.dart';
 import '../parts/parts_page.dart';
 import '../service/service_page.dart';
+import '../service/servisku_view.dart';
 import '../reports/reports_page.dart';
 import '../scan/scan_page.dart';
 import '../settings/settings_page.dart';
 import '../settlement/settlement_page.dart';
 import 'claim_detail_page.dart';
 import 'claim_form_page.dart';
+import 'dock_utama.dart';
 
 final _dateFmt = DateFormat('dd/MM/yy');
 
 /// Halaman utama untuk layar sempit. Layar lebar memakai AdminShell.
-class ClaimsPage extends ConsumerWidget {
+///
+/// Dua isi yang bergantian lewat dock di dasar: daftar klaim garansi dan
+/// Servisku. Tombol Klaim Baru ikut duduk di dock, menggantikan tombol
+/// melayang yang dulu menutupi baris terakhir daftar.
+class ClaimsPage extends ConsumerStatefulWidget {
   const ClaimsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ClaimsPage> createState() => _ClaimsPageState();
+}
+
+class _ClaimsPageState extends ConsumerState<ClaimsPage> {
+  TabUtama _tab = TabUtama.klaim;
+
+  @override
+  Widget build(BuildContext context) {
     final claims = ref.watch(claimsProvider);
+    final jumlahServisku = ref.watch(notaBerjalanSayaProvider).length;
+    final ruangBawah = DockUtama.ruangBawah(context);
+    // Papan ketik yang terbuka menaikkan dock ke atasnya dan menutupi
+    // separuh daftar; lebih baik dock menyingkir selama orang mengetik.
+    final papanKetik = MediaQuery.viewInsetsOf(context).bottom > 0;
     final isAdmin = ref.watch(isAdminProvider);
     final adaPart = ref.watch(fiturTanyaHargaProvider);
     final profile = ref.watch(currentProfileProvider);
@@ -40,7 +58,7 @@ class ClaimsPage extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Klaim Garansi'),
+            Text(_tab == TabUtama.klaim ? 'Klaim Garansi' : 'Servisku'),
             if (profile != null)
               Text(
                 '${profile.nama} — ${profile.role}'.toUpperCase(),
@@ -103,64 +121,98 @@ class ClaimsPage extends ConsumerWidget {
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          const _FilterBar(),
-          Expanded(
-            // Tarik ke bawah untuk memasang ulang langganannya. Perubahan
-            // memang datang sendiri, tetapi saat itu tidak terjadi -- sinyal
-            // yang baru pulih, aplikasi yang lama tertidur -- orang butuh
-            // cara memaksanya tanpa harus menutup aplikasi.
-            child: RefreshIndicator(
-              onRefresh: () async {
-                segarkanData(ref);
-                await ref.read(allClaimsProvider.future);
-              },
-              child: claims.when(
-                loading: () => const Center(
-                  child: SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+          Positioned.fill(
+            child: _tab == TabUtama.klaim
+                ? _tabKlaim(claims, ruangBawah)
+                : ServiskuView(ruangBawah: ruangBawah),
+          ),
+          Positioned(
+            left: AppSpacing.sm - 4,
+            right: AppSpacing.sm - 4,
+            bottom: DockUtama.jarak + MediaQuery.paddingOf(context).bottom,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              heightFactor: 1,
+              child: IgnorePointer(
+                ignoring: papanKetik,
+                child: AnimatedSlide(
+                  offset: papanKetik ? const Offset(0, 1.6) : Offset.zero,
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  child: AnimatedOpacity(
+                    opacity: papanKetik ? 0 : 1,
+                    duration: const Duration(milliseconds: 180),
+                    child: DockUtama(
+                      tab: _tab,
+                      jumlahServisku: jumlahServisku,
+                      onTab: (t) => setState(() => _tab = t),
+                      onKlaimBaru: () => _push(context, const ClaimFormPage()),
+                    ),
                   ),
                 ),
-                error: (e, _) => GagalMuat(e),
-                data: (list) => list.isEmpty
-                    ? ListView(
-                        // Tetap ListView walau kosong: RefreshIndicator hanya
-                        // bekerja di atas sesuatu yang bisa digulir, dan
-                        // justru saat daftarnya kosong orang paling ingin
-                        // mencoba menyegarkan.
-                        children: [
-                          SizedBox(
-                            height: MediaQuery.sizeOf(context).height * 0.6,
-                            child: EmptyState(
-                              icon: Icons.inbox_outlined,
-                              title: 'Belum ada klaim',
-                              description:
-                                  'Klaim yang kamu catat akan muncul di '
-                                  'sini, dan langsung terlihat di perangkat '
-                                  'lain.',
-                              action: OutlinedButton(
-                                onPressed: () =>
-                                    _push(context, const ClaimFormPage()),
-                                child: const Text('CATAT KLAIM PERTAMA'),
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    : _ClaimCards(list),
               ),
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _push(context, const ClaimFormPage()),
-        icon: const Icon(Icons.add, size: 20),
-        label: const Text('KLAIM BARU'),
-      ),
+    );
+  }
+
+  Widget _tabKlaim(AsyncValue<List<Claim>> claims, double ruangBawah) {
+    return Column(
+      children: [
+        const _FilterBar(),
+        Expanded(
+          // Tarik ke bawah untuk memasang ulang langganannya. Perubahan
+          // memang datang sendiri, tetapi saat itu tidak terjadi -- sinyal
+          // yang baru pulih, aplikasi yang lama tertidur -- orang butuh
+          // cara memaksanya tanpa harus menutup aplikasi.
+          child: RefreshIndicator(
+            onRefresh: () async {
+              segarkanData(ref);
+              await ref.read(allClaimsProvider.future);
+            },
+            child: claims.when(
+              loading: () => const Center(
+                child: SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+              error: (e, _) => GagalMuat(e),
+              data: (list) => list.isEmpty
+                  ? ListView(
+                      // Tetap ListView walau kosong: RefreshIndicator hanya
+                      // bekerja di atas sesuatu yang bisa digulir, dan
+                      // justru saat daftarnya kosong orang paling ingin
+                      // mencoba menyegarkan.
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.sizeOf(context).height * 0.6,
+                          child: EmptyState(
+                            icon: Icons.inbox_outlined,
+                            title: 'Belum ada klaim',
+                            description:
+                                'Klaim yang kamu catat akan muncul di '
+                                'sini, dan langsung terlihat di perangkat '
+                                'lain.',
+                            action: OutlinedButton(
+                              onPressed: () =>
+                                  _push(context, const ClaimFormPage()),
+                              child: const Text('CATAT KLAIM PERTAMA'),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : _ClaimCards(list, ruangBawah: ruangBawah),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -343,9 +395,12 @@ class _FilterDropdown<T> extends StatelessWidget {
 }
 
 class _ClaimCards extends ConsumerWidget {
-  const _ClaimCards(this.items);
+  const _ClaimCards(this.items, {required this.ruangBawah});
 
   final List<Claim> items;
+
+  /// Ruang di dasar daftar supaya baris terakhir tidak tertutup dock.
+  final double ruangBawah;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -361,11 +416,14 @@ class _ClaimCards extends ConsumerWidget {
     };
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(
+      // Kunci ini yang membuat letak gulirnya diingat waktu orang pindah
+      // ke Servisku dan kembali.
+      key: const PageStorageKey<String>('daftar-klaim'),
+      padding: EdgeInsets.fromLTRB(
         AppSpacing.sm,
         AppSpacing.s,
         AppSpacing.sm,
-        96,
+        ruangBawah + AppSpacing.s,
       ),
       itemCount: items.length,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.xs),

@@ -173,4 +173,105 @@ void main() {
     expect(find.byType(RefreshIndicator), findsOneWidget);
     expect(find.text('Belum ada nota'), findsOneWidget);
   });
+
+  group('kotak pencarian', () {
+    testWidgets('menyaring daftar menurut nama, tanpa menyentuh yang lain', (
+      tester,
+    ) async {
+      await _lukis(tester, [
+        _nota(noNota: 'SVR-001', nama: 'Jamal'),
+        _nota(noNota: 'SVR-002', nama: 'Soni'),
+      ]);
+
+      await tester.enterText(find.byType(TextField), 'soni');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Soni'), findsOneWidget);
+      expect(find.text('Jamal'), findsNothing);
+    });
+
+    testWidgets('cukup ekor nomor notanya', (tester) async {
+      await _lukis(tester, [
+        _nota(noNota: 'SVR-08092628272', nama: 'Jamal'),
+        _nota(noNota: 'SVR-08092628999', nama: 'Soni'),
+      ]);
+
+      await tester.enterText(find.byType(TextField), '28272');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Jamal'), findsOneWidget);
+      expect(find.text('Soni'), findsNothing);
+    });
+
+    testWidgets('angka di chip status ikut hasil pencarian', (tester) async {
+      await _lukis(tester, [
+        _nota(noNota: 'SVR-001', nama: 'Jamal'),
+        _nota(noNota: 'SVR-002', nama: 'Soni', status: 'masuk'),
+        _nota(noNota: 'SVR-003', nama: 'Soraya', status: 'masuk'),
+      ]);
+      expect(find.text('MASUK  2'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'sora');
+      await tester.pumpAndSettle();
+
+      expect(find.text('SEMUA'), findsOneWidget);
+      expect(find.text('MASUK  1'), findsOneWidget);
+      // Status yang tidak punya satu pun di hasil pencarian tidak ditawarkan.
+      expect(find.text('DIKERJAKAN  1'), findsNothing);
+    });
+
+    testWidgets('yang tak cocok menyebutnya, bukan mengaku belum ada nota', (
+      tester,
+    ) async {
+      await _lukis(tester, [_nota(noNota: 'SVR-001', nama: 'Jamal')]);
+
+      await tester.enterText(find.byType(TextField), 'tidak-ada-ini');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tidak ada nota yang cocok'), findsOneWidget);
+      expect(find.text('Belum ada nota'), findsNothing);
+    });
+
+    testWidgets(
+      'status terpilih tidak lenyap walau hasil cari tak memilikinya',
+      (tester) async {
+        await _lukis(tester, [
+          _nota(noNota: 'SVR-001', nama: 'Jamal'),
+          _nota(noNota: 'SVR-002', nama: 'Soni', status: 'masuk'),
+        ]);
+        await tester.tap(find.text('MASUK  1'));
+        await tester.pumpAndSettle();
+
+        // Mencari yang tak ada di status itu: chip-nya harus tetap ada supaya
+        // saringannya masih bisa dilepas.
+        await tester.enterText(find.byType(TextField), 'jamal');
+        await tester.pumpAndSettle();
+
+        expect(find.text('MASUK  0'), findsOneWidget);
+        expect(find.text('Tidak ada nota berstatus ini'), findsOneWidget);
+
+        await tester.tap(find.text('SEMUA'));
+        await tester.pumpAndSettle();
+        expect(find.text('Jamal'), findsOneWidget);
+      },
+    );
+
+    testWidgets('tombol hapus mengembalikan seluruh daftar', (tester) async {
+      await _lukis(tester, [
+        _nota(noNota: 'SVR-001', nama: 'Jamal'),
+        _nota(noNota: 'SVR-002', nama: 'Soni'),
+      ]);
+
+      await tester.enterText(find.byType(TextField), 'soni');
+      await tester.pumpAndSettle();
+      expect(find.text('Jamal'), findsNothing);
+
+      await tester.tap(find.byTooltip('Hapus kata pencarian'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Jamal'), findsOneWidget);
+      expect(find.text('Soni'), findsOneWidget);
+      expect(find.byTooltip('Hapus kata pencarian'), findsNothing);
+    });
+  });
 }

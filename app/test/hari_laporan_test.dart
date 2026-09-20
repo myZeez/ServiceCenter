@@ -153,19 +153,17 @@ void main() {
 
     test('hari kerja bukan libur', () {
       for (final h in [1, 2, 3, 4, 6, 7, 8]) {
-        expect(hariLibur(DateTime(2026, 9, h)), isFalse, reason: '$h September');
+        expect(
+          hariLibur(DateTime(2026, 9, h)),
+          isFalse,
+          reason: '$h September',
+        );
       }
     });
 
     test('harinya bisa diatur, dan bisa lebih dari satu', () {
-      expect(
-        hariLibur(DateTime(2026, 9, 6), const {DateTime.sunday}),
-        isTrue,
-      );
-      expect(
-        hariLibur(DateTime(2026, 9, 5), const {DateTime.sunday}),
-        isFalse,
-      );
+      expect(hariLibur(DateTime(2026, 9, 6), const {DateTime.sunday}), isTrue);
+      expect(hariLibur(DateTime(2026, 9, 5), const {DateTime.sunday}), isFalse);
       expect(
         hariLibur(DateTime(2026, 9, 5), const {
           DateTime.saturday,
@@ -179,6 +177,86 @@ void main() {
       for (var h = 1; h <= 30; h++) {
         expect(hariLibur(DateTime(2026, 9, h), const {}), isFalse);
       }
+    });
+  });
+
+  // Sabtu tidak punya lembar laporan. Nota yang dicap di sana tercatat
+  // tetapi tidak pernah terbaca oleh pusat -- kejadian sungguhan: dua nota
+  // garansi selesai Jumat sore dan tercap Sabtu 19 September.
+  group('Hari laporan melewati hari libur', () {
+    test('Jumat sesudah jam tutup masuk Minggu, bukan Sabtu', () {
+      // 18 September 2026 hari Jumat.
+      expect(hariLaporan(DateTime(2026, 9, 18, 18, 0)), DateTime(2026, 9, 20));
+      expect(hariLaporan(DateTime(2026, 9, 18, 17, 0)), DateTime(2026, 9, 20));
+    });
+
+    test('Jumat sebelum jam tutup tetap Jumat', () {
+      expect(hariLaporan(DateTime(2026, 9, 18, 16, 59)), DateTime(2026, 9, 18));
+    });
+
+    test('yang diselesaikan di hari libur itu sendiri masuk Minggu', () {
+      expect(hariLaporan(DateTime(2026, 9, 19, 9, 0)), DateTime(2026, 9, 20));
+      expect(hariLaporan(DateTime(2026, 9, 19, 18, 0)), DateTime(2026, 9, 20));
+    });
+
+    test('Minggu sesudah jam tutup masuk Senin', () {
+      expect(hariLaporan(DateTime(2026, 9, 20, 18, 0)), DateTime(2026, 9, 21));
+    });
+
+    test('libur dua hari berturut-turut dilewati semuanya', () {
+      const akhirPekan = {DateTime.saturday, DateTime.sunday};
+      expect(
+        hariLaporan(DateTime(2026, 9, 18, 18, 0), jamTutupBawaan, akhirPekan),
+        DateTime(2026, 9, 21),
+      );
+    });
+
+    test('tanpa hari libur, Sabtu tetap Sabtu', () {
+      expect(
+        hariLaporan(DateTime(2026, 9, 18, 18, 0), jamTutupBawaan, const {}),
+        DateTime(2026, 9, 19),
+      );
+    });
+
+    test('tutup tengah malam tetap melewati hari libur', () {
+      // Tanpa pergeseran jam, Sabtu pagi tetap tidak boleh jadi tujuan.
+      expect(
+        hariLaporan(DateTime(2026, 9, 19, 9, 0), 24),
+        DateTime(2026, 9, 20),
+      );
+      expect(
+        hariLaporan(DateTime(2026, 9, 18, 23, 30), 24),
+        DateTime(2026, 9, 18),
+      );
+    });
+
+    test(
+      'pengaturan yang meliburkan semua hari tidak membuatnya menggantung',
+      () {
+        expect(
+          hariLaporan(DateTime(2026, 9, 18, 10, 0), jamTutupBawaan, const {
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+          }),
+          isA<DateTime>(),
+        );
+      },
+    );
+
+    test('hariLaporanSama ikut melewati hari libur', () {
+      expect(
+        hariLaporanSama(DateTime(2026, 9, 18, 18, 0), DateTime(2026, 9, 20)),
+        isTrue,
+      );
+      expect(
+        hariLaporanSama(DateTime(2026, 9, 18, 18, 0), DateTime(2026, 9, 19)),
+        isFalse,
+      );
     });
   });
 }

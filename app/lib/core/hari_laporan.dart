@@ -17,11 +17,27 @@ const jamTutupBawaan = 17;
 ///
 /// Batasnya menyertakan jam tutupnya sendiri: tepat 17.00 laporannya sudah
 /// ditutup, jadi nota jam 17.00 sudah masuk besok.
-DateTime hariLaporan(DateTime saat, [int jamTutup = jamTutupBawaan]) {
-  final hari = DateTime(saat.year, saat.month, saat.day);
-  // 24 berarti tidak ada pergeseran sama sekali -- hari kalender biasa.
-  if (jamTutup >= 24 || saat.hour < jamTutup) return hari;
-  return DateTime(saat.year, saat.month, saat.day + 1);
+///
+/// Hari libur tidak punya laporan, jadi bukan tujuan: yang jatuh di sana
+/// bergeser ke hari kerja berikutnya. Nota yang selesai Jumat jam 18.00
+/// masuk laporan Minggu, bukan Sabtu -- Sabtu tidak punya lembar, dan nota
+/// yang dicap di sana tidak akan pernah terbaca oleh pusat.
+DateTime hariLaporan(
+  DateTime saat, [
+  int jamTutup = jamTutupBawaan,
+  Set<int> libur = hariLiburBawaan,
+]) {
+  var hari = DateTime(saat.year, saat.month, saat.day);
+  // 24 berarti tidak ada pergeseran jam sama sekali -- hari kalender biasa.
+  if (jamTutup < 24 && saat.hour >= jamTutup) {
+    hari = DateTime(hari.year, hari.month, hari.day + 1);
+  }
+  // Tujuh hari hanya penjaga: pengaturan yang meliburkan semuanya tidak
+  // boleh membuat perhitungan ini tidak pernah berhenti.
+  for (var i = 0; i < 7 && hariLibur(hari, libur); i++) {
+    hari = DateTime(hari.year, hari.month, hari.day + 1);
+  }
+  return hari;
 }
 
 /// Hari toko tutup bila pengaturannya belum terbaca: Sabtu.
@@ -46,7 +62,8 @@ bool hariLaporanSama(
   DateTime saat,
   DateTime hari, [
   int jamTutup = jamTutupBawaan,
+  Set<int> libur = hariLiburBawaan,
 ]) {
-  final h = hariLaporan(saat, jamTutup);
+  final h = hariLaporan(saat, jamTutup, libur);
   return h.year == hari.year && h.month == hari.month && h.day == hari.day;
 }

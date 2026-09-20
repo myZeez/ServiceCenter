@@ -80,7 +80,8 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
     final jam = _pilihan ?? tersimpan;
 
     final sekarang = DateTime.now();
-    final hariKeluar = hariLaporan(sekarang, jam);
+    final libur = ref.watch(hariLiburProvider);
+    final hariKeluar = hariLaporan(sekarang, jam, libur);
     final bergeser = hariKeluar.day != sekarang.day;
 
     return BentoCard(
@@ -144,7 +145,7 @@ class _HariKerjaCardState extends ConsumerState<HariKerjaCard> {
                     '${_tglPanjang.format(sekarang)}.\n'
                     'Unit yang selesai sekarang: laporan '
                     '${_tglPanjang.format(hariKeluar)}'
-                    '${bergeser ? ' — laporan keluar hari ini sudah ditutup.' : '.'}',
+                    '${bergeser ? (hariLibur(sekarang, libur) ? ' — hari ini libur.' : ' — laporan keluar hari ini sudah ditutup.') : '.'}',
                     style: TextStyle(
                       fontSize: 11,
                       height: 1.4,
@@ -277,7 +278,8 @@ class _HariLiburState extends ConsumerState<_HariLibur> {
           hint:
               'Laporan harian menandainya libur, dan ekspor Excel bulanan '
               'tidak menerbitkan tabnya sama sekali — sama seperti berkas '
-              'SVS yang dikirim ke pusat.',
+              'SVS yang dikirim ke pusat. Nota yang selesai atau dilunasi di hari '
+              'libur dicatat ke hari kerja berikutnya.',
           child: Wrap(
             spacing: AppSpacing.xs,
             runSpacing: AppSpacing.xs,

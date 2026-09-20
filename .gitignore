@@ -5,7 +5,7 @@ installer/output/
 # Workbook sumber lengkap untuk migrasi 2026 (Penerimaan, Pelunasan,
 # Kirim, Tanya Harga/Pemesanan Part, klaim garansi per brand, dan laporan
 # harian per bulan). Isinya nama, telepon, dan SN puluhan ribu pelanggan;
-# dipakai untuk menyusun supabase/scripts/migrasi_2026_{1,2,3}.sql lewat
+# dipakai untuk menyusun migrasi_2026_{1,2,3}.sql generasi pertama (sudah dihapus) lewat
 # supabase/scripts/gen/. Simpan selama migrasi belum final.
 DATASET/
 

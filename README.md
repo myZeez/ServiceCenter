@@ -137,13 +137,18 @@ Salah nama kolom tidak ketahuan saat `flutter analyze`. Penjaganya ada di
 
 ## Impor data lama
 
-Arsip 2026 (1 Januari – 6 September) dibangun ulang dari `DATASET/*.xlsx`
-menjadi tiga berkas di `supabase/scripts/`: `migrasi_2026_1.sql` (klaim +
-kirim + part), `migrasi_2026_2.sql` (nota Jan–Apr), `migrasi_2026_3.sql`
-(nota Mei–Sep) — dipecah supaya ringan di SQL Editor. Kosongkan dulu dengan
-`kosongkan_semua.sql`. Generatornya (baca tiap workbook, normalkan,
-cocokkan nota↔klaim) ada di `supabase/scripts/gen/` — `npm run build`.
+Arsip 2026 (Januari – September) dibangun dari `DATASET BARU/*.xlsx` menjadi
+empat berkas di `supabase/scripts/`, dijalankan berurutan: `impor_2026_1.sql`
+(klaim + kirim), `impor_2026_2.sql` (nota Jan–Apr), `impor_2026_3.sql` (nota
+Mei–Sep), lalu `taut_2026.sql` (menyambung nota ke klaim garansinya).
+Bagian 1 berhenti sendiri kalau tabelnya belum kosong. Generatornya ada di
+`supabase/scripts/gen/` — `node baru_sql.js` dan `node baru_taut.js`.
 Riwayat sebelum 2026 belum ikut.
+
+Tiga berkas `migrasi_2026_{1,2,3}.sql` dari generasi pertama sudah dihapus
+(20 September 2026): isinya tidak lagi sama dengan data sekarang, dan
+menjalankannya bisa memasukkan kembali baris yang sengaja dibuang. Masih ada
+di riwayat git, misalnya `git show 2ea54f4:supabase/scripts/migrasi_2026_1.sql`.
 
 ## Belum dikerjakan
 

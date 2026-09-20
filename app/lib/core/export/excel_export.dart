@@ -568,16 +568,26 @@ class ExcelExport {
   /// "Cancel" tinggal di sini, bukan di kolom STATUS -- status hanya
   /// menjawab ditanggung siapa dan sudah diambil atau belum.
   ///
-  /// Pembatalan selalu menyebut biayanya: "Servis Cancel (Tanpa Biaya)"
-  /// atau "Servis Cancel (Berbiaya)", lalu alasan atau pekerjaan yang batal
-  /// dikerjakan. Kolom uang yang kosong tidak menjawab apa-apa -- kosong
-  /// bisa berarti gratis, bisa berarti belum ditentukan -- jadi jawabannya
-  /// ditulis.
+  /// Pembatalan selalu menyebut biayanya di ujung, dalam kurung:
+  /// "Servis Cancel Battery Problem (Tanpa Biaya)" atau "(Berbiaya)". Kolom
+  /// uang yang kosong tidak menjawab apa-apa -- kosong bisa berarti gratis,
+  /// bisa berarti belum ditentukan -- jadi jawabannya ditulis.
+  ///
+  /// Nota arsip dari buku toko sudah menulis "Service Cancel Fan Problem" di
+  /// perbaikannya. Yang begitu dipakai apa adanya, dan hanya biayanya yang
+  /// ditambahkan -- awalan "Servis Cancel" di depannya menggandakan kata itu.
   static String keteranganPenerimaan(ServiceOrderEntry n) {
     final isi = (n.perbaikan ?? '').trim();
     if (n.status != 'batal') return isi;
-    final awal = 'Servis Cancel (${_biayaBatal(n)})';
-    return isi.isEmpty ? awal : '$awal $isi';
+
+    final sudahMenyebut = RegExp(
+      r'cancel|batal',
+      caseSensitive: false,
+    ).hasMatch(isi);
+    final teks = sudahMenyebut
+        ? isi
+        : (isi.isEmpty ? 'Servis Cancel' : 'Servis Cancel $isi');
+    return '$teks (${_biayaBatal(n)})';
   }
 
   /// "Berbiaya" atau "Tanpa Biaya" untuk nota batal.

@@ -512,7 +512,7 @@ void main() {
         ExcelExport.keteranganPenerimaan(
           n(status: 'batal', perbaikan: 'Battery Problem', biaya: 0),
         ),
-        'Servis Cancel (Tanpa Biaya) Battery Problem',
+        'Servis Cancel Battery Problem (Tanpa Biaya)',
       );
       // Tanpa perbaikan, kata pembatalannya berdiri sendiri.
       expect(
@@ -521,13 +521,32 @@ void main() {
         ),
         'Servis Cancel (Tanpa Biaya)',
       );
+      // Nota arsip dari buku toko sudah menulis kata pembatalannya sendiri;
+      // ditulis dua kali terbaca "Servis Cancel (…) Service Cancel Fan
+      // Problem".
+      expect(
+        ExcelExport.keteranganPenerimaan(
+          n(status: 'batal', perbaikan: 'Service Cancel Fan Problem', biaya: 0),
+        ),
+        'Service Cancel Fan Problem (Tanpa Biaya)',
+      );
+      expect(
+        ExcelExport.keteranganPenerimaan(
+          n(
+            status: 'batal',
+            perbaikan: 'Service cancel print head',
+            biaya: 75000,
+          ),
+        ),
+        'Service cancel print head (Berbiaya)',
+      );
       // Pembatalan berbiaya menyebutnya, dan uangnya ada di kolom CASH atau
       // PIUTANG.
       expect(
         ExcelExport.keteranganPenerimaan(
           n(status: 'batal', perbaikan: 'Cek Battery', biaya: 75000),
         ),
-        'Servis Cancel (Berbiaya) Cek Battery',
+        'Servis Cancel Cek Battery (Berbiaya)',
       );
       // Nota biasa: keterangannya tetap perbaikan apa adanya.
       expect(ExcelExport.keteranganPenerimaan(n()), 'Biaya Pasang Keyboard');
@@ -545,7 +564,7 @@ void main() {
 
       expect(
         (t.baris.single[iKet] as TextCellValue).value.text,
-        'Servis Cancel (Tanpa Biaya) Windows Problem',
+        'Servis Cancel Windows Problem (Tanpa Biaya)',
       );
       expect(
         (t.baris.single[iSts] as TextCellValue).value.text,

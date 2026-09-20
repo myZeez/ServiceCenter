@@ -6,6 +6,7 @@ import '../../core/export/excel_export.dart';
 import '../../core/data/models.dart';
 import '../../core/nota/nomor_nota.dart';
 import '../../core/omset/omset_providers.dart';
+import '../../core/hari_laporan.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
@@ -23,6 +24,7 @@ final _rp = NumberFormat.currency(
 final _tgl = DateFormat('dd/MM/yyyy');
 final _tglPanjang = DateFormat('EEEE, d MMMM yyyy', 'id');
 final _namaBulan = DateFormat('MMMM yyyy', 'id');
+final _namaHari = DateFormat('EEEE', 'id');
 
 /// Laporan servis dihitung per bulan, mengikuti cara laporan ini dibaca:
 /// tutup buku bulanan, bukan kuartalan seperti bagi hasil garansi.
@@ -165,6 +167,12 @@ class _Harian extends ConsumerWidget {
 
     final total = keluar.fold<double>(0, (a, n) => a + n.biaya);
 
+    // Hari toko tutup, dari Pengaturan. Bawaannya Sabtu -- begitulah
+    // berkas SVS toko: lembar Sabtu memang tidak ada di sana.
+    final libur = ref.watch(hariLiburProvider);
+    final tutup = hariLibur(tanggal, libur);
+    final sepi = keluar.isEmpty && masuk.isEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -204,58 +212,108 @@ class _Harian extends ConsumerWidget {
             _TombolExport(
               label: 'EXCEL ${_namaBulan.format(tanggal).toUpperCase()}',
               aktif: semua.isNotEmpty,
-              onExport: () =>
-                  ExcelExport.harianBulanan(semua: semua, bulan: tanggal),
+              onExport: () => ExcelExport.harianBulanan(
+                semua: semua,
+                bulan: tanggal,
+                libur: libur,
+              ),
             ),
           ],
         ),
         const SizedBox(height: AppSpacing.s),
 
-        // Dua tabel ini dulu bertumpuk, masing-masing separuh tinggi
-        // layar. Keduanya lalu terpotong: hari yang ramai punya dua puluh
-        // baris lebih di tiap tabel, dan yang terlihat cuma lima. Dua
-        // daftar yang sama-sama harus digulir di dalam kotaknya sendiri
-        // adalah bentuk yang paling melelahkan untuk dibaca.
-        //
-        // Dijadikan tab, tiap tabel mendapat seluruh tinggi yang ada.
-        // Urutannya tetap keluar dulu, seperti lembar laporannya sendiri
-        // dan seperti berkas Excel yang dikirim ke pusat.
-        Expanded(
-          child: DefaultTabController(
-            length: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+        // Hari toko tutup: dua tabel kosong di sini terbaca seperti
+        // laporan yang belum diisi, padahal memang tidak ada yang masuk.
+        // Kalau ternyata ada notanya, tabelnya tetap ditampilkan -- yang
+        // tercatat lebih benar daripada yang diatur.
+        if (tutup) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.s,
+            ),
+            decoration: BoxDecoration(
+              color: context.warna.permukaan,
+              borderRadius: BorderRadius.circular(AppRadius.base),
+              border: Border.all(color: context.warna.garisHalus),
+            ),
+            child: Row(
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: context.warna.permukaan,
-                    borderRadius: BorderRadius.circular(AppRadius.base),
-                    border: Border.all(color: context.warna.garisHalus),
-                  ),
-                  child: TabBar(
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    tabs: [
-                      // Jumlahnya ikut di judul tabnya: yang sedang tidak
-                      // terbuka pun tetap bisa dilihat isinya berapa.
-                      Tab(text: 'NOTA KELUAR  (${keluar.length})'),
-                      Tab(text: 'NOTA MASUK  (${masuk.length})'),
-                    ],
+                Icon(
+                  Icons.event_busy_outlined,
+                  size: 17,
+                  color: context.warna.teksLembut,
+                ),
+                const SizedBox(width: AppSpacing.s),
+                Expanded(
+                  child: Text(
+                    sepi
+                        ? 'Libur. Toko tutup setiap ${_namaHari.format(tanggal)}, '
+                              'jadi tanggal ini tidak punya laporan.'
+                        : 'Tanggal ini ditandai libur, tetapi ada nota yang '
+                              'tercatat di bawah.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: context.warna.teksLembut,
+                    ),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.s),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _KartuHarianKeluar(keluar: keluar, total: total),
-                      _KartuHarianMasuk(masuk: masuk),
-                    ],
-                  ),
+                Text(
+                  'DIATUR DI PENGATURAN → HARI KERJA',
+                  style: Theme.of(context).textTheme.labelSmall,
                 ),
               ],
             ),
           ),
-        ),
+          const SizedBox(height: AppSpacing.s),
+        ],
+        if (!(tutup && sepi)) ...[
+          // Dua tabel ini dulu bertumpuk, masing-masing separuh tinggi
+          // layar. Keduanya lalu terpotong: hari yang ramai punya dua puluh
+          // baris lebih di tiap tabel, dan yang terlihat cuma lima. Dua
+          // daftar yang sama-sama harus digulir di dalam kotaknya sendiri
+          // adalah bentuk yang paling melelahkan untuk dibaca.
+          //
+          // Dijadikan tab, tiap tabel mendapat seluruh tinggi yang ada.
+          // Urutannya tetap keluar dulu, seperti lembar laporannya sendiri
+          // dan seperti berkas Excel yang dikirim ke pusat.
+          Expanded(
+            child: DefaultTabController(
+              length: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: context.warna.permukaan,
+                      borderRadius: BorderRadius.circular(AppRadius.base),
+                      border: Border.all(color: context.warna.garisHalus),
+                    ),
+                    child: TabBar(
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      tabs: [
+                        // Jumlahnya ikut di judul tabnya: yang sedang tidak
+                        // terbuka pun tetap bisa dilihat isinya berapa.
+                        Tab(text: 'NOTA KELUAR  (${keluar.length})'),
+                        Tab(text: 'NOTA MASUK  (${masuk.length})'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.s),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _KartuHarianKeluar(keluar: keluar, total: total),
+                        _KartuHarianMasuk(masuk: masuk),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

@@ -5,6 +5,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:intl/intl.dart';
 
 import '../data/models.dart';
+import '../hari_laporan.dart';
 import '../nota/nomor_nota.dart';
 
 final _tgl = DateFormat('dd/MM/yyyy');
@@ -642,24 +643,33 @@ class ExcelExport {
   static Future<String?> harianBulanan({
     required List<ServiceOrderEntry> semua,
     required DateTime bulan,
+    Set<int> libur = hariLiburBawaan,
   }) => simpanBanyak(
     namaBerkas: 'SVS ${_aman(_bulanTahun.format(bulan)).toUpperCase()}.xlsx',
-    lembar: lembarHarianBulanan(semua: semua, bulan: bulan),
+    lembar: lembarHarianBulanan(semua: semua, bulan: bulan, libur: libur),
   );
 
+  /// Satu tab per tanggal, kecuali hari toko tutup.
+  ///
+  /// Hari libur tidak diterbitkan sama sekali, bukan diterbitkan kosong.
+  /// Begitulah bentuk berkas SVS yang dipakai toko: lembar Sabtu memang
+  /// tidak ada di sana, dan tab kosong di tengah bulan terbaca seperti
+  /// laporan yang belum diisi.
   static List<LembarExcel> lembarHarianBulanan({
     required List<ServiceOrderEntry> semua,
     required DateTime bulan,
+    Set<int> libur = hariLiburBawaan,
   }) {
     final jumlahHari = DateTime(bulan.year, bulan.month + 1, 0).day;
 
     return [
       for (var h = 1; h <= jumlahHari; h++)
-        lembarHarian(
-          semua: semua,
-          tanggal: DateTime(bulan.year, bulan.month, h),
-          namaLembar: '$h',
-        ),
+        if (!hariLibur(DateTime(bulan.year, bulan.month, h), libur))
+          lembarHarian(
+            semua: semua,
+            tanggal: DateTime(bulan.year, bulan.month, h),
+            namaLembar: '$h',
+          ),
     ];
   }
 

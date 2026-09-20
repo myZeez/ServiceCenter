@@ -81,6 +81,30 @@ Future<void> _bukaTabMasuk(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// Melukis tab Harian pada sebuah tanggal tertentu.
+Future<void> _lukisTanggal(
+  WidgetTester tester,
+  DateTime tanggal,
+  List<ServiceOrderEntry> data,
+) async {
+  await tester.binding.setSurfaceSize(const Size(1366, 768));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        serviceOrdersProvider.overrideWith((ref) => Stream.value(data)),
+        tanggalHarianProvider.overrideWith((ref) => tanggal),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.terang(),
+        home: const Scaffold(body: ServiceReportsView()),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUpAll(() => initializeDateFormatting('id', null));
 
@@ -200,6 +224,55 @@ void main() {
     test('nota reguler tanpa catatan menghasilkan kolom kosong', () {
       final n = _nota(noNota: 'SRV-0004', masuk: hari);
       expect(ExcelExport.keteranganHarian(n), '');
+    });
+  });
+
+  // Toko tutup setiap Sabtu; berkas SVS yang dikirim ke pusat memang
+  // tidak punya lembar Sabtu. Dua tabel kosong di layar terbaca seperti
+  // laporan yang belum diisi, bukan seperti hari libur.
+  group('Hari libur', () {
+    testWidgets('Sabtu ditandai libur, tabelnya tidak ditampilkan', (
+      tester,
+    ) async {
+      // 12 September 2026 jatuh hari Sabtu.
+      await _lukisTanggal(tester, DateTime(2026, 9, 12), []);
+
+      expect(tester.takeException(), isNull);
+      expect(
+        find.textContaining('Libur. Toko tutup setiap Sabtu'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('NOTA KELUAR'), findsNothing);
+      expect(find.textContaining('NOTA MASUK'), findsNothing);
+    });
+
+    testWidgets('hari kerja tidak ditandai libur', (tester) async {
+      await _lukisTanggal(tester, DateTime(2026, 9, 11), []);
+
+      expect(find.textContaining('Libur. Toko tutup'), findsNothing);
+      expect(find.text('NOTA KELUAR  (0)'), findsOneWidget);
+    });
+
+    testWidgets('libur yang ternyata ada notanya tetap menampilkannya', (
+      tester,
+    ) async {
+      // Yang tercatat lebih benar daripada yang diatur.
+      final sabtu = DateTime(2026, 9, 12, 9, 0);
+      await _lukisTanggal(tester, DateTime(2026, 9, 12), [
+        _nota(
+          noNota: 'SRV-0009',
+          nama: 'Lembur',
+          masuk: sabtu,
+          status: 'masuk',
+        ),
+      ]);
+
+      expect(tester.takeException(), isNull);
+      expect(
+        find.textContaining('ditandai libur, tetapi ada nota'),
+        findsOneWidget,
+      );
+      expect(find.text('NOTA MASUK  (1)'), findsOneWidget);
     });
   });
 }

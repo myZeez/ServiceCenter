@@ -24,6 +24,20 @@ DateTime hariLaporan(DateTime saat, [int jamTutup = jamTutupBawaan]) {
   return DateTime(saat.year, saat.month, saat.day + 1);
 }
 
+/// Hari toko tutup bila pengaturannya belum terbaca: Sabtu.
+///
+/// Sama dengan bawaan kolom store_settings.hari_libur. Dua tempat, satu
+/// daftar -- kalau berbeda, yang terlihat adalah tab Sabtu yang muncul di
+/// ekspor sebagian orang dan tidak di ekspor yang lain.
+const hariLiburBawaan = <int>{DateTime.saturday};
+
+/// Apakah [hari] jatuh pada hari toko tutup.
+///
+/// [libur] memuat nomor hari ISO, sama seperti DateTime.weekday: 1 Senin
+/// sampai 7 Minggu.
+bool hariLibur(DateTime hari, [Set<int> libur = hariLiburBawaan]) =>
+    libur.contains(hari.weekday);
+
 /// Apakah [saat] jatuh pada hari kerja [hari].
 ///
 /// [hari] dibandingkan sebagai tanggal apa adanya: ia sudah merupakan hari

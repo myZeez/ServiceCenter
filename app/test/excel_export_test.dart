@@ -278,6 +278,7 @@ void main() {
       final lembar = ExcelExport.lembarHarianBulanan(
         semua: [],
         bulan: DateTime(2026, 2),
+        libur: const {},
       );
 
       expect(lembar.length, 28, reason: 'Februari 2026 bukan tahun kabisat');
@@ -289,8 +290,41 @@ void main() {
       final lembar = ExcelExport.lembarHarianBulanan(
         semua: [],
         bulan: DateTime(2026, 8),
+        libur: const {},
       );
       expect(lembar.length, 31);
+    });
+
+    // Berkas SVS yang dipakai toko memang tidak punya lembar Sabtu: toko
+    // tutup. Tab kosong di tengah bulan terbaca seperti laporan yang
+    // belum diisi.
+    test('hari libur tidak diterbitkan tabnya', () {
+      final lembar = ExcelExport.lembarHarianBulanan(
+        semua: [],
+        bulan: DateTime(2026, 9),
+      );
+
+      // September 2026 punya 30 hari dan empat Sabtu: 5, 12, 19, 26.
+      expect(lembar.map((l) => l.nama), isNot(contains('5')));
+      expect(lembar.map((l) => l.nama), isNot(contains('12')));
+      expect(lembar.map((l) => l.nama), isNot(contains('19')));
+      expect(lembar.map((l) => l.nama), isNot(contains('26')));
+      expect(lembar.length, 26);
+      expect(lembar.first.nama, '1');
+      expect(lembar.last.nama, '30');
+    });
+
+    test('hari liburnya bisa hari lain', () {
+      final lembar = ExcelExport.lembarHarianBulanan(
+        semua: [],
+        bulan: DateTime(2026, 9),
+        libur: const {DateTime.sunday},
+      );
+
+      // Minggu di September 2026: 6, 13, 20, 27.
+      expect(lembar.map((l) => l.nama), contains('5'));
+      expect(lembar.map((l) => l.nama), isNot(contains('6')));
+      expect(lembar.length, 26);
     });
 
     test('nota masuk dan nota keluar dipisah jadi dua tabel', () {
@@ -367,12 +401,20 @@ void main() {
           ),
         ],
         bulan: DateTime(2026, 9),
+        // Tanggal 5 jatuh hari Sabtu; di sini yang diuji pergeseran
+        // jamnya, bukan hari liburnya.
+        libur: const {},
       );
 
-      expect(lembar[3].tabel[1].baris.length, 1, reason: 'masuk tanggal 4');
-      expect(lembar[3].tabel[0].baris.length, 0, reason: 'keluar tanggal 4');
-      expect(lembar[4].tabel[0].baris.length, 1, reason: 'keluar tanggal 5');
-      expect(lembar[4].tabel[1].baris.length, 0, reason: 'masuk tanggal 5');
+      // Dicari menurut nama tabnya, bukan urutannya: hari libur membuat
+      // nomor tab dan urutan daftar tidak lagi sama.
+      LembarExcel tab(String nama) =>
+          lembar.firstWhere((l) => l.nama == nama);
+
+      expect(tab('4').tabel[1].baris.length, 1, reason: 'masuk tanggal 4');
+      expect(tab('4').tabel[0].baris.length, 0, reason: 'keluar tanggal 4');
+      expect(tab('5').tabel[0].baris.length, 1, reason: 'keluar tanggal 5');
+      expect(tab('5').tabel[1].baris.length, 0, reason: 'masuk tanggal 5');
     });
   });
 

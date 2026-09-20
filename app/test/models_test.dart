@@ -335,4 +335,39 @@ void main() {
       expect(s.upTokoPilihan, isEmpty);
     });
   });
+
+  // Hari libur datang dari Postgres sebagai array. Bentuk kiriman bisa
+  // dua rupa -- larik JSON atau literal '{6}' -- dan yang tidak terbaca
+  // tidak menghasilkan galat, melainkan toko yang dianggap buka tiap hari.
+  group('StoreSetting', () {
+    StoreSetting baca(Object? hariLibur) => StoreSetting.fromMap({
+      'id': 1,
+      'nama': 'Cellcom',
+      'tutup_jam': 17,
+      'hari_libur': hariLibur,
+    });
+
+    test('membaca larik angka', () {
+      expect(baca([6]).hariLibur, {DateTime.saturday});
+      expect(baca([6, 7]).hariLibur, {DateTime.saturday, DateTime.sunday});
+    });
+
+    test('membaca literal array Postgres', () {
+      expect(baca('{6}').hariLibur, {DateTime.saturday});
+      expect(baca('{6,7}').hariLibur, {DateTime.saturday, DateTime.sunday});
+    });
+
+    test('daftar kosong berarti buka tiap hari', () {
+      expect(baca(<Object?>[]).hariLibur, isEmpty);
+      expect(baca('{}').hariLibur, isEmpty);
+    });
+
+    // Aplikasi yang lebih baru dari databasenya tidak boleh gagal membaca:
+    // ia memakai bawaan yang sama dengan bawaan servernya.
+    test('kolomnya belum ada: Sabtu, sama dengan bawaan server', () {
+      final s = StoreSetting.fromMap({'id': 1, 'nama': 'Cellcom'});
+      expect(s.hariLibur, {DateTime.saturday});
+      expect(s.tutupJam, 17);
+    });
+  });
 }

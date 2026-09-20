@@ -474,6 +474,19 @@ final jamTutupProvider = Provider<int>(
       ref.watch(storeSettingsProvider).valueOrNull?.tutupJam ?? jamTutupBawaan,
 );
 
+/// Hari toko tutup, dari pengaturan toko. Nomor hari ISO: 1 Senin sampai
+/// 7 Minggu.
+///
+/// Laporan harian menandai hari ini libur alih-alih menampilkan dua tabel
+/// kosong yang terbaca seperti laporan yang belum diisi, dan ekspor
+/// bulanan tidak menerbitkan tabnya sama sekali -- persis seperti berkas
+/// SVS yang dipakai toko, yang memang tidak punya lembar Sabtu.
+final hariLiburProvider = Provider<Set<int>>(
+  (ref) =>
+      ref.watch(storeSettingsProvider).valueOrNull?.hariLibur ??
+      hariLiburBawaan,
+);
+
 // ---------------------------------------------------------------------
 // Pengaturan yang melekat pada perangkat
 // ---------------------------------------------------------------------

@@ -138,4 +138,47 @@ void main() {
       );
     });
   });
+
+  // Toko tutup setiap Sabtu. Di berkas SVS yang dikirim ke pusat itu
+  // terlihat sebagai lembar yang memang tidak ada.
+  group('Hari libur', () {
+    test('bawaannya Sabtu', () {
+      expect(hariLiburBawaan, {DateTime.saturday});
+      // 5, 12, 19, dan 26 September 2026 jatuh hari Sabtu.
+      expect(hariLibur(DateTime(2026, 9, 5)), isTrue);
+      expect(hariLibur(DateTime(2026, 9, 12)), isTrue);
+      expect(hariLibur(DateTime(2026, 9, 19)), isTrue);
+      expect(hariLibur(DateTime(2026, 9, 26)), isTrue);
+    });
+
+    test('hari kerja bukan libur', () {
+      for (final h in [1, 2, 3, 4, 6, 7, 8]) {
+        expect(hariLibur(DateTime(2026, 9, h)), isFalse, reason: '$h September');
+      }
+    });
+
+    test('harinya bisa diatur, dan bisa lebih dari satu', () {
+      expect(
+        hariLibur(DateTime(2026, 9, 6), const {DateTime.sunday}),
+        isTrue,
+      );
+      expect(
+        hariLibur(DateTime(2026, 9, 5), const {DateTime.sunday}),
+        isFalse,
+      );
+      expect(
+        hariLibur(DateTime(2026, 9, 5), const {
+          DateTime.saturday,
+          DateTime.sunday,
+        }),
+        isTrue,
+      );
+    });
+
+    test('tanpa hari libur, tidak ada yang libur', () {
+      for (var h = 1; h <= 30; h++) {
+        expect(hariLibur(DateTime(2026, 9, h), const {}), isFalse);
+      }
+    });
+  });
 }

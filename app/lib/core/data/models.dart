@@ -536,6 +536,7 @@ class StoreSetting {
     this.telepon,
     this.ketentuan,
     this.tutupJam = 17,
+    this.hariLibur = const {DateTime.saturday},
   });
 
   final int id;
@@ -548,6 +549,11 @@ class StoreSetting {
   /// dihitung sebagai hari berikutnya; 24 berarti hari kalender biasa.
   final int tutupJam;
 
+  /// Hari toko tutup, nomor ISO seperti DateTime.weekday: 1 Senin sampai
+  /// 7 Minggu. Laporan harian menandainya libur, dan ekspor bulanan tidak
+  /// menerbitkan tabnya.
+  final Set<int> hariLibur;
+
   factory StoreSetting.fromMap(Map<String, dynamic> r) => StoreSetting(
     id: r['id'] as int,
     nama: r['nama'] as String,
@@ -558,6 +564,9 @@ class StoreSetting {
     // lebih baru dari databasenya tidak boleh gagal membaca, ia cukup
     // memakai jam yang sama dengan bawaan servernya.
     tutupJam: (r['tutup_jam'] as num?)?.toInt() ?? 17,
+    hariLibur: r.containsKey('hari_libur')
+        ? {for (final n in _daftarAngka(r['hari_libur'])) n.toInt()}
+        : const {DateTime.saturday},
   );
 }
 

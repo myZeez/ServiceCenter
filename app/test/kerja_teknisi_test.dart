@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:sc_management/core/data/db.dart';
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/providers.dart';
 import 'package:sc_management/features/service/kerja_teknisi_view.dart';
@@ -47,6 +48,21 @@ Claim _klaim(String id, {String status = 'open', String jenis = 'brand'}) =>
       createdAt: DateTime(2026, 9, 4),
       updatedAt: DateTime(2026, 9, 4),
     );
+
+/// Db yang hanya mencatat perubahan nota. Selebihnya tidak dipakai halaman
+/// ini, jadi pemanggilan lain dibiarkan gagal keras.
+class _DbPalsu implements Db {
+  /// Satu baris per perubahan: "id -> teknisi_id baru".
+  final diubah = <String>[];
+
+  @override
+  Future<void> ubahNota(String id, Map<String, dynamic> perubahan) async {
+    diubah.add('$id -> ${perubahan['teknisi_id']}');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
   group('hitungPerTeknisi', () {
@@ -125,13 +141,18 @@ void main() {
   });
 
   group('halaman', () {
-    Future<void> lukis(WidgetTester tester, List<ServiceOrderEntry> nota) async {
+    Future<void> lukis(
+      WidgetTester tester,
+      List<ServiceOrderEntry> nota, {
+      Db? db,
+    }) async {
       await tester.binding.setSurfaceSize(const Size(1400, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            if (db != null) databaseProvider.overrideWithValue(db),
             serviceOrdersProvider.overrideWith((ref) => Stream.value(nota)),
             allProfilesProvider.overrideWith(
               (ref) => Stream.value([
@@ -177,6 +198,69 @@ void main() {
       expect(find.text('Rara'), findsOneWidget);
       expect(find.text('Soni'), findsNothing);
     });
+
+    Future<void> pilihTeknisi(
+      WidgetTester tester,
+      int baris,
+      String nama,
+    ) async {
+      await tester.tap(find.text('PILIH TEKNISI').at(baris));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(nama).last);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('pemberitahuan URUNGKAN hilang sendiri, tidak menempel', (
+      tester,
+    ) async {
+      // Flutter membuat SnackBar yang punya tombol aksi bertahan sampai
+      // ditekan, dan mengabaikan durasinya. Di toko, pemberitahuan
+      // "nota -> teknisi" menempel selamanya, dan pemberitahuan lain
+      // antre di belakangnya tanpa pernah tampil.
+      final db = _DbPalsu();
+      await lukis(tester, [_nota('SVR-1', nama: 'Soni')], db: db);
+
+      await pilihTeknisi(tester, 0, 'Budi');
+
+      expect(db.diubah, ['SVR-1 -> budi']);
+      expect(find.text('URUNGKAN'), findsOneWidget);
+      expect(find.text('SVR-1 → Budi'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 9));
+      await tester.pumpAndSettle();
+
+      expect(find.text('URUNGKAN'), findsNothing);
+    });
+
+    testWidgets('pilihan berikutnya menggantikan pemberitahuan sebelumnya', (
+      tester,
+    ) async {
+      // Dua nota dipilih berurutan tidak boleh menumpuk dua pemberitahuan
+      // yang masing-masing menunggu gilirannya.
+      final db = _DbPalsu();
+      await lukis(tester, [
+        _nota('SVR-1', nama: 'Soni'),
+        _nota('SVR-2', nama: 'Rara'),
+      ], db: db);
+
+      await pilihTeknisi(tester, 0, 'Budi');
+      await pilihTeknisi(tester, 1, 'Aris');
+
+      expect(find.text('SVR-2 → Aris'), findsOneWidget);
+      expect(find.text('SVR-1 → Budi'), findsNothing);
+      expect(find.text('URUNGKAN'), findsOneWidget);
+    });
+
+    testWidgets('URUNGKAN mengembalikan teknisi lamanya', (tester) async {
+      final db = _DbPalsu();
+      await lukis(tester, [_nota('SVR-1', nama: 'Soni')], db: db);
+
+      await pilihTeknisi(tester, 0, 'Budi');
+      await tester.tap(find.text('URUNGKAN'));
+      await tester.pumpAndSettle();
+
+      expect(db.diubah, ['SVR-1 -> budi', 'SVR-1 -> null']);
+    });
   });
 
   group('StatusNotaChip', () {
@@ -200,11 +284,9 @@ void main() {
     }
 
     testWidgets('nota garansi brand memakai status klaimnya', (tester) async {
-      await lukis(
-        tester,
-        _nota('SVR-1', garansi: true, claimId: 'k1'),
-        [_klaim('k1', status: 'ship_pusat')],
-      );
+      await lukis(tester, _nota('SVR-1', garansi: true, claimId: 'k1'), [
+        _klaim('k1', status: 'ship_pusat'),
+      ]);
       expect(find.text('SHIP ASUS PUSAT'), findsOneWidget);
     });
 

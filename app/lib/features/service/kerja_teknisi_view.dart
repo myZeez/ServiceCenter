@@ -234,8 +234,8 @@ class _KerjaTeknisiViewState extends ConsumerState<KerjaTeknisiView> {
                 label: 'Belum Ada Teknisi',
                 accent: context.warna.bahaya,
                 selected: teknisi == belumAdaTeknisi,
-                onTap: () => ref.read(_teknisiProvider.notifier).state =
-                    belumAdaTeknisi,
+                onTap: () =>
+                    ref.read(_teknisiProvider.notifier).state = belumAdaTeknisi,
               ),
               for (final id in orang)
                 StatTile(
@@ -625,26 +625,40 @@ class _BarisState extends ConsumerState<_Baris> {
     }
     if (mounted) setState(() => _menyimpan = false);
 
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          '${n.noNota} → ${id == null ? 'tanpa teknisi' : (widget.nama[id] ?? '—')}',
+    // Yang lama disingkirkan dulu: dua nota yang dipilih berurutan tidak
+    // perlu menumpuk dua pemberitahuan yang masing-masing menunggu
+    // gilirannya, dan tombol URUNGKAN yang tersisa memang hanya berlaku
+    // untuk pilihan yang terakhir.
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            '${n.noNota} → ${id == null ? 'tanpa teknisi' : (widget.nama[id] ?? '—')}',
+          ),
+          // Barisnya langsung pindah ke daftar orang lain begitu disimpan,
+          // jadi salah pilih tidak bisa dibetulkan dari baris yang sama.
+          // Jalan pulangnya di sini.
+          //
+          // persist dimatikan dengan sengaja. Flutter membuat SnackBar yang
+          // punya tombol aksi bertahan sampai ditekan dan mengabaikan
+          // durasinya; tanpa ini pemberitahuan menempel selamanya, dan
+          // semua pemberitahuan sesudahnya (tersimpan, galat) antre di
+          // belakangnya tanpa pernah tampil.
+          duration: const Duration(seconds: 8),
+          persist: false,
+          action: SnackBarAction(
+            label: 'URUNGKAN',
+            onPressed: () async {
+              try {
+                await db.ubahNota(n.id, {'teknisi_id': lama});
+              } catch (e) {
+                messenger.showSnackBar(SnackBar(content: Text(pesanGalat(e))));
+              }
+            },
+          ),
         ),
-        // Barisnya langsung pindah ke daftar orang lain begitu disimpan,
-        // jadi salah pilih tidak bisa dibetulkan dari baris yang sama.
-        // Jalan pulangnya di sini.
-        action: SnackBarAction(
-          label: 'URUNGKAN',
-          onPressed: () async {
-            try {
-              await db.ubahNota(n.id, {'teknisi_id': lama});
-            } catch (e) {
-              messenger.showSnackBar(SnackBar(content: Text(pesanGalat(e))));
-            }
-          },
-        ),
-      ),
-    );
+      );
   }
 
   @override
@@ -657,7 +671,8 @@ class _BarisState extends ConsumerState<_Baris> {
     // antara pilihannya melempar galat.
     final pilihan = [
       ...widget.pengerja,
-      if (n.teknisiId != null && !widget.pengerja.any((p) => p.id == n.teknisiId))
+      if (n.teknisiId != null &&
+          !widget.pengerja.any((p) => p.id == n.teknisiId))
         Profile(
           id: n.teknisiId!,
           nama: widget.nama[n.teknisiId] ?? 'Pengguna terhapus',

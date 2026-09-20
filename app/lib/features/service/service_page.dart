@@ -520,6 +520,19 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
           ],
           const SizedBox(height: AppSpacing.s),
 
+          // Biaya tidak ada di lembar ini -- teknisi tidak boleh menyentuhnya
+          // -- jadi pembatalan dari sini tidak bisa menjawab apakah ia
+          // berbiaya. Dikatakan terang-terangan, supaya nota batal yang
+          // biayanya masih taksiran tidak dikira sudah dibereskan.
+          if (klaim == null && _status == ServiceStatus.batal) ...[
+            Text(
+              'Biaya pembatalan — ada atau tanpa biaya — ditentukan admin '
+              'di formulir nota.',
+              style: TextStyle(fontSize: 12, color: context.warna.bahaya),
+            ),
+            const SizedBox(height: AppSpacing.s),
+          ],
+
           if (klaim != null) ...[
             LabeledField(
               label: 'Keluhan Garansi',

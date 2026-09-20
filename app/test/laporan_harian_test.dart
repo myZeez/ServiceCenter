@@ -196,15 +196,24 @@ void main() {
   group('Keterangan harian', () {
     final hari = _hari;
 
-    test('nota batal ditandai Cancel apa pun isinya', () {
-      final n = _nota(
+    test('nota batal ditandai Cancel apa pun isinya, dengan biayanya', () {
+      final gratis = _nota(
         noNota: 'SVR-0001',
         masuk: hari,
         status: 'batal',
         garansi: true,
+        biaya: 0,
         keterangan: 'diambil pelanggan',
       );
-      expect(ExcelExport.keteranganHarian(n), 'Cancel');
+      expect(ExcelExport.keteranganHarian(gratis), 'Cancel Tanpa Biaya');
+
+      final berbiaya = _nota(
+        noNota: 'SVR-0005',
+        masuk: hari,
+        status: 'batal',
+        biaya: 50000,
+      );
+      expect(ExcelExport.keteranganHarian(berbiaya), 'Cancel Berbiaya');
     });
 
     test('nota garansi ditandai Garansi', () {

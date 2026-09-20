@@ -418,19 +418,28 @@ void main() {
   });
 
   group('Keterangan harian', () {
-    test('nota batal ditandai Cancel apa pun isinya', () {
-      final n = ServiceOrderEntry(
-        id: 'x',
-        noNota: 'x',
-        tanggalMasuk: DateTime(2026, 9, 4),
-        customerNama: 'Budi',
-        barangNama: 'ASUS',
-        status: 'batal',
-        garansi: true,
-        keterangan: 'diambil pelanggan',
-        updatedAt: DateTime(2026, 9, 4),
+    ServiceOrderEntry batal({double biaya = 0, bool garansi = true}) =>
+        ServiceOrderEntry(
+          id: 'x',
+          noNota: 'x',
+          tanggalMasuk: DateTime(2026, 9, 4),
+          customerNama: 'Budi',
+          barangNama: 'ASUS',
+          status: 'batal',
+          garansi: garansi,
+          biaya: biaya,
+          keterangan: 'diambil pelanggan',
+          updatedAt: DateTime(2026, 9, 4),
+        );
+
+    test('nota batal ditandai Cancel apa pun isinya, dengan biayanya', () {
+      // Rp0 di laporan bisa berarti gratis dan bisa berarti belum
+      // ditentukan, jadi jawabannya ditulis.
+      expect(ExcelExport.keteranganHarian(batal()), 'Cancel Tanpa Biaya');
+      expect(
+        ExcelExport.keteranganHarian(batal(biaya: 50000, garansi: false)),
+        'Cancel Berbiaya',
       );
-      expect(ExcelExport.keteranganHarian(n), 'Cancel');
     });
   });
 
@@ -446,6 +455,7 @@ void main() {
       String status = 'diambil',
       bool garansi = false,
       String? perbaikan = 'Biaya Pasang Keyboard',
+      double? biaya,
     }) => ServiceOrderEntry(
       id: 'n1',
       noNota: 'SVR-01092628100',
@@ -456,7 +466,7 @@ void main() {
       perbaikan: perbaikan,
       garansi: garansi,
       status: status,
-      biaya: garansi ? 0 : 200000,
+      biaya: biaya ?? (garansi ? 0 : 200000),
       tanggalSelesai: DateTime(2026, 9, 3),
       updatedAt: DateTime(2026, 9, 3),
     );
@@ -480,30 +490,44 @@ void main() {
       );
     });
 
-    test('nota batal tidak lagi menulis Cancel di kolom status', () {
-      // Status hanya menjawab ditanggung siapa, dan sudah diambil atau
-      // belum. Pembatalannya ada di kolom keterangan.
-      expect(
-        ExcelExport.statusServis(n(status: 'batal')),
-        'Non Garansi (Barang Belum Diambil)',
-      );
-      expect(
-        ExcelExport.statusServis(n(status: 'batal', garansi: true)),
-        'Garansi (Barang Belum Diambil)',
-      );
-    });
+    test(
+      'nota batal tidak menulis Cancel di status, dan otomatis sudah diambil',
+      () {
+        // Status hanya menjawab ditanggung siapa, dan sudah diambil atau
+        // belum. Pembatalan berarti unitnya dikembalikan ke pelanggan, jadi
+        // otomatis sudah diambil; pembatalannya sendiri ada di keterangan.
+        expect(
+          ExcelExport.statusServis(n(status: 'batal')),
+          'Non Garansi (Barang Sudah Diambil)',
+        );
+        expect(
+          ExcelExport.statusServis(n(status: 'batal', garansi: true)),
+          'Garansi (Barang Sudah Diambil)',
+        );
+      },
+    );
 
     test('Cancel tinggal di keterangan, diikuti perbaikannya', () {
       expect(
         ExcelExport.keteranganPenerimaan(
-          n(status: 'batal', perbaikan: 'Battery Problem'),
+          n(status: 'batal', perbaikan: 'Battery Problem', biaya: 0),
         ),
-        'Servis Cancel Battery Problem',
+        'Servis Cancel (Tanpa Biaya) Battery Problem',
       );
       // Tanpa perbaikan, kata pembatalannya berdiri sendiri.
       expect(
-        ExcelExport.keteranganPenerimaan(n(status: 'batal', perbaikan: null)),
-        'Servis Cancel',
+        ExcelExport.keteranganPenerimaan(
+          n(status: 'batal', perbaikan: null, biaya: 0),
+        ),
+        'Servis Cancel (Tanpa Biaya)',
+      );
+      // Pembatalan berbiaya menyebutnya, dan uangnya ada di kolom CASH atau
+      // PIUTANG.
+      expect(
+        ExcelExport.keteranganPenerimaan(
+          n(status: 'batal', perbaikan: 'Cek Battery', biaya: 75000),
+        ),
+        'Servis Cancel (Berbiaya) Cek Battery',
       );
       // Nota biasa: keterangannya tetap perbaikan apa adanya.
       expect(ExcelExport.keteranganPenerimaan(n()), 'Biaya Pasang Keyboard');
@@ -511,7 +535,7 @@ void main() {
 
     test('baris batal di lembar: status polos, keterangan memuat Cancel', () {
       final lembar = ExcelExport.lembarKeseluruhan(
-        nota: [n(status: 'batal', perbaikan: 'Windows Problem')],
+        nota: [n(status: 'batal', perbaikan: 'Windows Problem', biaya: 0)],
         teknisi: const {},
         periode: 'September 2026',
       );
@@ -521,7 +545,7 @@ void main() {
 
       expect(
         (t.baris.single[iKet] as TextCellValue).value.text,
-        'Servis Cancel Windows Problem',
+        'Servis Cancel (Tanpa Biaya) Windows Problem',
       );
       expect(
         (t.baris.single[iSts] as TextCellValue).value.text,

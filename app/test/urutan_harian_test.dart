@@ -73,11 +73,17 @@ void main() {
     });
 
     test('batal mengalahkan garansi, dan garansi mengalahkan tagihan', () {
+      // Batal tanpa biaya tetap Cancel walau notanya bergaransi.
+      expect(
+        kelompokHarian(_nota('SVR-1', status: 'batal', garansi: true)),
+        KelompokHarian.cancel,
+      );
+      // Batal yang dikenai biaya mengikuti uangnya -- bergaransi atau tidak.
       expect(
         kelompokHarian(
           _nota('SVR-1', status: 'batal', garansi: true, biaya: 50000),
         ),
-        KelompokHarian.cancel,
+        KelompokHarian.piutang,
       );
       // Garansi yang dikenai biaya layanan tambahan tetap terbaca Garansi,
       // sama seperti di kolom keterangan.
@@ -87,12 +93,27 @@ void main() {
       );
     });
 
-    test('nota batal berbiaya tidak dihitung piutang', () {
-      // Yang dibatalkan tidak akan ditagih; masuk piutang berarti muncul di
-      // deretan uang yang belum masuk padahal tidak akan pernah masuk.
+    test('pembatalan tanpa biaya adalah Cancel', () {
+      expect(
+        kelompokHarian(_nota('SVR-1', status: 'batal', biaya: 0)),
+        KelompokHarian.cancel,
+      );
+    });
+
+    test('pembatalan berbiaya mengikuti uangnya, bukan katanya', () {
+      // Biaya cek yang sudah dibayar adalah uang yang benar-benar masuk;
+      // menaruhnya di Cancel menyembunyikannya di antara baris yang tidak
+      // menghasilkan apa-apa.
+      expect(
+        kelompokHarian(
+          _nota('SVR-1', status: 'batal', biaya: 80000, lunas: _hari),
+        ),
+        KelompokHarian.berbiaya,
+      );
+      // Belum dibayar: tagihan, sama seperti servis biasa.
       expect(
         kelompokHarian(_nota('SVR-1', status: 'batal', biaya: 80000)),
-        KelompokHarian.cancel,
+        KelompokHarian.piutang,
       );
     });
 
@@ -111,12 +132,14 @@ void main() {
       _nota('SVR-08092628302', biaya: 100000, lunas: _hari),
       _nota('SVR-08092628299', garansi: true),
       _nota('SVR-08092628306', biaya: 50000), // piutang
+      // Batal berbiaya yang sudah dibayar: kelompok berbiaya, bukan Cancel.
+      _nota('SVR-08092628307', status: 'batal', biaya: 30000, lunas: _hari),
     ];
 
     test('berbiaya, piutang, garansi, cancel', () {
       final urut = [...campur]..sort(bandingHarian);
       expect(urut.map((n) => n.noNota.substring(12)), [
-        '302', '303', // berbiaya
+        '302', '303', '307', // berbiaya (307: batal yang dikenai biaya)
         '304', '306', // piutang
         '299', '301', // garansi
         '300', '305', // cancel

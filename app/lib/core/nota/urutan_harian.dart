@@ -17,7 +17,7 @@ enum KelompokHarian {
   /// Unit bergaransi.
   garansi('Garansi'),
 
-  /// Nota dibatalkan.
+  /// Nota dibatalkan tanpa biaya.
   cancel('Cancel');
 
   const KelompokHarian(this.label);
@@ -26,16 +26,30 @@ enum KelompokHarian {
 
 /// Kelompok [n] pada laporan harian.
 ///
-/// Yang diperiksa lebih dulu menang, dalam urutan yang sama dengan warna
-/// baris di laporan penerimaan: batal mengalahkan garansi (nota garansi
-/// yang dibatalkan tetap Cancel), dan garansi mengalahkan tagihan (unit
-/// bergaransi yang dikenai biaya layanan tambahan tetap terbaca Garansi,
-/// karena begitulah ia ditandai di kolom keterangan).
+/// Nota batal ditentukan oleh biayanya, karena pembatalan bisa berbiaya
+/// dan bisa tidak:
+///
+///   batal tanpa biaya   Cancel -- tidak ada uang yang terlibat.
+///   batal berbiaya      seperti servis berbayar biasa, Berbiaya kalau
+///                       sudah lunas dan Piutang kalau belum. Uangnya
+///                       nyata (biaya cek, misalnya); menaruhnya di
+///                       Cancel menyembunyikannya di antara baris yang
+///                       tidak menghasilkan apa-apa. Kata Cancel-nya
+///                       tetap terbaca di kolom keterangan.
+///
+/// Sesudah itu yang diperiksa lebih dulu menang: garansi mengalahkan
+/// tagihan (unit bergaransi yang dikenai biaya layanan tambahan tetap
+/// terbaca Garansi, karena begitulah ia ditandai di kolom keterangan).
 ///
 /// Piutang diukur dengan cara yang sama seperti kolom PIUTANG di laporan
 /// penerimaan: ada biaya, dan tanggal lunasnya masih kosong.
 KelompokHarian kelompokHarian(ServiceOrderEntry n) {
-  if (n.status == 'batal') return KelompokHarian.cancel;
+  if (n.status == 'batal') {
+    if (n.biaya <= 0) return KelompokHarian.cancel;
+    return n.tanggalLunas == null
+        ? KelompokHarian.piutang
+        : KelompokHarian.berbiaya;
+  }
   if (n.garansi) return KelompokHarian.garansi;
   if (n.biaya > 0 && n.tanggalLunas == null) return KelompokHarian.piutang;
   return KelompokHarian.berbiaya;

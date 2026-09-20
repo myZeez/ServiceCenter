@@ -151,6 +151,14 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   String? _cabang;
   DateTime _tanggalKirim = hariIniKalender();
 
+  /// Jawaban atas "apakah pembatalan ini berbiaya?". Null berarti belum
+  /// dijawab -- dan nota batal tidak bisa disimpan sebelum dijawab.
+  ///
+  /// Pembatalan bisa berbiaya (biaya cek, misalnya) dan bisa tidak. Kalau
+  /// dibiarkan menebak dari kolom biaya, harga taksiran yang sudah terlanjur
+  /// diisi sebelum unitnya batal terbaca sebagai tagihan yang harus dibayar.
+  bool? _biayaBatal;
+
   /// Status klaim yang dipilih di formulir. Kosong berarti belum disentuh
   /// -- dan klaim yang tidak disentuh tidak ditulis, supaya perubahan dari
   /// layar lain selama formulir ini terbuka tidak tertimpa nilai lama.
@@ -188,6 +196,9 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     _caraBayar = n.caraBayar;
     _tanggalLunas = n.tanggalLunas;
     _cabang = n.cabangTujuan;
+    // Nota yang sudah batal: jawabannya dibaca dari biayanya, supaya yang
+    // dibuka tampil apa adanya. Yang belum batal harus menjawab sendiri.
+    if (n.status == ServiceStatus.batal) _biayaBatal = n.biaya > 0;
     if (n.status == ServiceStatus.dikirimCabang && n.tanggalKirim != null) {
       _tanggalKirim = n.tanggalKirim!;
     }
@@ -203,9 +214,35 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
           widget.nota?.status != ServiceStatus.dikirimCabang) {
         _tanggalKirim = hariIniKalender();
       }
+      // Batal dari status lain: biayanya belum dijawab, dan harga taksiran
+      // yang mungkin sudah terisi tidak boleh ikut terbaca sebagai tagihan.
+      if (baru == ServiceStatus.batal && widget.nota?.status != baru) {
+        _biayaBatal = null;
+      }
       _status = baru;
     });
   }
+
+  /// Menjawab biaya pembatalan.
+  ///
+  /// Tanpa biaya mengosongkan biaya, cara bayar, dan tanggal lunas -- tidak
+  /// ada uang yang terlibat, dan sisa isian lama tidak boleh tertinggal di
+  /// nota yang dibatalkan.
+  void _pilihBiayaBatal(bool ada) {
+    setState(() {
+      _biayaBatal = ada;
+      if (!ada) {
+        _biaya.clear();
+        _caraBayar = null;
+        _tanggalLunas = null;
+      }
+    });
+  }
+
+  /// Biaya, cara bayar, dan tanggal lunas dikunci selama pembatalannya
+  /// dinyatakan tanpa biaya.
+  bool get _kunciBiaya =>
+      _status == ServiceStatus.batal && _biayaBatal == false;
 
   @override
   void dispose() {
@@ -298,6 +335,29 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     if (_garansi && _brandId == null && _bolehUbahGaransi) {
       setState(() => _error = 'Pilih brand untuk klaim garansinya.');
       return;
+    }
+
+    // Nota batal wajib menyatakan biayanya. Pada nota garansi brand statusnya
+    // milik klaim, jadi aturannya tidak berlaku di sini.
+    final atur =
+        _status == ServiceStatus.batal &&
+        ref.read(klaimBrandNotaProvider(widget.nota?.claimId)) == null;
+    if (atur) {
+      final jumlah = double.tryParse(_biaya.text) ?? 0;
+      final galat = switch (_biayaBatal) {
+        null => 'Tentukan biaya pembatalan: tanpa biaya, atau ada biaya.',
+        true when jumlah <= 0 =>
+          'Pembatalan berbiaya harus mengisi jumlah biayanya. Kalau tidak '
+              'ada biaya, pilih Tanpa Biaya.',
+        true when _caraBayar == null =>
+          'Pilih cara bayar biaya pembatalan. Kalau belum dibayar, pilih '
+              'cara bayar yang berstatus piutang.',
+        _ => null,
+      };
+      if (galat != null) {
+        setState(() => _error = galat);
+        return;
+      }
     }
     if (!await _biayaGaransiDisengaja(double.tryParse(_biaya.text) ?? 0)) {
       return;
@@ -413,9 +473,11 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
           'cabang_tujuan': _cabang,
           'tanggal_kirim': _iso.format(_tanggalKirim),
         },
-        'biaya': double.tryParse(_biaya.text) ?? 0,
-        'cara_bayar': _caraBayar,
-        'tanggal_lunas': _tanggalLunas == null
+        // Pembatalan tanpa biaya menulis nol, bukan apa pun yang tersisa di
+        // kolomnya.
+        'biaya': _kunciBiaya ? 0 : (double.tryParse(_biaya.text) ?? 0),
+        'cara_bayar': _kunciBiaya ? null : _caraBayar,
+        'tanggal_lunas': _kunciBiaya || _tanggalLunas == null
             ? null
             : _iso.format(_tanggalLunas!),
         'keterangan': _kosongNull(_keterangan),
@@ -992,13 +1054,16 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                 // Disebut di kolomnya, bukan cuma ditanyakan saat
                 // menyimpan: yang paling murah adalah salah ketik yang
                 // tidak jadi diketik.
-                hint: _garansi
+                hint: _kunciBiaya
+                    ? 'Pembatalan tanpa biaya.'
+                    : _garansi
                     ? 'Unit bergaransi ditanggung brand — biasanya Rp0. '
                           'Isi hanya kalau ada layanan tambahan di luar '
                           'garansi.'
                     : null,
                 child: TextFormField(
                   controller: _biaya,
+                  enabled: !_kunciBiaya,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   // Dibaca ulang supaya keterangan dan pertanyaan di atas
@@ -1010,6 +1075,12 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             ),
           ],
         ),
+        if (_status == ServiceStatus.batal &&
+            ref.watch(klaimBrandNotaProvider(widget.nota?.claimId)) ==
+                null) ...[
+          const SizedBox(height: AppSpacing.s),
+          _pilihanBiayaBatal(),
+        ],
         if (_status == ServiceStatus.dikirimCabang &&
             ref.watch(klaimBrandNotaProvider(widget.nota?.claimId)) ==
                 null) ...[
@@ -1029,6 +1100,10 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
               child: LabeledField(
                 label: 'Cara Bayar',
                 child: DropdownButtonFormField<String>(
+                  // Dibangun ulang saat nilainya berubah dari luar -- pilihan
+                  // Tanpa Biaya mengosongkannya, dan field ini hanya membaca
+                  // initialValue sekali.
+                  key: ValueKey('cara-$_caraBayar'),
                   // Cara bayar nota lama selalu ikut, walau metodenya
                   // sudah dinonaktifkan: dropdown yang nilainya tidak ada
                   // di antara pilihannya melempar galat, dan nota yang
@@ -1042,7 +1117,9 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                     for (final m in metode)
                       DropdownMenuItem(value: m.kode, child: Text(m.nama)),
                   ],
-                  onChanged: (v) => setState(() => _caraBayar = v),
+                  onChanged: _kunciBiaya
+                      ? null
+                      : (v) => setState(() => _caraBayar = v),
                 ),
               ),
             ),
@@ -1051,15 +1128,19 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
               child: LabeledField(
                 label: 'Tanggal Lunas',
                 child: OutlinedButton(
-                  onPressed: () async {
-                    final p = await showDatePicker(
-                      context: context,
-                      initialDate: _tanggalLunas ?? DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                    );
-                    if (p != null) setState(() => _tanggalLunas = p);
-                  },
+                  onPressed: _kunciBiaya
+                      ? null
+                      : () async {
+                          final p = await showDatePicker(
+                            context: context,
+                            initialDate: _tanggalLunas ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
+                          );
+                          if (p != null) setState(() => _tanggalLunas = p);
+                        },
                   style: _tombolTanggal(context),
                   child: Align(
                     alignment: Alignment.centerLeft,
@@ -1100,6 +1181,47 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
           child: TextFormField(controller: _keterangan, maxLines: 2),
         ),
       ],
+    );
+  }
+
+  /// Pembatalan berbiaya atau tanpa biaya -- wajib dijawab.
+  ///
+  /// Dua-duanya sah: unit yang dibatalkan setelah dicek bisa dikenai biaya
+  /// cek, dan yang dibatalkan sebelum dibuka tidak. Yang tidak sah adalah
+  /// tidak menjawab, karena Rp0 di laporan bisa berarti gratis dan bisa
+  /// berarti belum ditentukan.
+  Widget _pilihanBiayaBatal() {
+    final w = context.warna;
+
+    return LabeledField(
+      label: 'Biaya Pembatalan',
+      required: true,
+      hint: switch (_biayaBatal) {
+        null =>
+          'Pembatalan bisa berbiaya (biaya cek, misalnya) dan bisa tidak. '
+              'Tentukan dulu.',
+        true => 'Isi jumlah biaya dan cara bayarnya di bawah.',
+        false =>
+          'Tidak ada tagihan. Unit dikembalikan ke pelanggan, dan notanya '
+              'tercatat sudah diambil.',
+      },
+      child: Wrap(
+        spacing: AppSpacing.xs,
+        children: [
+          ChoiceChip(
+            label: const Text('TANPA BIAYA'),
+            selected: _biayaBatal == false,
+            onSelected: (_) => _pilihBiayaBatal(false),
+            selectedColor: w.aksen.withValues(alpha: 0.15),
+          ),
+          ChoiceChip(
+            label: const Text('ADA BIAYA'),
+            selected: _biayaBatal == true,
+            onSelected: (_) => _pilihBiayaBatal(true),
+            selectedColor: w.aksen.withValues(alpha: 0.15),
+          ),
+        ],
+      ),
     );
   }
 

@@ -545,8 +545,11 @@ class ExcelExport {
   ///
   /// Merah untuk nota batal, hijau untuk unit bergaransi, sisanya polos --
   /// bentuk yang sudah dipakai lembar toko selama ini. Yang membacanya
-  /// mencari baris berwarna lebih dulu, sebelum membaca satu kata pun,
-  /// karena keduanyalah baris yang uangnya tidak masuk.
+  /// mencari baris berwarna lebih dulu, sebelum membaca satu kata pun.
+  ///
+  /// Merah berarti dibatalkan, ada biayanya atau tidak: baris batal yang
+  /// berbiaya tetap berwarna, dan uangnya terbaca di kolom CASH atau
+  /// PIUTANG.
   ///
   /// Batal diperiksa duluan: nota garansi yang dibatalkan tetap merah.
   ///
@@ -563,14 +566,23 @@ class ExcelExport {
   /// apakah servisnya dibatalkan.
   ///
   /// "Cancel" tinggal di sini, bukan di kolom STATUS -- status hanya
-  /// menjawab ditanggung siapa dan sudah diambil atau belum. Yang
-  /// dibatalkan terbaca "Servis Cancel Battery Problem": kata pembatalannya
-  /// di depan, alasan atau pekerjaan yang batal dikerjakan mengikutinya.
+  /// menjawab ditanggung siapa dan sudah diambil atau belum.
+  ///
+  /// Pembatalan selalu menyebut biayanya: "Servis Cancel (Tanpa Biaya)"
+  /// atau "Servis Cancel (Berbiaya)", lalu alasan atau pekerjaan yang batal
+  /// dikerjakan. Kolom uang yang kosong tidak menjawab apa-apa -- kosong
+  /// bisa berarti gratis, bisa berarti belum ditentukan -- jadi jawabannya
+  /// ditulis.
   static String keteranganPenerimaan(ServiceOrderEntry n) {
     final isi = (n.perbaikan ?? '').trim();
     if (n.status != 'batal') return isi;
-    return isi.isEmpty ? 'Servis Cancel' : 'Servis Cancel $isi';
+    final awal = 'Servis Cancel (${_biayaBatal(n)})';
+    return isi.isEmpty ? awal : '$awal $isi';
   }
+
+  /// "Berbiaya" atau "Tanpa Biaya" untuk nota batal.
+  static String _biayaBatal(ServiceOrderEntry n) =>
+      n.biaya > 0 ? 'Berbiaya' : 'Tanpa Biaya';
 
   /// Kolom STATUS pada laporan penerimaan: ditanggung siapa, dan apakah
   /// unitnya sudah diambil.
@@ -579,10 +591,10 @@ class ExcelExport {
   /// lembar yang dipakai toko selama ini -- "Non Garansi (Barang Sudah
   /// Diambil)".
   ///
-  /// Nota batal ikut aturan yang sama dan TIDAK lagi berhenti di kata
-  /// "Cancel": pembatalannya ada di kolom keterangan. Statusnya bukan
-  /// 'diambil', jadi ia terbaca "Belum Diambil" -- aplikasi ini tidak
-  /// mencatat apakah unit yang batal sudah dikembalikan ke pelanggan.
+  /// Nota batal ikut aturan yang sama dan TIDAK berhenti di kata "Cancel":
+  /// pembatalannya ada di kolom keterangan. Unit yang dibatalkan otomatis
+  /// terbaca "Sudah Diambil" -- pembatalan berarti unitnya dikembalikan ke
+  /// pelanggan.
   static String statusServis(ServiceOrderEntry n) {
     final tanggungan = n.garansi ? 'Garansi' : 'Non Garansi';
     // Unit yang sedang dikerjakan di cabang lain menyebut ke mana dan kapan
@@ -590,7 +602,7 @@ class ExcelExport {
     // pertanyaan pertama yang diajukan pelanggan: unitnya di mana.
     final keadaan =
         n.keteranganKirim ??
-        (n.status == 'diambil'
+        (n.status == 'diambil' || n.status == 'batal'
             ? 'Barang Sudah Diambil'
             : 'Barang Belum Diambil');
     return '$tanggungan ($keadaan)';
@@ -955,10 +967,14 @@ class ExcelExport {
   /// Urutannya disengaja -- yang paling menjelaskan kenapa biayanya nol
   /// atau kenapa unitnya tidak ada di rak didahulukan.
   ///
+  /// Pembatalan menyebut biayanya, "Cancel Tanpa Biaya" atau "Cancel
+  /// Berbiaya": pembatalan bisa berbiaya dan bisa tidak, dan angka Rp0 saja
+  /// tidak menjelaskan yang mana.
+  ///
   /// Unit garansi yang dikirim ke cabang menyebut keduanya: kata Garansi
   /// menjelaskan biayanya, kalimat pengirimannya menjelaskan unitnya.
   static String keteranganHarian(ServiceOrderEntry n) {
-    if (n.status == 'batal') return 'Cancel';
+    if (n.status == 'batal') return 'Cancel ${_biayaBatal(n)}';
     final kirim = n.keteranganKirim;
     if (kirim != null) return n.garansi ? 'Garansi. $kirim' : kirim;
     if (n.garansi) return 'Garansi';

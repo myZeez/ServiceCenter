@@ -24,7 +24,7 @@ ServiceOrderEntry _nota({String? claimId, bool garansi = false}) =>
       id: 'nota-1',
       garansi: garansi || claimId != null,
       claimId: claimId,
-      noNota: 'SRV-05092628222',
+      noNota: 'SVR-05092628222',
       tanggalMasuk: DateTime(2026, 9, 5),
       customerNama: 'Irwan',
       customerTelp: '192837182370',

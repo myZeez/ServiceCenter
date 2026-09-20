@@ -56,20 +56,20 @@ Future<void> _lukis(WidgetTester tester, List<ServiceOrderEntry> nota) async {
 void main() {
   testWidgets('menampilkan antrean nota', (tester) async {
     await _lukis(tester, [
-      _nota(noNota: 'SRV-001', nama: 'Jamal'),
-      _nota(noNota: 'SRV-002', nama: 'Soni', status: 'masuk'),
+      _nota(noNota: 'SVR-001', nama: 'Jamal'),
+      _nota(noNota: 'SVR-002', nama: 'Soni', status: 'masuk'),
     ]);
 
     expect(tester.takeException(), isNull);
-    expect(find.text('SRV-001'), findsOneWidget);
+    expect(find.text('SVR-001'), findsOneWidget);
     expect(find.text('Jamal'), findsOneWidget);
     expect(find.text('Soni'), findsOneWidget);
   });
 
   testWidgets('saringan status menyembunyikan yang lain', (tester) async {
     await _lukis(tester, [
-      _nota(noNota: 'SRV-001', nama: 'Jamal'),
-      _nota(noNota: 'SRV-002', nama: 'Soni', status: 'masuk'),
+      _nota(noNota: 'SVR-001', nama: 'Jamal'),
+      _nota(noNota: 'SVR-002', nama: 'Soni', status: 'masuk'),
     ]);
 
     await tester.tap(find.text('MASUK  1'));
@@ -80,7 +80,7 @@ void main() {
   });
 
   testWidgets('mengetuk nota membuka lembar ubah pekerjaan', (tester) async {
-    await _lukis(tester, [_nota(noNota: 'SRV-001', nama: 'Jamal')]);
+    await _lukis(tester, [_nota(noNota: 'SVR-001', nama: 'Jamal')]);
 
     await tester.tap(find.text('Jamal'));
     await tester.pumpAndSettle();
@@ -100,7 +100,7 @@ void main() {
   testWidgets('nota garansi brand memakai status klaimnya', (tester) async {
     final nota = ServiceOrderEntry(
       id: 'n1',
-      noNota: 'SRV-009',
+      noNota: 'SVR-009',
       tanggalMasuk: DateTime(2026, 9, 4),
       customerNama: 'Rara',
       barangNama: 'ASUS',

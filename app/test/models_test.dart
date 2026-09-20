@@ -97,7 +97,7 @@ void main() {
       Object? biaya = 150000,
     }) => {
       'id': 'n1',
-      'no_nota': 'SRV-04092628177',
+      'no_nota': 'SVR-04092628177',
       'tanggal_masuk': '2026-09-03T02:00:00+00:00',
       'estimasi_selesai': null,
       'customer_nama': 'Budi',
@@ -125,7 +125,7 @@ void main() {
 
     test('membaca seluruh kolomnya', () {
       final n = ServiceOrderEntry.fromMap(baris());
-      expect(n.noNota, 'SRV-04092628177');
+      expect(n.noNota, 'SVR-04092628177');
       expect(n.barangType, 'A16');
       expect(n.customerEmail, 'budi@mail.com');
       expect(n.garansi, isFalse);

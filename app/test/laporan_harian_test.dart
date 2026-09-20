@@ -115,7 +115,7 @@ void main() {
       // lenyap dari tab hari ini tepat saat admin baru saja mengetiknya.
       await _lukis(tester, [
         _nota(
-          noNota: 'SRV-09092628292',
+          noNota: 'SVR-09092628292',
           nama: 'Joe Topan',
           status: 'masuk',
           masuk: DateTime(_hari.year, _hari.month, _hari.day, 19, 45),
@@ -135,10 +135,10 @@ void main() {
 
       await _lukis(tester, [
         // Keluar hari ini -- masuk kemarin, jadi ikut tabel pertama saja.
-        _nota(noNota: 'SRV-0001', masuk: kemarin, selesai: hari),
-        _nota(noNota: 'SRV-0002', masuk: kemarin, selesai: hari, biaya: 90000),
+        _nota(noNota: 'SVR-0001', masuk: kemarin, selesai: hari),
+        _nota(noNota: 'SVR-0002', masuk: kemarin, selesai: hari, biaya: 90000),
         // Masuk hari ini dan belum keluar -- tabel kedua saja.
-        _nota(noNota: 'SRV-0003', masuk: hari, status: 'proses', biaya: 0),
+        _nota(noNota: 'SVR-0003', masuk: hari, status: 'proses', biaya: 0),
       ]);
 
       expect(tester.takeException(), isNull);
@@ -147,7 +147,7 @@ void main() {
       expect(find.text('NOTA KELUAR  (2)'), findsOneWidget);
       expect(find.text('NOTA MASUK  (1)'), findsOneWidget);
       // Tab pertama yang terbuka: nota keluar.
-      expect(find.text('SRV-0001'), findsOneWidget);
+      expect(find.text('SVR-0001'), findsOneWidget);
     });
 
     testWidgets('nota keluar dipisah dari nota masuk', (tester) async {
@@ -155,32 +155,32 @@ void main() {
       final kemarin = _kemarin;
 
       await _lukis(tester, [
-        _nota(noNota: 'SRV-0001', masuk: kemarin, selesai: hari),
-        _nota(noNota: 'SRV-0002', masuk: hari, status: 'proses', biaya: 0),
+        _nota(noNota: 'SVR-0001', masuk: kemarin, selesai: hari),
+        _nota(noNota: 'SVR-0002', masuk: hari, status: 'proses', biaya: 0),
         // Selesai kemarin: tidak boleh muncul di tanggal hari ini.
-        _nota(noNota: 'SRV-0003', masuk: kemarin, selesai: kemarin),
+        _nota(noNota: 'SVR-0003', masuk: kemarin, selesai: kemarin),
       ]);
 
       expect(find.text('2 nota  ·  Rp150.000'), findsNothing);
       expect(find.textContaining('1 nota'), findsOneWidget);
       // Selesai kemarin: tidak boleh muncul di tab mana pun hari ini.
-      expect(find.text('SRV-0003'), findsNothing);
+      expect(find.text('SVR-0003'), findsNothing);
 
       await _bukaTabMasuk(tester);
 
       expect(find.text('1 unit diterima'), findsOneWidget);
-      expect(find.text('SRV-0002'), findsOneWidget);
+      expect(find.text('SVR-0002'), findsOneWidget);
       // Kedua tabel tidak lagi bertumpuk: yang satu terbuka, yang lain
       // tidak ikut tergambar.
-      expect(find.text('SRV-0001'), findsNothing);
-      expect(find.text('SRV-0003'), findsNothing);
+      expect(find.text('SVR-0001'), findsNothing);
+      expect(find.text('SVR-0003'), findsNothing);
     });
 
     testWidgets('tanggal tanpa transaksi memberi pesan, bukan tabel kosong', (
       tester,
     ) async {
       final lama = _hari.subtract(const Duration(days: 40));
-      await _lukis(tester, [_nota(noNota: 'SRV-0001', masuk: lama)]);
+      await _lukis(tester, [_nota(noNota: 'SVR-0001', masuk: lama)]);
 
       expect(tester.takeException(), isNull);
       expect(
@@ -198,7 +198,7 @@ void main() {
 
     test('nota batal ditandai Cancel apa pun isinya', () {
       final n = _nota(
-        noNota: 'SRV-0001',
+        noNota: 'SVR-0001',
         masuk: hari,
         status: 'batal',
         garansi: true,
@@ -208,13 +208,13 @@ void main() {
     });
 
     test('nota garansi ditandai Garansi', () {
-      final n = _nota(noNota: 'SRV-0002', masuk: hari, garansi: true);
+      final n = _nota(noNota: 'SVR-0002', masuk: hari, garansi: true);
       expect(ExcelExport.keteranganHarian(n), 'Garansi');
     });
 
     test('nota reguler memakai catatannya sendiri', () {
       final n = _nota(
-        noNota: 'SRV-0003',
+        noNota: 'SVR-0003',
         masuk: hari,
         keterangan: 'Belum bayar',
       );
@@ -222,7 +222,7 @@ void main() {
     });
 
     test('nota reguler tanpa catatan menghasilkan kolom kosong', () {
-      final n = _nota(noNota: 'SRV-0004', masuk: hari);
+      final n = _nota(noNota: 'SVR-0004', masuk: hari);
       expect(ExcelExport.keteranganHarian(n), '');
     });
   });
@@ -260,7 +260,7 @@ void main() {
       final sabtu = DateTime(2026, 9, 12, 9, 0);
       await _lukisTanggal(tester, DateTime(2026, 9, 12), [
         _nota(
-          noNota: 'SRV-0009',
+          noNota: 'SVR-0009',
           nama: 'Lembur',
           masuk: sabtu,
           status: 'masuk',

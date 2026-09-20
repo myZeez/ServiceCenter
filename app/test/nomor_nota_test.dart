@@ -6,8 +6,8 @@ void main() {
 
   group('Contoh nomor nota', () {
     test('angka urut selalu 5 digit', () {
-      expect(contohNomorNota(1, hari), 'SRV-04092600001');
-      expect(contohNomorNota(28177, hari), 'SRV-04092628177');
+      expect(contohNomorNota(1, hari), 'SVR-04092600001');
+      expect(contohNomorNota(28177, hari), 'SVR-04092628177');
     });
 
     test('lima digit terakhir adalah angka urutnya sendiri', () {
@@ -18,13 +18,13 @@ void main() {
     });
 
     test('tanggal ditulis ddMMyy dengan nol di depan', () {
-      expect(contohNomorNota(1, DateTime(2026, 1, 7)), 'SRV-07012600001');
+      expect(contohNomorNota(1, DateTime(2026, 1, 7)), 'SVR-07012600001');
     });
 
     test('angka di atas 99999 dibiarkan tumbuh, bukan dipotong', () {
       // Nomor kepanjangan masih bisa dibaca orang; nomor yang terpotong
       // diam-diam berubah arti.
-      expect(contohNomorNota(123456, hari), 'SRV-040926123456');
+      expect(contohNomorNota(123456, hari), 'SVR-040926123456');
     });
   });
 

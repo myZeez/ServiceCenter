@@ -48,7 +48,7 @@ final _klaim = Claim(
 
 ServiceOrderEntry _nota({String? claimId}) => ServiceOrderEntry(
   id: 'n1',
-  noNota: 'SRV-0409260001',
+  noNota: 'SVR-0409260001',
   tanggalMasuk: _tgl,
   customerNama: 'Budi',
   barangNama: 'ASUS',
@@ -169,7 +169,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(
-      find.textContaining('Sejalan dengan nota SRV-0409260001'),
+      find.textContaining('Sejalan dengan nota SVR-0409260001'),
       findsOneWidget,
     );
   });

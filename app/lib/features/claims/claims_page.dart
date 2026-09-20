@@ -39,6 +39,34 @@ class ClaimsPage extends ConsumerStatefulWidget {
 class _ClaimsPageState extends ConsumerState<ClaimsPage> {
   TabUtama _tab = TabUtama.klaim;
 
+  void _pindah(TabUtama t) {
+    if (t != _tab) setState(() => _tab = t);
+  }
+
+  /// Klaim tinggal di sisi kiri dan Servisku di sisi kanan, seperti letak
+  /// menunya di dock. Masing-masing masuk dan keluar lewat sisinya sendiri:
+  /// menuju Servisku, Klaim keluar ke kiri dan Servisku datang dari kanan;
+  /// kembali, sebaliknya. Searah dengan penanda di dock.
+  ///
+  /// Sisi ditentukan oleh isinya sendiri, bukan oleh arah perpindahan
+  /// terakhir. AnimatedSwitcher menyimpan transisi isi lama sebagaimana
+  /// dibangun saat isi itu masuk, jadi arah yang dibaca dari state akan
+  /// basi tepat pada isi yang sedang keluar.
+  Widget _transisi(Widget isi, Animation<double> gerak) {
+    final sisi = isi.key == const ValueKey<TabUtama>(TabUtama.klaim)
+        ? -1.0
+        : 1.0;
+    final geser = Tween<Offset>(
+      begin: Offset(0.12 * sisi, 0),
+      end: Offset.zero,
+    );
+
+    return FadeTransition(
+      opacity: gerak,
+      child: SlideTransition(position: gerak.drive(geser), child: isi),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final claims = ref.watch(claimsProvider);
@@ -58,7 +86,19 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_tab == TabUtama.klaim ? 'Klaim Garansi' : 'Servisku'),
+            AnimatedSwitcher(
+              duration: DockUtama.lamaGerak(context) * 0.7,
+              // Kolom judul rata kiri; tanpa ini judul lama dan baru
+              // bertumpuk di tengah selama bertukar.
+              layoutBuilder: (sekarang, sebelumnya) => Stack(
+                alignment: Alignment.centerLeft,
+                children: [...sebelumnya, ?sekarang],
+              ),
+              child: Text(
+                _tab == TabUtama.klaim ? 'Klaim Garansi' : 'Servisku',
+                key: ValueKey<String>('judul-${_tab.name}'),
+              ),
+            ),
             if (profile != null)
               Text(
                 '${profile.nama} — ${profile.role}'.toUpperCase(),
@@ -124,9 +164,29 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: _tab == TabUtama.klaim
-                ? _tabKlaim(claims, ruangBawah)
-                : ServiskuView(ruangBawah: ruangBawah),
+            // Dipotong: isi yang sedang bergeser tidak boleh menyembul di
+            // luar tepi halaman.
+            child: ClipRect(
+              child: AnimatedSwitcher(
+                duration: DockUtama.lamaGerak(context),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeOutCubic,
+                transitionBuilder: _transisi,
+                // Memenuhi ruang, bukan menyusut ke isinya: bawaannya
+                // menaruh anak di tengah dengan batas longgar, dan kolom
+                // saringan jadi selebar teks terpanjangnya.
+                layoutBuilder: (sekarang, sebelumnya) => Stack(
+                  fit: StackFit.expand,
+                  children: [...sebelumnya, ?sekarang],
+                ),
+                child: _tab == TabUtama.klaim
+                    ? _tabKlaim(claims, ruangBawah)
+                    : ServiskuView(
+                        key: const ValueKey<TabUtama>(TabUtama.servisku),
+                        ruangBawah: ruangBawah,
+                      ),
+              ),
+            ),
           ),
           Positioned(
             left: AppSpacing.sm - 4,
@@ -147,7 +207,7 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
                     child: DockUtama(
                       tab: _tab,
                       jumlahServisku: jumlahServisku,
-                      onTab: (t) => setState(() => _tab = t),
+                      onTab: _pindah,
                       onKlaimBaru: () => _push(context, const ClaimFormPage()),
                     ),
                   ),
@@ -162,6 +222,7 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
 
   Widget _tabKlaim(AsyncValue<List<Claim>> claims, double ruangBawah) {
     return Column(
+      key: const ValueKey<TabUtama>(TabUtama.klaim),
       children: [
         const _FilterBar(),
         Expanded(

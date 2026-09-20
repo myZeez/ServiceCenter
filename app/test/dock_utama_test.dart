@@ -124,14 +124,28 @@ void main() {
       );
     }
 
-    testWidgets('memuat tiga menu: klaim, klaim baru, servisku', (
+    testWidgets(
+      'memuat tiga menu; tengahnya hanya ikon tambah, tanpa tulisan',
+      (tester) async {
+        await lukis(tester);
+
+        expect(find.text('Klaim Garansi'), findsOneWidget);
+        expect(find.text('Servisku'), findsOneWidget);
+        expect(find.byIcon(Icons.add), findsOneWidget);
+        // Tengahnya sengaja polos supaya kedua sisinya lega.
+        expect(find.text('KLAIM BARU'), findsNothing);
+        expect(find.text('Klaim Baru'), findsNothing);
+      },
+    );
+
+    testWidgets('tombol tambah tetap punya nama untuk pembaca layar', (
       tester,
     ) async {
+      final semantik = tester.ensureSemantics();
       await lukis(tester);
 
-      expect(find.text('Klaim Garansi'), findsOneWidget);
-      expect(find.text('KLAIM BARU'), findsOneWidget);
-      expect(find.text('Servisku'), findsOneWidget);
+      expect(find.bySemanticsLabel('Klaim Baru'), findsOneWidget);
+      semantik.dispose();
     });
 
     testWidgets('setiap menu memanggil yang semestinya', (tester) async {
@@ -141,11 +155,129 @@ void main() {
 
       await tester.tap(find.text('Servisku'));
       await tester.tap(find.text('Klaim Garansi'));
-      await tester.tap(find.text('KLAIM BARU'));
+      await tester.tap(find.byIcon(Icons.add));
 
       expect(tab, [TabUtama.servisku, TabUtama.klaim]);
       // Klaim Baru bukan tab: ia membuka formulir, bukan berpindah isi.
       expect(baru, 1);
+    });
+
+    testWidgets('ketukan di luar teksnya pun kena: seluruh ruang menu hidup', (
+      tester,
+    ) async {
+      final tab = <TabUtama>[];
+      await lukis(tester, onTab: tab.add);
+
+      // Ujung kiri dan kanan dock, jauh dari label dan ikonnya.
+      final dock = tester.getRect(find.byType(DockUtama));
+      await tester.tapAt(Offset(dock.left + 24, dock.center.dy));
+      await tester.tapAt(Offset(dock.right - 24, dock.center.dy));
+
+      expect(tab, [TabUtama.klaim, TabUtama.servisku]);
+    });
+
+    testWidgets('kedua sisi lega: tiap menu selebar seratus lebih', (
+      tester,
+    ) async {
+      await lukis(tester);
+
+      for (final label in ['Klaim Garansi', 'Servisku']) {
+        final menu = find.ancestor(
+          of: find.text(label),
+          matching: find.byType(InkWell),
+        );
+        expect(
+          tester.getSize(menu).width,
+          greaterThan(100),
+          reason: 'menu $label terlalu sempit',
+        );
+      }
+    });
+
+    testWidgets('tinggi dock lebih dari 64, lebarnya tidak melebihi 320', (
+      tester,
+    ) async {
+      await lukis(tester);
+
+      final ukuran = tester.getSize(find.byType(DockUtama));
+      expect(ukuran.height, greaterThan(64));
+      expect(ukuran.width, lessThanOrEqualTo(320));
+    });
+
+    testWidgets('penanda tab meluncur ke menu yang diketuk, bukan melompat', (
+      tester,
+    ) async {
+      await lukis(tester, tab: TabUtama.klaim);
+      final penanda = find.byKey(DockUtama.kunciPenanda);
+      final kiri = tester.getCenter(penanda).dx;
+
+      await lukis(tester, tab: TabUtama.servisku);
+      // Baru satu frame: belum sempat bergerak jauh.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final tengah = tester.getCenter(penanda).dx;
+
+      await tester.pumpAndSettle();
+      final kanan = tester.getCenter(penanda).dx;
+
+      expect(kanan, greaterThan(kiri));
+      expect(tengah, greaterThan(kiri), reason: 'sudah mulai bergerak');
+      expect(tengah, lessThan(kanan), reason: 'belum sampai');
+    });
+
+    testWidgets('penanda kembali ke kiri saat Klaim Garansi diketuk lagi', (
+      tester,
+    ) async {
+      await lukis(tester, tab: TabUtama.servisku);
+      final penanda = find.byKey(DockUtama.kunciPenanda);
+      final kanan = tester.getCenter(penanda).dx;
+
+      await lukis(tester, tab: TabUtama.klaim);
+      await tester.pumpAndSettle();
+
+      expect(tester.getCenter(penanda).dx, lessThan(kanan));
+    });
+
+    testWidgets('penanda tidak menutupi tombol tambah', (tester) async {
+      await lukis(tester, tab: TabUtama.klaim);
+      final penanda = tester.getRect(find.byKey(DockUtama.kunciPenanda));
+      final tambah = tester.getRect(find.byIcon(Icons.add));
+      expect(penanda.overlaps(tambah), isFalse);
+
+      await lukis(tester, tab: TabUtama.servisku);
+      await tester.pumpAndSettle();
+      final penandaKanan = tester.getRect(find.byKey(DockUtama.kunciPenanda));
+      expect(penandaKanan.overlaps(tambah), isFalse);
+    });
+
+    testWidgets('animasi dimatikan di sistem: penanda langsung di tempatnya', (
+      tester,
+    ) async {
+      Future<void> lukisTanpaGerak(TabUtama tab) => tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.terang(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.bottomCenter,
+              child: DockUtama(tab: tab, onTab: (_) {}, onKlaimBaru: () {}),
+            ),
+          ),
+        ),
+      );
+
+      await lukisTanpaGerak(TabUtama.klaim);
+      final penanda = find.byKey(DockUtama.kunciPenanda);
+      final kiri = tester.getCenter(penanda).dx;
+
+      await lukisTanpaGerak(TabUtama.servisku);
+      await tester.pump(); // satu frame saja
+
+      expect(tester.getCenter(penanda).dx, greaterThan(kiri + 100));
+      expect(tester.hasRunningAnimations, isFalse);
     });
 
     testWidgets('hanya tab aktif yang ditandai terpilih', (tester) async {
@@ -196,7 +328,7 @@ void main() {
     });
 
     testWidgets('muat di layar tersempit tanpa meluap', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(320, 640));
+      await tester.binding.setSurfaceSize(const Size(300, 640));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       await lukis(tester, jumlah: 12);
@@ -204,7 +336,7 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(
         tester.getSize(find.byType(DockUtama)).width,
-        lessThanOrEqualTo(320),
+        lessThanOrEqualTo(300),
       );
     });
   });
@@ -216,7 +348,13 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.byType(DockUtama), findsOneWidget);
       expect(find.byType(FloatingActionButton), findsNothing);
-      expect(_didock('KLAIM BARU'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(DockUtama),
+          matching: find.byIcon(Icons.add),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets(
@@ -247,6 +385,55 @@ void main() {
         expect(find.text('SUDAH SELESAI  1'), findsOneWidget);
       },
     );
+
+    testWidgets('isi bergeser searah penanda saat berpindah menu', (
+      tester,
+    ) async {
+      await _lukisHalaman(tester, nota: [_nota('Jamal')]);
+      final klaim = find.byKey(const ValueKey<TabUtama>(TabUtama.klaim));
+      final servisku = find.byKey(const ValueKey<TabUtama>(TabUtama.servisku));
+
+      // Ke Servisku (kanan): ia datang dari kanan, klaim keluar ke kiri.
+      await tester.tap(_didock('Servisku'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.getTopLeft(servisku).dx, greaterThan(0));
+      expect(tester.getTopLeft(klaim).dx, lessThan(0));
+
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(servisku).dx, 0);
+      expect(klaim, findsNothing);
+
+      // Kembali (kiri): klaim datang dari kiri, Servisku keluar ke kanan.
+      await tester.tap(_didock('Klaim Garansi'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.getTopLeft(klaim).dx, lessThan(0));
+      expect(tester.getTopLeft(servisku).dx, greaterThan(0));
+
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(klaim).dx, 0);
+      expect(servisku, findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('mengetuk menu yang sedang aktif tidak menggerakkan apa-apa', (
+      tester,
+    ) async {
+      await _lukisHalaman(tester);
+      final klaim = find.byKey(const ValueKey<TabUtama>(TabUtama.klaim));
+
+      await tester.tap(_didock('Klaim Garansi'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Tidak bergeser, dan tidak ada isi kedua yang ikut masuk.
+      expect(tester.getTopLeft(klaim).dx, 0);
+      expect(
+        find.byKey(const ValueKey<TabUtama>(TabUtama.servisku)),
+        findsNothing,
+      );
+    });
 
     testWidgets('judul halaman mengikuti tab', (tester) async {
       await _lukisHalaman(tester);

@@ -8,9 +8,9 @@ import '../theme.dart';
 /// belakangnya.
 ///
 /// Buramnya sengaja sedang -- cukup untuk membuat tulisan di belakangnya
-/// tidak mengganggu, tidak sampai membuat daftarnya jadi bercak. Cahaya
-/// dalamnya tipis, hanya menyapu tepi supaya bentuknya terbaca sebagai
-/// kaca, bukan bingkai.
+/// tidak mengganggu, tidak sampai membuat daftarnya jadi bercak. Sengaja
+/// tanpa pendar atau sapuan cahaya: kacanya polos, bentuknya dijaga garis
+/// tepi tipis dan bayangan.
 ///
 /// Tinggi ditentukan pemakainya; lengkungnya selalu setengah tinggi, jadi
 /// bentuknya kapsul berapa pun tingginya.
@@ -28,10 +28,9 @@ class KapsulKaca extends StatelessWidget {
     final gelap = Theme.of(context).brightness == Brightness.dark;
 
     // Siang: kaca putih di atas halaman putih, jadi yang membuatnya
-    // terlihat adalah garis tepi dan bayangan. Malam: kaca biru tua yang
-    // tepinya disapu cahaya putih tipis.
+    // terlihat adalah garis tepi dan bayangan. Malam: kaca biru tua dengan
+    // garis tepi putih tipis.
     final isi = w.permukaan.withValues(alpha: gelap ? 0.52 : 0.5);
-    final kilau = Colors.white.withValues(alpha: gelap ? 0.2 : 0.75);
     final tepi = gelap
         ? Colors.white.withValues(alpha: 0.14)
         : w.teks.withValues(alpha: 0.1);
@@ -46,7 +45,7 @@ class KapsulKaca extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: buram, sigmaY: buram),
           child: CustomPaint(
-            painter: _PelukisKaca(isi: isi, kilau: kilau, tepi: tepi),
+            painter: _PelukisKaca(isi: isi, tepi: tepi),
             child: child,
           ),
         ),
@@ -95,56 +94,16 @@ class _PelukisBayangan extends CustomPainter {
 }
 
 class _PelukisKaca extends CustomPainter {
-  const _PelukisKaca({
-    required this.isi,
-    required this.kilau,
-    required this.tepi,
-  });
+  const _PelukisKaca({required this.isi, required this.tepi});
 
   final Color isi;
-  final Color kilau;
   final Color tepi;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
     final kapsul = _kapsul(size);
 
     canvas.drawRRect(kapsul, Paint()..color = isi);
-
-    canvas
-      ..save()
-      ..clipRRect(kapsul);
-
-    // Sapuan cahaya dari atas, yang memudar sebelum sampai tengah.
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            kilau.withValues(alpha: kilau.a * 0.35),
-            Colors.transparent,
-          ],
-          stops: const [0, 0.55],
-        ).createShader(rect),
-    );
-
-    // Cahaya dalam: garis di tepi yang dikaburkan. Separuh tebalnya jatuh
-    // di luar kapsul dan terpotong, jadi yang tersisa hanya pendar tipis
-    // ke arah dalam.
-    canvas
-      ..drawRRect(
-        kapsul,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3
-          ..color = kilau
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
-      )
-      ..restore();
-
     canvas.drawRRect(
       kapsul.deflate(0.5),
       Paint()
@@ -155,6 +114,5 @@ class _PelukisKaca extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PelukisKaca lama) =>
-      lama.isi != isi || lama.kilau != kilau || lama.tepi != tepi;
+  bool shouldRepaint(_PelukisKaca lama) => lama.isi != isi || lama.tepi != tepi;
 }

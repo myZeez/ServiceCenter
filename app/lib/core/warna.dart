@@ -24,6 +24,8 @@ class WarnaApp extends ThemeExtension<WarnaApp> {
     required this.diAksen,
     required this.bahaya,
     required this.garansi,
+    required this.kertas,
+    required this.diTeks,
   });
 
   /// Teks utama dan elemen yang paling ditekankan.
@@ -45,10 +47,16 @@ class WarnaApp extends ThemeExtension<WarnaApp> {
   /// Bingkai kolom isian saat tidak sedang disorot.
   final Color garisIsian;
 
-  /// Latar halaman.
+  /// Latar halaman. SELALU dipakai sebagai latar, tidak pernah sebagai warna
+  /// tulisan -- di mode kaca ia bening sama sekali. Tulisan di atas bidang
+  /// berwarna [teks] memakai [diTeks].
   final Color latar;
 
   /// Latar kartu dan dialog, satu tingkat di atas [latar].
+  ///
+  /// SELALU dipakai sebagai latar. Di mode kaca ia tembus pandang, jadi
+  /// tulisan dan ikon di atas bidang berwarna memakai [kertas] -- warna yang
+  /// sama, tetapi padat.
   final Color permukaan;
 
   /// Latar teredam: kepala tabel, bidang yang tidak bisa diisi, batang
@@ -71,6 +79,18 @@ class WarnaApp extends ThemeExtension<WarnaApp> {
   /// yang sama dipakai di laporan cetak.
   final Color garansi;
 
+  /// Warna [permukaan] yang selalu padat: tulisan dan ikon di atas chip atau
+  /// tombol yang berwarna penuh.
+  ///
+  /// Ada sejak mode kaca. Sebelumnya tugas ini dipegang [permukaan] sendiri,
+  /// dan itu baru bermasalah begitu permukaan boleh tembus pandang -- tulisan
+  /// putih di atas chip biru ikut pudar menjadi kebiruan.
+  final Color kertas;
+
+  /// Warna tulisan di atas bidang berwarna [teks]: tombol utama, snackbar,
+  /// chip terpilih. Padat, walau [latar] bening.
+  final Color diTeks;
+
   @override
   WarnaApp copyWith({
     Color? teks,
@@ -85,6 +105,8 @@ class WarnaApp extends ThemeExtension<WarnaApp> {
     Color? diAksen,
     Color? bahaya,
     Color? garansi,
+    Color? kertas,
+    Color? diTeks,
   }) => WarnaApp(
     teks: teks ?? this.teks,
     teksLembut: teksLembut ?? this.teksLembut,
@@ -98,6 +120,8 @@ class WarnaApp extends ThemeExtension<WarnaApp> {
     diAksen: diAksen ?? this.diAksen,
     bahaya: bahaya ?? this.bahaya,
     garansi: garansi ?? this.garansi,
+    kertas: kertas ?? this.kertas,
+    diTeks: diTeks ?? this.diTeks,
   );
 
   @override
@@ -116,6 +140,8 @@ class WarnaApp extends ThemeExtension<WarnaApp> {
       diAksen: Color.lerp(diAksen, lain.diAksen, t)!,
       bahaya: Color.lerp(bahaya, lain.bahaya, t)!,
       garansi: Color.lerp(garansi, lain.garansi, t)!,
+      kertas: Color.lerp(kertas, lain.kertas, t)!,
+      diTeks: Color.lerp(diTeks, lain.diTeks, t)!,
     );
   }
 
@@ -141,6 +167,8 @@ class WarnaApp extends ThemeExtension<WarnaApp> {
     diAksen: Color(0xFFFFFFFF),
     bahaya: Color(0xFFD82C2C),
     garansi: Color(0xFF1B8A4B),
+    kertas: Color(0xFFFFFFFF),
+    diTeks: Color(0xFFFFFFFF),
   );
 
   // -------------------------------------------------------------------
@@ -166,6 +194,57 @@ class WarnaApp extends ThemeExtension<WarnaApp> {
     diAksen: Color(0xFF0B1623),
     bahaya: Color(0xFFFF5C5C),
     garansi: Color(0xFF00FF9D),
+    kertas: Color(0xFF12202F),
+    diTeks: Color(0xFF0B1623),
+  );
+
+  // -------------------------------------------------------------------
+  // Kaca -- khusus Android
+  // -------------------------------------------------------------------
+  //  Dua palet di atas dengan satu perbedaan: bidang tidak lagi padat.
+  //  Latar halaman bening -- yang tampak adalah latar kaca di belakangnya
+  //  (lihat LatarKaca) -- dan kartu, kolom isian, serta dialog tembus
+  //  pandang. Warna yang membawa arti (aksen, bahaya, garansi) tidak
+  //  disentuh, dan tulisan tetap padat.
+  //
+  //  Garis rambut ikut tembus pandang. Garis abu padat di atas kaca
+  //  terbaca sebagai tempelan; garis yang meminjam warna tulisannya
+  //  menyatu dengan apa pun yang ada di belakangnya.
+  //
+  //  Teks lembut di terang digelapkan sedikit: #A9B2B1 di atas kertas putih
+  //  sudah pas-pasan, dan di atas latar kaca yang kebiruan ia nyaris hilang.
+  static const terangKaca = WarnaApp(
+    teks: Color(0xFF1A1A1A),
+    teksLembut: Color(0xFF7E8988),
+    garis: Color(0xFFA9B2B1),
+    garisHalus: Color(0x1A1A1A1A),
+    garisIsian: Color(0x331A1A1A),
+    latar: Color(0x00FFFFFF),
+    permukaan: Color(0x94FFFFFF),
+    teredam: Color(0x0F1A1A1A),
+    aksen: Color(0xFF0033A0),
+    diAksen: Color(0xFFFFFFFF),
+    bahaya: Color(0xFFD82C2C),
+    garansi: Color(0xFF1B8A4B),
+    kertas: Color(0xFFFFFFFF),
+    diTeks: Color(0xFFFFFFFF),
+  );
+
+  static const gelapKaca = WarnaApp(
+    teks: Color(0xFFF0F0F0),
+    teksLembut: Color(0xFF93A3BC),
+    garis: Color(0xFF2A3D52),
+    garisHalus: Color(0x1FFFFFFF),
+    garisIsian: Color(0x2EFFFFFF),
+    latar: Color(0x000B1623),
+    permukaan: Color(0x9E12202F),
+    teredam: Color(0x12FFFFFF),
+    aksen: Color(0xFFFF9F30),
+    diAksen: Color(0xFF0B1623),
+    bahaya: Color(0xFFFF5C5C),
+    garansi: Color(0xFF00FF9D),
+    kertas: Color(0xFF12202F),
+    diTeks: Color(0xFF0B1623),
   );
 }
 

@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/models.dart';
 import '../../core/data/galat.dart';
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
@@ -274,7 +275,7 @@ class _UsersCard extends ConsumerWidget {
       padding: EdgeInsets.zero,
       trailing: InlineAction(
         label: 'Tambah',
-        onTap: () => showDialog(
+        onTap: () => tampilkanDialog(
           context: context,
           builder: (_) => const _AddUserDialog(),
         ),
@@ -453,7 +454,7 @@ class _BrandsCard extends ConsumerWidget {
     WidgetRef ref, {
     Brand? brand,
   }) async {
-    final result = await showDialog<List<String>>(
+    final result = await tampilkanDialog<List<String>>(
       context: context,
       builder: (_) => _MasterFormDialog(
         title: brand == null ? 'Tambah Brand' : 'Ubah Brand',
@@ -520,7 +521,7 @@ class _PartTypesCard extends ConsumerWidget {
     WidgetRef ref, {
     PartType? part,
   }) async {
-    final result = await showDialog<List<String>>(
+    final result = await tampilkanDialog<List<String>>(
       context: context,
       builder: (_) => _MasterFormDialog(
         title: part == null ? 'Tambah Jenis Part' : 'Ubah Jenis Part',
@@ -658,7 +659,7 @@ class _Tag extends StatelessWidget {
           fontSize: 8.5,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.7,
-          color: filled ? context.warna.permukaan : context.warna.teksLembut,
+          color: filled ? context.warna.kertas : context.warna.teksLembut,
         ),
       ),
     );
@@ -937,7 +938,7 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
                   width: 14,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: context.warna.permukaan,
+                    color: context.warna.kertas,
                   ),
                 )
               : const Text('TAMBAH'),

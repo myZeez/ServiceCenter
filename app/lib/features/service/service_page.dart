@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 
 import '../../core/data/galat.dart';
 import '../../core/data/models.dart';
+import '../../core/kaca/kepala_mengambang.dart';
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/nota/cocok_cari.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
@@ -79,78 +81,81 @@ class _ServicePageState extends ConsumerState<ServicePage> {
           SizedBox(width: AppSpacing.xs),
         ],
       ),
-      body: Column(
-        children: [
-          _KotakCari(
-            controller: _cari,
-            adaIsi: mencari,
-            onUbah: _setKata,
-            onHapus: () {
-              _cari.clear();
-              _setKata('');
-            },
-          ),
-          _Saringan(
-            dipilih: _status,
-            jumlah: _perStatus(cocok),
-            onPilih: (s) => setState(() => _status = s),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                segarkanData(ref);
-                await ref.read(serviceOrdersProvider.future);
+      body: KepalaMengambang(
+        kepala: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _KotakCari(
+              controller: _cari,
+              adaIsi: mencari,
+              onUbah: _setKata,
+              onHapus: () {
+                _cari.clear();
+                _setKata('');
               },
-              child: nota.when(
-                loading: () => const Center(
-                  child: SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-                error: (e, _) => GagalMuat(e),
-                data: (semua) {
-                  final tampil = _status == null
-                      ? cocok
-                      : cocok.where((n) => n.status == _status).toList();
-
-                  if (tampil.isEmpty) {
-                    return ListView(
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.sizeOf(context).height * 0.55,
-                          child: EmptyState(
-                            icon: Icons.receipt_long_outlined,
-                            title: semua.isEmpty
-                                ? 'Belum ada nota'
-                                : mencari && cocok.isEmpty
-                                ? 'Tidak ada nota yang cocok'
-                                : 'Tidak ada nota berstatus ini',
-                            description: semua.isEmpty
-                                ? 'Nota dibuat saat pelanggan menyerahkan '
-                                      'unitnya di meja depan.'
-                                : mencari && cocok.isEmpty
-                                ? 'Coba nomor nota, nama, nomor seri, atau '
-                                      'telepon yang lain.'
-                                : 'Pilih status lain di atas.',
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                    itemCount: tampil.length,
-                    itemBuilder: (context, i) =>
-                        KartuNotaServis(nota: tampil[i], teknisi: techs),
-                  );
-                },
+            ),
+            _Saringan(
+              dipilih: _status,
+              jumlah: _perStatus(cocok),
+              onPilih: (s) => setState(() => _status = s),
+            ),
+          ],
+        ),
+        isi: (context, ruangAtas) => RefreshIndicator(
+          edgeOffset: ruangAtas,
+          onRefresh: () async {
+            segarkanData(ref);
+            await ref.read(serviceOrdersProvider.future);
+          },
+          child: nota.when(
+            loading: () => const Center(
+              child: SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
+            error: (e, _) => GagalMuat(e),
+            data: (semua) {
+              final tampil = _status == null
+                  ? cocok
+                  : cocok.where((n) => n.status == _status).toList();
+
+              if (tampil.isEmpty) {
+                return ListView(
+                  padding: EdgeInsets.only(top: ruangAtas),
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.sizeOf(context).height * 0.55,
+                      child: EmptyState(
+                        icon: Icons.receipt_long_outlined,
+                        title: semua.isEmpty
+                            ? 'Belum ada nota'
+                            : mencari && cocok.isEmpty
+                            ? 'Tidak ada nota yang cocok'
+                            : 'Tidak ada nota berstatus ini',
+                        description: semua.isEmpty
+                            ? 'Nota dibuat saat pelanggan menyerahkan '
+                                  'unitnya di meja depan.'
+                            : mencari && cocok.isEmpty
+                            ? 'Coba nomor nota, nama, nomor seri, atau '
+                                  'telepon yang lain.'
+                            : 'Pilih status lain di atas.',
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              return ListView.builder(
+                padding: EdgeInsets.only(top: ruangAtas, bottom: AppSpacing.md),
+                itemCount: tampil.length,
+                itemBuilder: (context, i) =>
+                    KartuNotaServis(nota: tampil[i], teknisi: techs),
+              );
+            },
           ),
-        ],
+        ),
       ),
     );
   }
@@ -240,9 +245,11 @@ class _Saringan extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: context.warna.teks)),
-      ),
+      decoration: context.kaca != null
+          ? null
+          : BoxDecoration(
+              border: Border(bottom: BorderSide(color: context.warna.teks)),
+            ),
       padding: const EdgeInsets.only(bottom: AppSpacing.s),
       child: SizedBox(
         height: 34,
@@ -307,7 +314,7 @@ class ChipSaringan extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.4,
-              color: aktif ? context.warna.permukaan : context.warna.teks,
+              color: aktif ? context.warna.kertas : context.warna.teks,
             ),
           ),
         ),
@@ -336,15 +343,34 @@ class KartuNotaServis extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final kaca = context.kaca;
+
     return InkWell(
       onTap: () => _bukaUbah(context, ref, nota),
       child: Container(
+        // Di mode kaca tiap nota berdiri sebagai kartu kaca tersendiri;
+        // tanpa itu tulisannya menempel langsung di latar berwarna dan
+        // deretan nota kehilangan batasnya.
+        margin: kaca == null
+            ? null
+            : const EdgeInsets.fromLTRB(
+                AppSpacing.s,
+                0,
+                AppSpacing.s,
+                AppSpacing.xs,
+              ),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.sm,
           vertical: AppSpacing.s,
         ),
         decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: context.warna.garisHalus)),
+          color: kaca == null ? null : context.warna.permukaan,
+          borderRadius: kaca == null
+              ? null
+              : BorderRadius.circular(AppRadius.base),
+          border: kaca == null
+              ? Border(bottom: BorderSide(color: context.warna.garisHalus))
+              : Border.all(color: kaca.tepi),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,7 +449,7 @@ Future<void> _bukaUbah(
   WidgetRef ref,
   ServiceOrderEntry nota,
 ) {
-  return showModalBottomSheet<void>(
+  return tampilkanLembar<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: context.warna.permukaan,

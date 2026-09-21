@@ -277,7 +277,7 @@ class _BarisAntrian extends StatelessWidget {
                               fontSize: 8.5,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.5,
-                              color: w.permukaan,
+                              color: w.kertas,
                             ),
                           ),
                         ),

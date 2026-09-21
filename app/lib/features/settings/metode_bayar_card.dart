@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/data/galat.dart';
 import '../../core/data/models.dart';
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
@@ -88,7 +89,7 @@ class MetodeBayarCard extends ConsumerWidget {
     final nama = TextEditingController(text: m?.nama ?? '');
     var piutang = m?.piutang ?? false;
 
-    final simpan = await showDialog<bool>(
+    final simpan = await tampilkanDialog<bool>(
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(

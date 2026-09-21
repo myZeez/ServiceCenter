@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/data/models.dart';
+import '../../core/kaca/kepala_mengambang.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/gagal_muat.dart';
@@ -65,114 +66,122 @@ class _ServiskuViewState extends ConsumerState<ServiskuView> {
     final selesai = notaSelesaiSaya(semua, saya, sekarang);
     final dipilih = _tampil == _Tampilan.berjalan ? berjalan : selesai;
 
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: context.warna.teks)),
-          ),
-          padding: const EdgeInsets.only(bottom: AppSpacing.s),
-          child: SizedBox(
-            height: 34,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              children: [
-                ChipSaringan(
-                  label: 'SEDANG DIKERJAKAN  ${berjalan.length}',
-                  aktif: _tampil == _Tampilan.berjalan,
-                  onTap: () => setState(() => _tampil = _Tampilan.berjalan),
-                ),
-                ChipSaringan(
-                  label: 'SUDAH SELESAI  ${selesai.length}',
-                  aktif: _tampil == _Tampilan.selesai,
-                  onTap: () => setState(() => _tampil = _Tampilan.selesai),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (_tampil == _Tampilan.selesai)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.sm,
-              AppSpacing.xs,
-              AppSpacing.sm,
-              0,
-            ),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Selesai sejak ${_tgl.format(tigaBulanSebelum(sekarang))} '
-                '— tiga bulan terakhir',
-                style: Theme.of(context).textTheme.labelSmall,
+    return KepalaMengambang(
+      kepala: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            decoration: context.kaca != null
+                ? null
+                : BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: context.warna.teks),
+                    ),
+                  ),
+            padding: const EdgeInsets.only(bottom: AppSpacing.s),
+            child: SizedBox(
+              height: 34,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                children: [
+                  ChipSaringan(
+                    label: 'SEDANG DIKERJAKAN  ${berjalan.length}',
+                    aktif: _tampil == _Tampilan.berjalan,
+                    onTap: () => setState(() => _tampil = _Tampilan.berjalan),
+                  ),
+                  ChipSaringan(
+                    label: 'SUDAH SELESAI  ${selesai.length}',
+                    aktif: _tampil == _Tampilan.selesai,
+                    onTap: () => setState(() => _tampil = _Tampilan.selesai),
+                  ),
+                ],
               ),
             ),
           ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              segarkanData(ref);
-              await ref.read(serviceOrdersProvider.future);
-            },
-            child: nota.when(
-              loading: () => const Center(
-                child: SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+          if (_tampil == _Tampilan.selesai)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.sm,
+                AppSpacing.xs,
+                AppSpacing.sm,
+                AppSpacing.xs,
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Selesai sejak ${_tgl.format(tigaBulanSebelum(sekarang))} '
+                  '— tiga bulan terakhir',
+                  style: Theme.of(context).textTheme.labelSmall,
                 ),
               ),
-              error: (e, _) => GagalMuat(e),
-              data: (_) {
-                if (dipilih.isEmpty) {
-                  return ListView(
-                    key: const PageStorageKey<String>('servisku-kosong'),
-                    children: [
-                      SizedBox(
-                        // Ada batas bawahnya: di layar pendek separuh tinggi
-                        // tak cukup memuat ikon, judul, dan penjelasannya.
-                        height: math.max(
-                          360.0,
-                          MediaQuery.sizeOf(context).height * 0.5,
-                        ),
-                        child: EmptyState(
-                          icon: _tampil == _Tampilan.berjalan
-                              ? Icons.build_outlined
-                              : Icons.task_alt_outlined,
-                          title: _tampil == _Tampilan.berjalan
-                              ? 'Tidak ada unit yang sedang kamu kerjakan'
-                              : 'Belum ada unit selesai',
-                          description: _tampil == _Tampilan.berjalan
-                              ? 'Unit yang ditugaskan kepadamu muncul di '
-                                    'sini sejak masuk sampai selesai.'
-                              : 'Unit atas namamu yang selesai dalam tiga '
-                                    'bulan terakhir muncul di sini.',
-                        ),
-                      ),
-                    ],
-                  );
-                }
+            ),
+        ],
+      ),
+      isi: (context, ruangAtas) => RefreshIndicator(
+        edgeOffset: ruangAtas,
+        onRefresh: () async {
+          segarkanData(ref);
+          await ref.read(serviceOrdersProvider.future);
+        },
+        child: nota.when(
+          loading: () => const Center(
+            child: SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          error: (e, _) => GagalMuat(e),
+          data: (_) {
+            if (dipilih.isEmpty) {
+              return ListView(
+                key: const PageStorageKey<String>('servisku-kosong'),
+                padding: EdgeInsets.only(top: ruangAtas),
+                children: [
+                  SizedBox(
+                    // Ada batas bawahnya: di layar pendek separuh tinggi
+                    // tak cukup memuat ikon, judul, dan penjelasannya.
+                    height: math.max(
+                      360.0,
+                      MediaQuery.sizeOf(context).height * 0.5,
+                    ),
+                    child: EmptyState(
+                      icon: _tampil == _Tampilan.berjalan
+                          ? Icons.build_outlined
+                          : Icons.task_alt_outlined,
+                      title: _tampil == _Tampilan.berjalan
+                          ? 'Tidak ada unit yang sedang kamu kerjakan'
+                          : 'Belum ada unit selesai',
+                      description: _tampil == _Tampilan.berjalan
+                          ? 'Unit yang ditugaskan kepadamu muncul di '
+                                'sini sejak masuk sampai selesai.'
+                          : 'Unit atas namamu yang selesai dalam tiga '
+                                'bulan terakhir muncul di sini.',
+                    ),
+                  ),
+                ],
+              );
+            }
 
-                return ListView.builder(
-                  key: PageStorageKey<String>('servisku-${_tampil.name}'),
-                  padding: EdgeInsets.only(
-                    bottom: AppSpacing.md + widget.ruangBawah,
-                  ),
-                  itemCount: dipilih.length,
-                  itemBuilder: (context, i) => KartuNotaServis(
-                    nota: dipilih[i],
-                    teknisi: techs,
-                    keteranganBaris: _tampil == _Tampilan.selesai
-                        ? 'Selesai ${_tglPendek.format(kapanSelesai(dipilih[i]))}'
-                        : null,
-                  ),
-                );
-              },
-            ),
-          ),
+            return ListView.builder(
+              key: PageStorageKey<String>('servisku-${_tampil.name}'),
+              padding: EdgeInsets.only(
+                top: ruangAtas,
+                bottom: AppSpacing.md + widget.ruangBawah,
+              ),
+              itemCount: dipilih.length,
+              itemBuilder: (context, i) => KartuNotaServis(
+                nota: dipilih[i],
+                teknisi: techs,
+                keteranganBaris: _tampil == _Tampilan.selesai
+                    ? 'Selesai ${_tglPendek.format(kapanSelesai(dipilih[i]))}'
+                    : null,
+              ),
+            );
+          },
         ),
-      ],
+      ),
     );
   }
 }

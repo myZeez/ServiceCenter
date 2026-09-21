@@ -720,7 +720,7 @@ class _Label extends StatelessWidget {
     child: Text(
       text,
       style: TextStyle(
-        color: context.warna.permukaan,
+        color: context.warna.kertas,
         fontSize: 10,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.5,

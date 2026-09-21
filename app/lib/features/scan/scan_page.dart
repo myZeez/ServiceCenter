@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../core/kaca/panel_kaca.dart';
 import '../../core/theme.dart';
 
 /// Pemindaian hanya tersedia di perangkat berkamera yang didukung plugin.
@@ -153,45 +154,49 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.s,
-          vertical: AppSpacing.xs,
-        ),
-        child: Row(
-          children: [
-            IconButton(
-              icon: Icon(Icons.close, color: context.warna.permukaan),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            Expanded(
-              child: Text(
-                title.toUpperCase(),
-                style: TextStyle(
-                  color: context.warna.permukaan,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1,
+        padding: const EdgeInsets.all(AppSpacing.s),
+        // Kaca di atas gambar kamera: yang di belakang tombol jadi kabur,
+        // jadi ikon putih tetap terbaca di atas apa pun yang sedang
+        // disorot.
+        child: PanelKaca(
+          tingkat: TingkatKaca.sedang,
+          radius: BorderRadius.circular(AppRadius.base * 2),
+          child: Row(
+            children: [
+              IconButton(
+                icon: Icon(Icons.close, color: context.warna.kertas),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  style: TextStyle(
+                    color: context.warna.kertas,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1,
+                  ),
                 ),
               ),
-            ),
-            ValueListenableBuilder<MobileScannerState>(
-              valueListenable: controller,
-              builder: (context, state, _) {
-                if (state.torchState == TorchState.unavailable) {
-                  return const SizedBox.shrink();
-                }
-                final on = state.torchState == TorchState.on;
-                return IconButton(
-                  tooltip: 'Senter',
-                  icon: Icon(
-                    on ? Icons.flashlight_on : Icons.flashlight_off,
-                    color: on ? context.warna.bahaya : context.warna.permukaan,
-                  ),
-                  onPressed: controller.toggleTorch,
-                );
-              },
-            ),
-          ],
+              ValueListenableBuilder<MobileScannerState>(
+                valueListenable: controller,
+                builder: (context, state, _) {
+                  if (state.torchState == TorchState.unavailable) {
+                    return const SizedBox.shrink();
+                  }
+                  final on = state.torchState == TorchState.on;
+                  return IconButton(
+                    tooltip: 'Senter',
+                    icon: Icon(
+                      on ? Icons.flashlight_on : Icons.flashlight_off,
+                      color: on ? context.warna.bahaya : context.warna.kertas,
+                    ),
+                    onPressed: controller.toggleTorch,
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -208,13 +213,23 @@ class _BottomHint extends StatelessWidget {
         alignment: Alignment.bottomCenter,
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
-          child: Text(
-            'Arahkan ke barcode serial number',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: context.warna.permukaan.withValues(alpha: 0.75),
-              fontSize: 12,
-              letterSpacing: 0.3,
+          child: PanelKaca(
+            tingkat: TingkatKaca.sedang,
+            radius: BorderRadius.circular(AppRadius.base * 2),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              child: Text(
+                'Arahkan ke barcode serial number',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: context.warna.kertas.withValues(alpha: 0.75),
+                  fontSize: 12,
+                  letterSpacing: 0.3,
+                ),
+              ),
             ),
           ),
         ),
@@ -243,14 +258,14 @@ class _ScannerError extends StatelessWidget {
             children: [
               Icon(
                 Icons.no_photography_outlined,
-                color: context.warna.permukaan,
+                color: context.warna.kertas,
                 size: 32,
               ),
               const SizedBox(height: AppSpacing.s),
               Text(
                 denied ? 'Izin kamera ditolak' : 'Kamera tidak bisa dibuka',
                 style: TextStyle(
-                  color: context.warna.permukaan,
+                  color: context.warna.kertas,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -263,7 +278,7 @@ class _ScannerError extends StatelessWidget {
                           'diketik manual.'
                     : error.errorDetails?.message ?? error.errorCode.name,
                 style: TextStyle(
-                  color: context.warna.permukaan.withValues(alpha: 0.75),
+                  color: context.warna.kertas.withValues(alpha: 0.75),
                   fontSize: 13,
                   height: 1.5,
                 ),
@@ -272,8 +287,8 @@ class _ScannerError extends StatelessWidget {
               OutlinedButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: context.warna.permukaan,
-                  side: BorderSide(color: context.warna.permukaan, width: 1.5),
+                  foregroundColor: context.warna.kertas,
+                  side: BorderSide(color: context.warna.kertas, width: 1.5),
                 ),
                 child: const Text('KETIK MANUAL'),
               ),

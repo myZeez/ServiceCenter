@@ -54,6 +54,13 @@ class TampilanCard extends ConsumerWidget {
                 ],
               ),
             ),
+            if (kacaDidukung) ...[
+              const SizedBox(height: AppSpacing.s),
+              _SakelarKaca(
+                nyala: ref.watch(efekKacaProvider).valueOrNull ?? true,
+                onUbah: (v) => simpanEfekKaca(ref, v),
+              ),
+            ],
             const SizedBox(height: AppSpacing.s),
 
             // Contoh kecil, bukan sekadar kalimat. Warna paling susah
@@ -206,6 +213,51 @@ class _Tanda extends StatelessWidget {
           fontWeight: FontWeight.w700,
           letterSpacing: 0.6,
           color: warna,
+        ),
+      ),
+    );
+  }
+}
+
+/// Sakelar efek kaca. Hanya muncul di Android -- di Windows efek itu
+/// memang tidak pernah dipakai.
+class _SakelarKaca extends StatelessWidget {
+  const _SakelarKaca({required this.nyala, required this.onUbah});
+
+  final bool nyala;
+  final ValueChanged<bool> onUbah;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = context.warna;
+
+    return LabeledField(
+      label: 'Efek Kaca',
+      hint:
+          'Bidang tembus pandang dengan latar yang buram. Matikan kalau HP '
+          'ini terasa tersendat saat menggulir.',
+      child: InkWell(
+        onTap: () => onUbah(!nyala),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  nyala ? 'Menyala' : 'Mati',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Switch(
+                value: nyala,
+                onChanged: onUbah,
+                activeThumbColor: w.aksen,
+              ),
+            ],
+          ),
         ),
       ),
     );

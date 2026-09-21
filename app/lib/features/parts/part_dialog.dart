@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/data/galat.dart';
 import '../../core/data/models.dart';
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
@@ -58,7 +59,7 @@ Future<void> showPartDialog(
   PartOrder? pesanan,
   AwalTanyaHarga? awal,
 }) {
-  return showGeneralDialog(
+  return tampilkanDialogUmum(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Tutup',
@@ -1028,7 +1029,7 @@ class _PartDialogState extends ConsumerState<PartDialog> {
                     width: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: context.warna.permukaan,
+                      color: context.warna.kertas,
                     ),
                   )
                 : Text(widget.isNew ? 'SIMPAN' : 'SIMPAN PERUBAHAN'),

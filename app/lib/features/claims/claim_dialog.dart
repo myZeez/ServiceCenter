@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/data/models.dart';
 import '../../core/data/galat.dart';
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
@@ -26,7 +27,7 @@ final _stampFmt = DateFormat('dd MMM yyyy · HH:mm');
 /// "berpindah tempat" -- yang mahal ketika admin membuka puluhan klaim
 /// berturut-turut. [claim] null berarti membuat klaim baru.
 Future<void> showClaimDialog(BuildContext context, {Claim? claim}) {
-  return showGeneralDialog(
+  return tampilkanDialogUmum(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Tutup',
@@ -887,7 +888,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                     width: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: context.warna.permukaan,
+                      color: context.warna.kertas,
                     ),
                   )
                 : Text(widget.isNew ? 'SIMPAN KLAIM' : 'SIMPAN PERUBAHAN'),

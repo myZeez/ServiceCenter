@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/omset/omset_providers.dart';
 import '../../core/omset/peringatan_omset.dart';
 import '../../core/providers.dart';
@@ -65,7 +66,7 @@ class _PeringatanOmsetPembukaState
     ];
     if (kurang.isEmpty) return;
 
-    showDialog<void>(
+    tampilkanDialog<void>(
       context: context,
       builder: (_) => _DialogPeringatanOmset(
         kurang: kurang,

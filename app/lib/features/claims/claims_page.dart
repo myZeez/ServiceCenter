@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/data/models.dart';
 import '../../core/fitur.dart';
+import '../../core/kaca/kepala_mengambang.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
@@ -43,30 +44,6 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
     if (t != _tab) setState(() => _tab = t);
   }
 
-  /// Klaim tinggal di sisi kiri dan Servisku di sisi kanan, seperti letak
-  /// menunya di dock. Masing-masing masuk dan keluar lewat sisinya sendiri:
-  /// menuju Servisku, Klaim keluar ke kiri dan Servisku datang dari kanan;
-  /// kembali, sebaliknya. Searah dengan penanda di dock.
-  ///
-  /// Sisi ditentukan oleh isinya sendiri, bukan oleh arah perpindahan
-  /// terakhir. AnimatedSwitcher menyimpan transisi isi lama sebagaimana
-  /// dibangun saat isi itu masuk, jadi arah yang dibaca dari state akan
-  /// basi tepat pada isi yang sedang keluar.
-  Widget _transisi(Widget isi, Animation<double> gerak) {
-    final sisi = isi.key == const ValueKey<TabUtama>(TabUtama.klaim)
-        ? -1.0
-        : 1.0;
-    final geser = Tween<Offset>(
-      begin: Offset(0.12 * sisi, 0),
-      end: Offset.zero,
-    );
-
-    return FadeTransition(
-      opacity: gerak,
-      child: SlideTransition(position: gerak.drive(geser), child: isi),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final claims = ref.watch(claimsProvider);
@@ -86,19 +63,7 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedSwitcher(
-              duration: DockUtama.lamaGerak(context) * 0.7,
-              // Kolom judul rata kiri; tanpa ini judul lama dan baru
-              // bertumpuk di tengah selama bertukar.
-              layoutBuilder: (sekarang, sebelumnya) => Stack(
-                alignment: Alignment.centerLeft,
-                children: [...sebelumnya, ?sekarang],
-              ),
-              child: Text(
-                _tab == TabUtama.klaim ? 'Klaim Garansi' : 'Servisku',
-                key: ValueKey<String>('judul-${_tab.name}'),
-              ),
-            ),
+            Text(_tab == TabUtama.klaim ? 'Klaim Garansi' : 'Servisku'),
             if (profile != null)
               Text(
                 '${profile.nama} — ${profile.role}'.toUpperCase(),
@@ -163,29 +128,22 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
       ),
       body: Stack(
         children: [
+          // Ditukar seketika, seperti dua halaman yang memang berdiri
+          // sendiri-sendiri. Sempat disilangkan dengan pudar dan geser,
+          // dan yang terlihat justru dua daftar yang saling menembus --
+          // "meninggalkan bayangan".
+          //
+          // IndexedStack, bukan pemilihan biasa: keduanya tetap hidup, jadi
+          // posisi gulir daftar klaim dan kata pencarian yang sedang
+          // diketik tidak hilang setiap kali berpindah.
           Positioned.fill(
-            // Dipotong: isi yang sedang bergeser tidak boleh menyembul di
-            // luar tepi halaman.
-            child: ClipRect(
-              child: AnimatedSwitcher(
-                duration: DockUtama.lamaGerak(context),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeOutCubic,
-                transitionBuilder: _transisi,
-                // Memenuhi ruang, bukan menyusut ke isinya: bawaannya
-                // menaruh anak di tengah dengan batas longgar, dan kolom
-                // saringan jadi selebar teks terpanjangnya.
-                layoutBuilder: (sekarang, sebelumnya) => Stack(
-                  fit: StackFit.expand,
-                  children: [...sebelumnya, ?sekarang],
-                ),
-                child: _tab == TabUtama.klaim
-                    ? _tabKlaim(claims, ruangBawah)
-                    : ServiskuView(
-                        key: const ValueKey<TabUtama>(TabUtama.servisku),
-                        ruangBawah: ruangBawah,
-                      ),
-              ),
+            child: IndexedStack(
+              index: _tab.index,
+              sizing: StackFit.expand,
+              children: [
+                _tabKlaim(claims, ruangBawah),
+                ServiskuView(ruangBawah: ruangBawah),
+              ],
             ),
           ),
           Positioned(
@@ -221,16 +179,18 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
   }
 
   Widget _tabKlaim(AsyncValue<List<Claim>> claims, double ruangBawah) {
-    return Column(
+    return KepalaMengambang(
       key: const ValueKey<TabUtama>(TabUtama.klaim),
-      children: [
-        const _FilterBar(),
-        Expanded(
+      kepala: const _FilterBar(),
+      isi: (context, ruangAtas) =>
           // Tarik ke bawah untuk memasang ulang langganannya. Perubahan
           // memang datang sendiri, tetapi saat itu tidak terjadi -- sinyal
           // yang baru pulih, aplikasi yang lama tertidur -- orang butuh
           // cara memaksanya tanpa harus menutup aplikasi.
-          child: RefreshIndicator(
+          RefreshIndicator(
+            // Lingkaran tariknya turun dari bawah kepala, bukan dari tepi
+            // layar yang tertutup kepala itu.
+            edgeOffset: ruangAtas,
             onRefresh: () async {
               segarkanData(ref);
               await ref.read(allClaimsProvider.future);
@@ -250,6 +210,7 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
                       // bekerja di atas sesuatu yang bisa digulir, dan
                       // justru saat daftarnya kosong orang paling ingin
                       // mencoba menyegarkan.
+                      padding: EdgeInsets.only(top: ruangAtas),
                       children: [
                         SizedBox(
                           height: MediaQuery.sizeOf(context).height * 0.6,
@@ -269,11 +230,13 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
                         ),
                       ],
                     )
-                  : _ClaimCards(list, ruangBawah: ruangBawah),
+                  : _ClaimCards(
+                      list,
+                      ruangAtas: ruangAtas,
+                      ruangBawah: ruangBawah,
+                    ),
             ),
           ),
-        ),
-      ],
     );
   }
 
@@ -309,9 +272,11 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
     final counts = ref.watch(statusCountsProvider).valueOrNull ?? const {};
 
     return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: context.warna.teks)),
-      ),
+      decoration: context.kaca != null
+          ? null
+          : BoxDecoration(
+              border: Border(bottom: BorderSide(color: context.warna.teks)),
+            ),
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.sm,
         0,
@@ -456,11 +421,18 @@ class _FilterDropdown<T> extends StatelessWidget {
 }
 
 class _ClaimCards extends ConsumerWidget {
-  const _ClaimCards(this.items, {required this.ruangBawah});
+  const _ClaimCards(
+    this.items, {
+    required this.ruangAtas,
+    required this.ruangBawah,
+  });
 
   final List<Claim> items;
 
-  /// Ruang di dasar daftar supaya baris terakhir tidak tertutup dock.
+  /// Ruang di puncak daftar supaya kartu pertama tidak berawal di bawah
+  /// kepala yang melayang, dan di dasarnya supaya yang terakhir tidak
+  /// tertutup dock.
+  final double ruangAtas;
   final double ruangBawah;
 
   @override
@@ -482,7 +454,7 @@ class _ClaimCards extends ConsumerWidget {
       key: const PageStorageKey<String>('daftar-klaim'),
       padding: EdgeInsets.fromLTRB(
         AppSpacing.sm,
-        AppSpacing.s,
+        ruangAtas + AppSpacing.s,
         AppSpacing.sm,
         ruangBawah + AppSpacing.s,
       ),

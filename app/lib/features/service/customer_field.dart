@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/data/models.dart';
+import '../../core/kaca/panel_kaca.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
 
@@ -124,13 +125,12 @@ class CustomerField extends StatelessWidget {
             optionsViewBuilder: (context, onSelected, options) {
               return Align(
                 alignment: Alignment.topLeft,
-                child: Material(
-                  elevation: 0,
-                  color: context.warna.permukaan,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.base),
-                    side: BorderSide(color: context.warna.teks),
-                  ),
+                // Sama dengan daftar pilihan nota: melayang di atas
+                // formulir, jadi ikut berkaca.
+                child: PanelKaca(
+                  tingkat: TingkatKaca.tebal,
+                  radius: BorderRadius.circular(AppRadius.base),
+                  bayangan: true,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(
                       maxHeight: 260,

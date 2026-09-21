@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/providers.dart';
+import '../../core/kaca/panel_kaca.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
 
@@ -73,122 +74,126 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420),
-                  child: Form(
-                    key: _formKey,
-                    // Rata kiri, bukan tengah. Komposisi asimetris adalah
-                    // ciri gaya ini, dan mata membaca dari satu sumbu tetap.
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Blok merah sebagai penanda, bukan logo.
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Container(
-                            width: 48,
-                            height: 8,
-                            color: context.warna.bahaya,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          'Klaim\nGaransi',
-                          style: Theme.of(context).textTheme.displayLarge,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          'CELLCOM PLK',
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(color: context.warna.teksLembut),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-
-                        LabeledField(
-                          label: 'Email',
-                          child: TextFormField(
-                            controller: _email,
-                            keyboardType: TextInputType.emailAddress,
-                            autofillHints: const [AutofillHints.username],
-                            decoration: const InputDecoration(
-                              hintText: 'nama@perusahaan.com',
+                  child: _Kartu(
+                    child: Form(
+                      key: _formKey,
+                      // Rata kiri, bukan tengah. Komposisi asimetris adalah
+                      // ciri gaya ini, dan mata membaca dari satu sumbu tetap.
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Blok merah sebagai penanda, bukan logo.
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              width: 48,
+                              height: 8,
+                              color: context.warna.bahaya,
                             ),
-                            validator: (v) => (v == null || !v.contains('@'))
-                                ? 'Email tidak valid'
-                                : null,
                           ),
-                        ),
-                        const SizedBox(height: AppSpacing.s),
-                        LabeledField(
-                          label: 'Password',
-                          child: TextFormField(
-                            controller: _password,
-                            obscureText: _obscure,
-                            autofillHints: const [AutofillHints.password],
-                            onFieldSubmitted: (_) => _submit(),
-                            decoration: InputDecoration(
-                              suffixIcon: IconButton(
-                                iconSize: 18,
-                                color: context.warna.teksLembut,
-                                icon: Icon(
-                                  _obscure
-                                      ? Icons.visibility_off_outlined
-                                      : Icons.visibility_outlined,
-                                ),
-                                onPressed: () =>
-                                    setState(() => _obscure = !_obscure),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            'Klaim\nGaransi',
+                            style: Theme.of(context).textTheme.displayLarge,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            'CELLCOM PLK',
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(color: context.warna.teksLembut),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+
+                          LabeledField(
+                            label: 'Email',
+                            child: TextFormField(
+                              controller: _email,
+                              keyboardType: TextInputType.emailAddress,
+                              autofillHints: const [AutofillHints.username],
+                              decoration: const InputDecoration(
+                                hintText: 'nama@perusahaan.com',
                               ),
+                              validator: (v) => (v == null || !v.contains('@'))
+                                  ? 'Email tidak valid'
+                                  : null,
                             ),
-                            validator: (v) => (v == null || v.isEmpty)
-                                ? 'Password wajib diisi'
-                                : null,
                           ),
-                        ),
-
-                        if (_error != null) ...[
                           const SizedBox(height: AppSpacing.s),
-                          Container(
-                            padding: const EdgeInsets.all(AppSpacing.s),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                left: BorderSide(
-                                  color: context.warna.bahaya,
-                                  width: 3,
+                          LabeledField(
+                            label: 'Password',
+                            child: TextFormField(
+                              controller: _password,
+                              obscureText: _obscure,
+                              autofillHints: const [AutofillHints.password],
+                              onFieldSubmitted: (_) => _submit(),
+                              decoration: InputDecoration(
+                                suffixIcon: IconButton(
+                                  iconSize: 18,
+                                  color: context.warna.teksLembut,
+                                  icon: Icon(
+                                    _obscure
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                  ),
+                                  onPressed: () =>
+                                      setState(() => _obscure = !_obscure),
                                 ),
                               ),
-                              color: context.warna.bahaya.withValues(alpha: 0.05),
+                              validator: (v) => (v == null || v.isEmpty)
+                                  ? 'Password wajib diisi'
+                                  : null,
                             ),
-                            child: Text(
-                              _error!,
-                              style: TextStyle(
-                                color: context.warna.bahaya,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                height: 1.4,
+                          ),
+
+                          if (_error != null) ...[
+                            const SizedBox(height: AppSpacing.s),
+                            Container(
+                              padding: const EdgeInsets.all(AppSpacing.s),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  left: BorderSide(
+                                    color: context.warna.bahaya,
+                                    width: 3,
+                                  ),
+                                ),
+                                color: context.warna.bahaya.withValues(
+                                  alpha: 0.05,
+                                ),
+                              ),
+                              child: Text(
+                                _error!,
+                                style: TextStyle(
+                                  color: context.warna.bahaya,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.4,
+                                ),
                               ),
                             ),
+                          ],
+
+                          const SizedBox(height: AppSpacing.sm),
+                          FilledButton(
+                            onPressed: _busy ? null : _submit,
+                            child: _busy
+                                ? SizedBox(
+                                    height: 16,
+                                    width: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: context.warna.kertas,
+                                    ),
+                                  )
+                                : const Text('MASUK'),
+                          ),
+                          const SizedBox(height: AppSpacing.s),
+                          Text(
+                            'Login pertama kali membutuhkan koneksi internet.',
+                            style: Theme.of(context).textTheme.labelSmall,
                           ),
                         ],
-
-                        const SizedBox(height: AppSpacing.sm),
-                        FilledButton(
-                          onPressed: _busy ? null : _submit,
-                          child: _busy
-                              ? SizedBox(
-                                  height: 16,
-                                  width: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: context.warna.permukaan,
-                                  ),
-                                )
-                              : const Text('MASUK'),
-                        ),
-                        const SizedBox(height: AppSpacing.s),
-                        Text(
-                          'Login pertama kali membutuhkan koneksi internet.',
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -196,6 +201,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Bidang tempat formulir login berdiri.
+///
+/// Di mode kaca ia kartu kaca di atas latar berwarna; di luar itu ia tidak
+/// ada sama sekali -- formulirnya berdiri langsung di atas kertas putih,
+/// persis seperti sebelumnya.
+class _Kartu extends StatelessWidget {
+  const _Kartu({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (context.kaca == null) return child;
+
+    return PanelKaca(
+      tingkat: TingkatKaca.tipis,
+      radius: BorderRadius.circular(AppRadius.base),
+      bayangan: true,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: child,
       ),
     );
   }

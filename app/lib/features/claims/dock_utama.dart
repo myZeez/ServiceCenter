@@ -1,7 +1,10 @@
-import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../core/kaca/panel_kaca.dart';
 import '../../core/theme.dart';
-import '../../core/widgets/kapsul_kaca.dart';
 
 /// Dua isi halaman utama di layar sempit.
 enum TabUtama { klaim, servisku }
@@ -13,11 +16,12 @@ enum TabUtama { klaim, servisku }
 /// baru, bukan berpindah isi, jadi ia tidak pernah "terpilih". Justru karena
 /// tengahnya ramping, kedua sisinya bisa lega dan labelnya terbaca utuh.
 ///
-/// Berpindah menu digerakkan, bukan dipotong: penanda kapsul meluncur ke
-/// menu yang diketuk, ikonnya membesar dan berwarna penuh, dan isi halaman
-/// (lihat ClaimsPage) bergeser ke arah yang sama dengan penandanya. Ketiganya
-/// searah supaya mata mengikuti satu gerakan, bukan tiga.
-class DockUtama extends StatelessWidget {
+/// Perpindahannya digerakkan seperti setetes air: tepi yang menuju arah
+/// tujuan berangkat lebih dulu, tepi belakangnya menyusul, jadi penandanya
+/// merenggang di tengah jalan lalu menyusut kembali. Ikonnya tidak
+/// disilangkan dengan ikon lamanya -- silang-ganti meninggalkan bayangan
+/// ganda -- melainkan berganti sekaligus sambil memantul sedikit.
+class DockUtama extends StatefulWidget {
   const DockUtama({
     super.key,
     required this.tab,
@@ -43,8 +47,8 @@ class DockUtama extends StatelessWidget {
   static const _lebarTengah = 76.0;
   static const _isiPadding = 8.0;
 
-  /// Penanda tab aktif. Bisa dicari dari luar -- tes membacanya untuk
-  /// memastikan ia benar-benar meluncur, bukan melompat.
+  /// Penanda tab aktif. Bisa dicari dari luar -- pengujian membacanya untuk
+  /// memastikan ia benar-benar meluncur dan merenggang, bukan melompat.
   static const kunciPenanda = ValueKey<String>('penanda-dock');
 
   /// Lama gerakan perpindahan. Nol bila pengguna mematikan animasi di
@@ -52,7 +56,7 @@ class DockUtama extends StatelessWidget {
   static Duration lamaGerak(BuildContext context) =>
       MediaQuery.disableAnimationsOf(context)
       ? Duration.zero
-      : const Duration(milliseconds: 300);
+      : const Duration(milliseconds: 420);
 
   /// Ruang yang harus disisakan di dasar daftar supaya baris terakhirnya
   /// tidak tertutup dock.
@@ -60,63 +64,155 @@ class DockUtama extends StatelessWidget {
       tinggi + jarak * 2 + MediaQuery.paddingOf(context).bottom;
 
   @override
+  State<DockUtama> createState() => _DockUtamaState();
+}
+
+class _DockUtamaState extends State<DockUtama>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _gerak = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  )..value = 1;
+
+  /// Tepi penanda saat gerakan terakhir dimulai, dan tepinya sekarang.
+  /// Yang kedua dicatat tiap frame supaya ketukan yang datang di tengah
+  /// jalan berangkat dari tempat penandanya berada, bukan meloncat dulu ke
+  /// tempat asalnya.
+  double _kiriMulai = 0;
+  double _kananMulai = 0;
+  double _kiriKini = 0;
+  double _kananKini = 0;
+  double _sisi = 0;
+
+  /// Tab yang sedang dituju. Disetel di initState, BUKAN sebagai nilai
+  /// awal bertanda late: nilai late baru dihitung saat pertama dibaca --
+  /// yaitu di dalam didUpdateWidget, ketika widget-nya sudah berisi tab
+  /// yang baru. Dock lalu menyimpulkan tidak ada yang berubah, dan
+  /// penandanya melompat tanpa animasi.
+  late TabUtama _tujuan;
+
+  /// Tepi mana yang berangkat lebih dulu.
+  bool _keKanan = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tujuan = widget.tab;
+  }
+
+  @override
+  void dispose() {
+    _gerak.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(DockUtama lama) {
+    super.didUpdateWidget(lama);
+    if (widget.tab == _tujuan) return;
+
+    _keKanan = widget.tab.index > _tujuan.index;
+    _tujuan = widget.tab;
+    _kiriMulai = _kiriKini;
+    _kananMulai = _kananKini;
+    _gerak.duration = DockUtama.lamaGerak(context);
+    _gerak.forward(from: 0);
+  }
+
+  // Tepi yang memimpin berangkat lebih dulu dan sampai lebih cepat; tepi
+  // yang mengekor berangkat belakangan. Selisih keduanya itulah
+  // renggangnya.
+  static const _memimpin = Interval(0, 0.72, curve: Curves.easeOutCubic);
+  static const _mengekor = Interval(0.24, 1, curve: Curves.easeOutCubic);
+
+  double _kiriSlot(TabUtama t) =>
+      t == TabUtama.klaim ? 0 : _sisi + DockUtama._lebarTengah;
+
+  @override
   Widget build(BuildContext context) {
     final w = context.warna;
-    final gerak = lamaGerak(context);
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: lebarMaks),
-      child: KapsulKaca(
+      constraints: const BoxConstraints(maxWidth: DockUtama.lebarMaks),
+      child: PanelKaca(
+        tingkat: TingkatKaca.sedang,
+        radius: BorderRadius.circular(DockUtama.tinggi / 2),
+        bayangan: true,
         child: SizedBox(
-          height: tinggi,
+          height: DockUtama.tinggi,
           child: Padding(
-            padding: const EdgeInsets.all(_isiPadding),
+            padding: const EdgeInsets.all(DockUtama._isiPadding),
             child: LayoutBuilder(
               builder: (context, box) {
-                final sisi = (box.maxWidth - _lebarTengah) / 2;
+                _sisi = (box.maxWidth - DockUtama._lebarTengah) / 2;
+                final tujuanKiri = _kiriSlot(widget.tab);
 
                 return Stack(
                   children: [
-                    AnimatedPositioned(
-                      duration: gerak,
-                      curve: Curves.easeOutCubic,
-                      left: tab == TabUtama.klaim ? 0 : sisi + _lebarTengah,
-                      top: 0,
-                      bottom: 0,
-                      width: sisi,
-                      child: DecoratedBox(
-                        key: kunciPenanda,
-                        decoration: ShapeDecoration(
-                          shape: const StadiumBorder(),
-                          color: w.teks.withValues(alpha: 0.09),
-                        ),
-                      ),
+                    AnimatedBuilder(
+                      animation: _gerak,
+                      builder: (context, _) {
+                        final p = _gerak.value;
+                        final maju = _memimpin.transform(p);
+                        final mundur = _mengekor.transform(p);
+                        final kiri = _antara(
+                          _kiriMulai,
+                          tujuanKiri,
+                          _keKanan ? mundur : maju,
+                        );
+                        final kanan = _antara(
+                          _kananMulai,
+                          tujuanKiri + _sisi,
+                          _keKanan ? maju : mundur,
+                        );
+                        _kiriKini = kiri;
+                        _kananKini = kanan;
+
+                        // Sedikit memipih saat merenggang, seperti tetesan
+                        // yang ditarik: lebarnya bertambah, tebalnya
+                        // berkurang.
+                        final pipih = 3 * math.sin(math.pi * p);
+
+                        return Positioned(
+                          left: kiri,
+                          width: math.max(0, kanan - kiri),
+                          top: pipih,
+                          bottom: pipih,
+                          child: DecoratedBox(
+                            key: DockUtama.kunciPenanda,
+                            decoration: ShapeDecoration(
+                              shape: const StadiumBorder(),
+                              color: w.teks.withValues(alpha: 0.09),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     Row(
                       children: [
                         SizedBox(
-                          width: sisi,
+                          width: _sisi,
                           child: _ItemDock(
                             label: 'Klaim Garansi',
                             ikon: Icons.verified_user_outlined,
                             ikonAktif: Icons.verified_user,
-                            aktif: tab == TabUtama.klaim,
-                            onTap: () => onTab(TabUtama.klaim),
+                            aktif: widget.tab == TabUtama.klaim,
+                            onTap: () => _pilih(TabUtama.klaim),
                           ),
                         ),
                         SizedBox(
-                          width: _lebarTengah,
-                          child: _Tambah(onTap: onKlaimBaru),
+                          width: DockUtama._lebarTengah,
+                          child: _Tambah(onTap: widget.onKlaimBaru),
                         ),
                         SizedBox(
-                          width: sisi,
+                          width: _sisi,
                           child: _ItemDock(
                             label: 'Servisku',
                             ikon: Icons.build_outlined,
                             ikonAktif: Icons.build,
-                            aktif: tab == TabUtama.servisku,
-                            lencana: jumlahServisku,
-                            onTap: () => onTab(TabUtama.servisku),
+                            aktif: widget.tab == TabUtama.servisku,
+                            lencana: widget.jumlahServisku,
+                            onTap: () => _pilih(TabUtama.servisku),
                           ),
                         ),
                       ],
@@ -130,7 +226,15 @@ class DockUtama extends StatelessWidget {
       ),
     );
   }
+
+  void _pilih(TabUtama t) {
+    if (t != widget.tab) HapticFeedback.selectionClick();
+    widget.onTab(t);
+  }
 }
+
+/// Serupa lerpDouble dari dart:ui, tetapi tanpa nullable -- dipakai tiap frame.
+double _antara(double a, double b, double t) => a + (b - a) * t;
 
 class _ItemDock extends StatelessWidget {
   const _ItemDock({
@@ -168,7 +272,10 @@ class _ItemDock extends StatelessWidget {
             child: TweenAnimationBuilder<double>(
               tween: Tween<double>(end: aktif ? 1 : 0),
               duration: gerak,
-              curve: Curves.easeOutCubic,
+              // Memantul sedikit melewati ukurannya lalu kembali: yang
+              // baru dipilih terasa ditekan masuk, bukan sekadar berganti
+              // warna.
+              curve: Curves.easeOutBack,
               builder: (context, t, _) {
                 // Yang tidak aktif memakai teks utama yang dipudarkan,
                 // bukan teksLembut: di siang hari teksLembut terlalu pucat
@@ -176,7 +283,7 @@ class _ItemDock extends StatelessWidget {
                 final warna = Color.lerp(
                   w.teks.withValues(alpha: 0.62),
                   w.teks,
-                  t,
+                  t.clamp(0, 1),
                 )!;
 
                 return Column(
@@ -185,18 +292,12 @@ class _ItemDock extends StatelessWidget {
                     Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        // Sedikit membesar saat aktif, dan bergantian
-                        // antara bentuk garis dan bentuk penuh.
                         Transform.scale(
-                          scale: 1 + 0.1 * t,
-                          child: AnimatedSwitcher(
-                            duration: gerak * 0.7,
-                            child: Icon(
-                              aktif ? ikonAktif : ikon,
-                              key: ValueKey<bool>(aktif),
-                              size: 24,
-                              color: warna,
-                            ),
+                          scale: 1 + 0.12 * t,
+                          child: Icon(
+                            aktif ? ikonAktif : ikon,
+                            size: 24,
+                            color: warna,
                           ),
                         ),
                         if (lencana > 0)
@@ -301,7 +402,10 @@ class _TambahState extends State<_Tambah> {
               shape: const CircleBorder(),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
-                onTap: widget.onTap,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  widget.onTap();
+                },
                 onHighlightChanged: (v) => setState(() => _ditekan = v),
                 child: SizedBox(
                   width: 56,

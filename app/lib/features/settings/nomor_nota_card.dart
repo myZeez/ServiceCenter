@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/nota/nomor_nota.dart';
 import '../../core/data/galat.dart';
 import '../../core/providers.dart';
@@ -60,7 +61,7 @@ class _NomorNotaCardState extends ConsumerState<NomorNotaCard> {
     // berbeda -- tetapi pusat membaca 5 digit terakhirnya saja, dan di
     // sana keduanya akan tampak sebagai nota yang sama.
     if (_tersimpan != null && n < _tersimpan!) {
-      final lanjut = await showDialog<bool>(
+      final lanjut = await tampilkanDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
           title: const Text('Mundurkan nomor nota?'),

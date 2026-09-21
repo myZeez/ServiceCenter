@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/data/models.dart';
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/print/nota_template.dart';
 import '../../core/print/raw_printer.dart';
 import '../../core/data/galat.dart';
@@ -37,7 +38,7 @@ Future<void> showServiceDialog(
   BuildContext context, {
   ServiceOrderEntry? nota,
 }) {
-  return showGeneralDialog(
+  return tampilkanDialogUmum(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Tutup',
@@ -305,7 +306,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       return true;
     }
 
-    final lanjut = await showDialog<bool>(
+    final lanjut = await tampilkanDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
         title: const Text('Unit bergaransi, tetapi ada biaya'),
@@ -1529,7 +1530,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                     width: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: context.warna.permukaan,
+                      color: context.warna.kertas,
                     ),
                   )
                 : Text(widget.isNew ? 'SIMPAN NOTA' : 'SIMPAN PERUBAHAN'),

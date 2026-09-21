@@ -108,7 +108,7 @@ void main() {
     }) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: tema ?? AppTheme.terang(),
+          theme: tema ?? AppTheme.terang(kaca: true),
           home: Scaffold(
             body: Align(
               alignment: Alignment.bottomCenter,
@@ -212,8 +212,10 @@ void main() {
       final kiri = tester.getCenter(penanda).dx;
 
       await lukis(tester, tab: TabUtama.servisku);
-      // Baru satu frame: belum sempat bergerak jauh.
+      // Satu frame: belum sempat bergerak sama sekali.
       await tester.pump();
+      expect(tester.getCenter(penanda).dx, kiri, reason: 'berangkat dari asal');
+
       await tester.pump(const Duration(milliseconds: 100));
       final tengah = tester.getCenter(penanda).dx;
 
@@ -223,6 +225,54 @@ void main() {
       expect(kanan, greaterThan(kiri));
       expect(tengah, greaterThan(kiri), reason: 'sudah mulai bergerak');
       expect(tengah, lessThan(kanan), reason: 'belum sampai');
+    });
+
+    testWidgets('penanda merenggang di tengah jalan, lalu menyusut lagi', (
+      tester,
+    ) async {
+      await lukis(tester, tab: TabUtama.klaim);
+      final penanda = find.byKey(DockUtama.kunciPenanda);
+      final diam = tester.getSize(penanda);
+
+      await lukis(tester, tab: TabUtama.servisku);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 90));
+      final sedangJalan = tester.getSize(penanda);
+
+      await tester.pumpAndSettle();
+
+      // Tepi depan berangkat lebih dulu daripada tepi belakangnya: itulah
+      // yang membuat gerakannya terbaca sebagai satu tarikan, bukan kotak
+      // yang digeser.
+      expect(sedangJalan.width, greaterThan(diam.width * 1.3));
+      expect(sedangJalan.height, lessThan(diam.height), reason: 'memipih');
+      expect(tester.getSize(penanda).width, closeTo(diam.width, 0.5));
+      expect(tester.getSize(penanda).height, closeTo(diam.height, 0.5));
+    });
+
+    testWidgets('ketukan balik di tengah jalan berangkat dari tempatnya', (
+      tester,
+    ) async {
+      await lukis(tester, tab: TabUtama.klaim);
+      final penanda = find.byKey(DockUtama.kunciPenanda);
+
+      await lukis(tester, tab: TabUtama.servisku);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
+      final ditengah = tester.getRect(penanda);
+
+      // Berbalik sebelum sampai.
+      await lukis(tester, tab: TabUtama.klaim);
+      await tester.pump();
+      final sesudahBalik = tester.getRect(penanda);
+
+      expect(
+        sesudahBalik.left,
+        closeTo(ditengah.left, 1),
+        reason: 'tidak meloncat dulu ke tempat asalnya',
+      );
+      await tester.pumpAndSettle();
+      expect(tester.getRect(penanda).left, closeTo(0 + 248, 1));
     });
 
     testWidgets('penanda kembali ke kiri saat Klaim Garansi diketuk lagi', (
@@ -255,7 +305,7 @@ void main() {
     ) async {
       Future<void> lukisTanpaGerak(TabUtama tab) => tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.terang(),
+          theme: AppTheme.terang(kaca: true),
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(disableAnimations: true),
             child: child!,
@@ -277,7 +327,6 @@ void main() {
       await tester.pump(); // satu frame saja
 
       expect(tester.getCenter(penanda).dx, greaterThan(kiri + 100));
-      expect(tester.hasRunningAnimations, isFalse);
     });
 
     testWidgets('hanya tab aktif yang ditandai terpilih', (tester) async {
@@ -311,7 +360,7 @@ void main() {
       await lukis(tester, jumlah: 3);
       expect(tester.takeException(), isNull);
 
-      await lukis(tester, jumlah: 3, tema: AppTheme.gelap());
+      await lukis(tester, jumlah: 3, tema: AppTheme.gelap(kaca: true));
       expect(tester.takeException(), isNull);
     });
 
@@ -325,6 +374,23 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+
+    testWidgets('tanpa mode kaca dock tetap padat, tanpa buram', (
+      tester,
+    ) async {
+      // Windows memakai tema yang sama tanpa kaca. Buram di sana hanya
+      // memperlambat, dan meja depan membaca tabel padat seharian.
+      await lukis(tester, tema: AppTheme.terang());
+
+      expect(
+        find.descendant(
+          of: find.byType(DockUtama),
+          matching: find.byType(BackdropFilter),
+        ),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('muat di layar tersempit tanpa meluap', (tester) async {
@@ -386,53 +452,64 @@ void main() {
       },
     );
 
-    testWidgets('isi bergeser searah penanda saat berpindah menu', (
+    testWidgets('isi bertukar seketika, tanpa dua daftar saling menembus', (
       tester,
     ) async {
-      await _lukisHalaman(tester, nota: [_nota('Jamal')]);
-      final klaim = find.byKey(const ValueKey<TabUtama>(TabUtama.klaim));
-      final servisku = find.byKey(const ValueKey<TabUtama>(TabUtama.servisku));
+      // Pernah disilangkan dengan pudar dan geser: selama peralihan, daftar
+      // klaim dan daftar servis terlihat bertumpuk -- "meninggalkan
+      // bayangan". Sekarang yang satu langsung menggantikan yang lain.
+      await _lukisHalaman(
+        tester,
+        nota: [_nota('Jamal')],
+        klaim: [_klaim('1', 'Pelanggan Klaim')],
+      );
+      expect(find.text('Pelanggan Klaim'), findsOneWidget);
 
-      // Ke Servisku (kanan): ia datang dari kanan, klaim keluar ke kiri.
       await tester.tap(_didock('Servisku'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(tester.getTopLeft(servisku).dx, greaterThan(0));
-      expect(tester.getTopLeft(klaim).dx, lessThan(0));
 
-      await tester.pumpAndSettle();
-      expect(tester.getTopLeft(servisku).dx, 0);
-      expect(klaim, findsNothing);
-
-      // Kembali (kiri): klaim datang dari kiri, Servisku keluar ke kanan.
-      await tester.tap(_didock('Klaim Garansi'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(tester.getTopLeft(klaim).dx, lessThan(0));
-      expect(tester.getTopLeft(servisku).dx, greaterThan(0));
-
-      await tester.pumpAndSettle();
-      expect(tester.getTopLeft(klaim).dx, 0);
-      expect(servisku, findsNothing);
+      // Satu frame sesudah diketuk, yang lama sudah tidak terlihat lagi.
+      expect(find.text('Pelanggan Klaim'), findsNothing);
+      expect(find.text('Jamal'), findsOneWidget);
       expect(tester.takeException(), isNull);
+
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Pelanggan Klaim'), findsNothing);
     });
 
-    testWidgets('mengetuk menu yang sedang aktif tidak menggerakkan apa-apa', (
+    testWidgets('posisi gulir daftar klaim tidak hilang saat pulang-pergi', (
       tester,
     ) async {
-      await _lukisHalaman(tester);
-      final klaim = find.byKey(const ValueKey<TabUtama>(TabUtama.klaim));
-
-      await tester.tap(_didock('Klaim Garansi'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // Tidak bergeser, dan tidak ada isi kedua yang ikut masuk.
-      expect(tester.getTopLeft(klaim).dx, 0);
-      expect(
-        find.byKey(const ValueKey<TabUtama>(TabUtama.servisku)),
-        findsNothing,
+      await _lukisHalaman(
+        tester,
+        nota: [_nota('Jamal')],
+        klaim: [for (var i = 0; i < 12; i++) _klaim('$i', 'Klaim $i')],
       );
+
+      // Scrollable pertama di layar ini adalah kotak pencarian -- tiap
+      // TextField punya penggulir mendatarnya sendiri. Yang dicari adalah
+      // penggulir milik daftar kartunya.
+      double gulir() => tester
+          .state<ScrollableState>(
+            find.descendant(
+              of: find.byType(ListView).first,
+              matching: find.byType(Scrollable),
+            ),
+          )
+          .position
+          .pixels;
+
+      await tester.drag(find.byType(ListView).first, const Offset(0, -400));
+      await tester.pumpAndSettle();
+      final sebelum = gulir();
+      expect(sebelum, greaterThan(300));
+
+      await tester.tap(_didock('Servisku'));
+      await tester.pumpAndSettle();
+      await tester.tap(_didock('Klaim Garansi'));
+      await tester.pumpAndSettle();
+
+      expect(gulir(), sebelum);
     });
 
     testWidgets('judul halaman mengikuti tab', (tester) async {

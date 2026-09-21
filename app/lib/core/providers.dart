@@ -533,6 +533,18 @@ String tulisModeTema(ThemeMode mode) => switch (mode) {
 Future<void> simpanModeTema(WidgetRef ref, ThemeMode mode) =>
     ref.read(prefsProvider).tulis('tema.mode', tulisModeTema(mode));
 
+/// Efek kaca di Android: bidang tembus pandang di atas latar berwarna.
+///
+/// Menyala kecuali dimatikan. Melekat pada perangkat seperti mode warna --
+/// buram menuntut kerja lebih dari layar, dan HP yang paling tua di toko
+/// tidak harus ikut menanggungnya.
+final efekKacaProvider = StreamProvider<bool>(
+  (ref) => ref.watch(prefsProvider).watch('tema.kaca').map((v) => v != 'mati'),
+);
+
+Future<void> simpanEfekKaca(WidgetRef ref, bool nyala) =>
+    ref.read(prefsProvider).tulis('tema.kaca', nyala ? 'nyala' : 'mati');
+
 final printerNamaProvider = StreamProvider<String>(
   (ref) => ref.watch(prefsProvider).watch('printer.nama').map((v) => v ?? ''),
 );

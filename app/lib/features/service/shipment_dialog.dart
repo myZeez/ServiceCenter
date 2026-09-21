@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/models.dart';
 import '../../core/data/galat.dart';
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
@@ -16,7 +17,7 @@ final _tglFmt = DateFormat('dd MMM yyyy');
 final _iso = DateFormat('yyyy-MM-dd');
 
 Future<void> showShipmentDialog(BuildContext context, {ShipmentEntry? kirim}) {
-  return showGeneralDialog(
+  return tampilkanDialogUmum(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Tutup',
@@ -465,7 +466,7 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
                     width: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: context.warna.permukaan,
+                      color: context.warna.kertas,
                     ),
                   )
                 : const Text('SIMPAN'),

@@ -284,7 +284,7 @@ class _BrandChipState extends State<_BrandChip> {
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.6,
-              color: active ? context.warna.permukaan : context.warna.teks,
+              color: active ? context.warna.kertas : context.warna.teks,
             ),
           ),
         ),

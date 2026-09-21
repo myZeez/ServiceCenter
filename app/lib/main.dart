@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config.dart';
+import 'core/kaca/gaya_kaca.dart';
+import 'core/kaca/kerangka_app.dart';
 import 'core/data/pemantau_http.dart';
 import 'core/data/prefs.dart';
 import 'core/data/siklus.dart';
@@ -58,15 +60,12 @@ class ScManagementApp extends ConsumerWidget {
     // benar untuk sebagian besar orang, jadi tidak ada kedipan terang ke
     // gelap pada perangkat yang memang disetel gelap.
     final mode = ref.watch(modeTemaProvider).valueOrNull ?? ThemeMode.system;
+    // Kaca hanya di Android, dan bisa dimatikan sendiri dari Pengaturan
+    // kalau HP-nya terasa berat.
+    final kaca =
+        kacaDidukung && (ref.watch(efekKacaProvider).valueOrNull ?? true);
 
-    return MaterialApp(
-      title: 'Klaim Garansi',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.terang(),
-      darkTheme: AppTheme.gelap(),
-      themeMode: mode,
-      home: const _AuthGate(),
-    );
+    return KerangkaApp(mode: mode, kaca: kaca, home: const _AuthGate());
   }
 }
 

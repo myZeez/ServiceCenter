@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/data/galat.dart';
 import '../../core/data/models.dart';
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/providers.dart';
 import '../../core/revenue/revenue_calculator.dart';
 import '../../core/revenue/revenue_providers.dart';
@@ -806,7 +807,7 @@ Future<void> ubahNilai(
   UnitRekap unit,
 ) async {
   final hasil =
-      await showDialog<({double? fee, String? catatan, DateTime tutup})>(
+      await tampilkanDialog<({double? fee, String? catatan, DateTime tutup})>(
         context: context,
         builder: (_) => _NilaiDialog(unit),
       );

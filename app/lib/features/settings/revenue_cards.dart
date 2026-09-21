@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/models.dart';
 import '../../core/data/galat.dart';
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/providers.dart';
 import '../../core/revenue/revenue_providers.dart';
 import '../../core/theme.dart';
@@ -114,7 +115,7 @@ class BrandFeesCard extends ConsumerWidget {
     Brand brand,
     BrandFeeEntry? current,
   ) async {
-    final hasil = await showDialog<({double fee, DateTime dari})>(
+    final hasil = await tampilkanDialog<({double fee, DateTime dari})>(
       context: context,
       builder: (_) => _FeeDialog(
         brand: brand.nama,
@@ -142,7 +143,7 @@ class BrandFeesCard extends ConsumerWidget {
     Brand brand,
     BrandRuleEntry? current,
   ) async {
-    final hasil = await showDialog<List<double>?>(
+    final hasil = await tampilkanDialog<List<double>?>(
       context: context,
       builder: (_) => _RuleDialog(brand: brand.nama, current: current),
     );
@@ -941,7 +942,7 @@ class _MethodOption extends StatelessWidget {
                               fontSize: 8,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.6,
-                              color: context.warna.permukaan,
+                              color: context.warna.kertas,
                             ),
                           ),
                         ),

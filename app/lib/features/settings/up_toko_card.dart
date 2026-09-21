@@ -199,7 +199,7 @@ class _UpTokoCardState extends ConsumerState<UpTokoCard> {
                         width: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: context.warna.permukaan,
+                          color: context.warna.kertas,
                         ),
                       )
                     : const Text('SIMPAN'),
@@ -246,7 +246,7 @@ class _Chip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: bawaan ? context.warna.permukaan : context.warna.teks,
+                color: bawaan ? context.warna.kertas : context.warna.teks,
               ),
             ),
             if (bawaan) ...[
@@ -257,7 +257,7 @@ class _Chip extends StatelessWidget {
                   fontSize: 8.5,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.8,
-                  color: context.warna.permukaan,
+                  color: context.warna.kertas,
                 ),
               ),
             ],
@@ -267,7 +267,7 @@ class _Chip extends StatelessWidget {
               visualDensity: VisualDensity.compact,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
               padding: EdgeInsets.zero,
-              color: bawaan ? context.warna.permukaan : context.warna.teksLembut,
+              color: bawaan ? context.warna.kertas : context.warna.teksLembut,
               icon: const Icon(Icons.close),
               onPressed: onHapus,
             ),

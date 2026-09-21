@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/data/galat.dart';
 import '../../core/data/models.dart';
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/gagal_muat.dart';
@@ -200,7 +201,7 @@ class _Chip extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.4,
-              color: aktif ? context.warna.permukaan : context.warna.teks,
+              color: aktif ? context.warna.kertas : context.warna.teks,
             ),
           ),
         ),
@@ -220,7 +221,7 @@ class _Kartu extends ConsumerWidget {
     final p = pesanan;
 
     return InkWell(
-      onTap: () => showModalBottomSheet<void>(
+      onTap: () => tampilkanLembar<void>(
         context: context,
         isScrollControlled: true,
         backgroundColor: context.warna.permukaan,

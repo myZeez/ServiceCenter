@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/data/models.dart';
 import '../../core/data/galat.dart';
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
@@ -433,7 +434,7 @@ class ClaimDetailPage extends ConsumerWidget {
     String? hint,
     TextInputType? keyboard,
   }) async {
-    final result = await showDialog<String>(
+    final result = await tampilkanDialog<String>(
       context: context,
       builder: (_) => _TextEditDialog(
         label: label,
@@ -467,7 +468,7 @@ class ClaimDetailPage extends ConsumerWidget {
   ) async {
     final types = ref.read(partTypesProvider).valueOrNull ?? const <PartType>[];
 
-    final result = await showDialog<({int typeId, String? sn})>(
+    final result = await tampilkanDialog<({int typeId, String? sn})>(
       context: context,
       builder: (_) => _PartEditDialog(types: types, part: part),
     );
@@ -490,7 +491,7 @@ class ClaimDetailPage extends ConsumerWidget {
     WidgetRef ref,
     ClaimPart part,
   ) async {
-    final ok = await showDialog<bool>(
+    final ok = await tampilkanDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Part?'),
@@ -588,7 +589,7 @@ class ClaimDetailPage extends ConsumerWidget {
     required String title,
     required List<_Opt> options,
   }) {
-    return showDialog<String>(
+    return tampilkanDialog<String>(
       context: context,
       builder: (_) => _PickerDialog(title: title, options: options),
     );

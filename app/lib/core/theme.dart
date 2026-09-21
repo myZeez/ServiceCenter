@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'kaca/gaya_kaca.dart';
+import 'kaca/lapisan_kaca.dart';
 import 'warna.dart';
 
+export 'kaca/gaya_kaca.dart';
 export 'warna.dart';
 
 /// Ritme spasi. Basis 8px, dengan tiga langkah besar dari spesifikasi.
@@ -63,16 +66,28 @@ TextStyle gayaAngka(BuildContext context, {double? ukuran, FontWeight? tebal}) {
 
 class AppTheme {
   /// Siang: Swiss/International Typographic Style, seperti sejak awal.
-  static ThemeData terang() => _susun(WarnaApp.terang, Brightness.light);
+  ///
+  /// [kaca] menyalakan mode kaca: bidang tembus pandang di atas latar
+  /// berwarna, dengan buram yang berbeda-beda tebalnya. Hanya dipakai
+  /// Android -- lihat `kacaDidukung`.
+  static ThemeData terang({bool kaca = false}) => _susun(
+    kaca ? WarnaApp.terangKaca : WarnaApp.terang,
+    Brightness.light,
+    kaca ? GayaKaca.terang : null,
+  );
 
   /// Malam: blueprint -- garis terang di atas biru tua.
-  static ThemeData gelap() => _susun(WarnaApp.gelap, Brightness.dark);
+  static ThemeData gelap({bool kaca = false}) => _susun(
+    kaca ? WarnaApp.gelapKaca : WarnaApp.gelap,
+    Brightness.dark,
+    kaca ? GayaKaca.gelap : null,
+  );
 
-  static ThemeData _susun(WarnaApp w, Brightness terang) {
+  static ThemeData _susun(WarnaApp w, Brightness terang, GayaKaca? kaca) {
     final scheme = ColorScheme(
       brightness: terang,
       primary: w.teks,
-      onPrimary: w.latar,
+      onPrimary: w.diTeks,
       secondary: w.aksen,
       onSecondary: w.diAksen,
       error: w.bahaya,
@@ -144,10 +159,17 @@ class AppTheme {
     return ThemeData(
       colorScheme: scheme,
       useMaterial3: true,
-      extensions: [w],
+      extensions: [w, ?kaca],
+      // Di mode kaca latar halaman bening: yang terlihat adalah LatarKaca
+      // yang dipasang di dalam tiap halaman.
       scaffoldBackgroundColor: w.latar,
       textTheme: text,
       splashFactory: InkSparkle.splashFactory,
+
+      // Dipakai menu DropdownButton sebagai latarnya. Kacanya lebih pekat
+      // daripada kartu: menu berdiri sebentar di atas isi yang sedang
+      // dibaca, dan yang di bawahnya tidak boleh ikut terbaca.
+      canvasColor: kaca?.isiUntuk(TingkatKaca.tebal),
 
       appBarTheme: AppBarTheme(
         backgroundColor: w.latar,
@@ -211,7 +233,7 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: w.teks,
-          foregroundColor: w.latar,
+          foregroundColor: w.diTeks,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
@@ -264,7 +286,7 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: w.permukaan,
         selectedColor: w.teks,
-        checkmarkColor: w.latar,
+        checkmarkColor: w.diTeks,
         side: BorderSide(color: w.garisIsian),
         labelStyle: TextStyle(
           fontSize: 12,
@@ -276,7 +298,7 @@ class AppTheme {
           fontSize: 12,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.2,
-          color: w.latar,
+          color: w.diTeks,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.small),
@@ -286,20 +308,88 @@ class AppTheme {
       ),
 
       dialogTheme: DialogThemeData(
-        backgroundColor: w.permukaan,
+        backgroundColor: kaca?.isiUntuk(TingkatKaca.tebal) ?? w.permukaan,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.base),
-          side: BorderSide(color: w.garisHalus),
+          side: BorderSide(color: kaca?.tepi ?? w.garisHalus),
         ),
         titleTextStyle: text.titleLarge,
+        // Tirai dibuat lebih tipis daripada bawaan: yang memisahkan dialog
+        // dari halamannya sudah buram, dan tirai pekat di atas buram
+        // membuat keduanya sama-sama tidak terbaca.
+        barrierColor: kaca == null ? null : const Color(0x26000000),
       ),
 
+      bottomSheetTheme: kaca == null
+          ? const BottomSheetThemeData()
+          : BottomSheetThemeData(
+              backgroundColor: kaca.isiUntuk(TingkatKaca.sedang),
+              surfaceTintColor: Colors.transparent,
+              modalBarrierColor: const Color(0x26000000),
+              elevation: 0,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(AppRadius.base * 2),
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+            ),
+
+      popupMenuTheme: PopupMenuThemeData(
+        color: kaca?.isiUntuk(TingkatKaca.tebal),
+        surfaceTintColor: Colors.transparent,
+        elevation: kaca == null ? null : 0,
+        shape: kaca == null
+            ? null
+            : RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.base),
+                side: BorderSide(color: kaca.tepi),
+              ),
+      ),
+
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: kaca?.isiUntuk(TingkatKaca.tebal),
+        surfaceTintColor: Colors.transparent,
+        elevation: kaca == null ? null : 0,
+        shape: kaca == null
+            ? null
+            : RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.base),
+                side: BorderSide(color: kaca.tepi),
+              ),
+      ),
+
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: kaca?.isiUntuk(TingkatKaca.tebal),
+        elevation: kaca == null ? null : 0,
+      ),
+
+      // Keterangan yang muncul saat ikon ditahan. Satu-satunya lapisan
+      // yang tidak bisa diberi buram -- Flutter tidak menyediakan
+      // sambungannya -- jadi kacanya dibuat lebih pekat supaya tulisannya
+      // tetap terbaca di atas apa pun.
+      tooltipTheme: kaca == null
+          ? const TooltipThemeData()
+          : TooltipThemeData(
+              decoration: BoxDecoration(
+                color: w.teks.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(AppRadius.small),
+              ),
+              textStyle: TextStyle(fontSize: 12, color: w.diTeks),
+            ),
+
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: w.teks,
+        // Buramnya disisipkan PesanKaca; yang diatur di sini hanya
+        // warnanya. Bayangan dimatikan: bayangan di bawah bidang tembus
+        // pandang terlihat sebagai kaca yang kotor.
+        backgroundColor: kaca == null
+            ? w.teks
+            : w.teks.withValues(alpha: 0.82),
+        elevation: kaca == null ? null : 0,
         contentTextStyle: TextStyle(
-          color: w.latar,
+          color: w.diTeks,
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
@@ -336,10 +426,16 @@ class AppTheme {
         ),
       ),
 
-      pageTransitionsTheme: const PageTransitionsTheme(
+      pageTransitionsTheme: PageTransitionsTheme(
         builders: {
-          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
-          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.android: kaca == null
+              ? const FadeForwardsPageTransitionsBuilder()
+              : TransisiKaca(
+                  FadeForwardsPageTransitionsBuilder(
+                    backgroundColor: kaca.dasar,
+                  ),
+                ),
+          TargetPlatform.windows: const FadeForwardsPageTransitionsBuilder(),
         },
       ),
     );

@@ -153,7 +153,7 @@ class PartTahapChip extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: filled ? context.warna.permukaan : c,
+          color: filled ? context.warna.kertas : c,
           fontSize: compact ? 9 : 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.7,

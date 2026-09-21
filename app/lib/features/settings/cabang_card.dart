@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/galat.dart';
+import '../../core/kaca/overlay_kaca.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
@@ -90,7 +91,7 @@ class CabangCard extends ConsumerWidget {
     final nama = TextEditingController();
     String? galat;
 
-    final baru = await showDialog<List<String>>(
+    final baru = await tampilkanDialog<List<String>>(
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (context, setState) {

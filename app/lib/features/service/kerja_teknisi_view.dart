@@ -369,7 +369,7 @@ class _ChipKelompok extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.4,
-              color: aktif ? context.warna.permukaan : context.warna.teks,
+              color: aktif ? context.warna.kertas : context.warna.teks,
             ),
           ),
         ),

@@ -234,7 +234,9 @@ void main() {
     const dibolehkan = {
       '0x14000000', // bayangan kartu
       '0x1F000000', // bayangan kartu yang sedang diseret
+      '0x26000000', // tirai di belakang dialog, mode kaca
       '0x33000000', // tirai di belakang dialog
+      '0x80000000', // tirai bawaan showGeneralDialog
     };
 
     test('warna hanya lahir di warna.dart', () {
@@ -244,6 +246,9 @@ void main() {
       for (final f in Directory('lib').listSync(recursive: true)) {
         if (f is! File || !f.path.endsWith('.dart')) continue;
         if (f.path.endsWith('warna.dart')) continue;
+        // Palet mode kaca: warna dasar latar, isi bidang, dan bola cahaya
+        // di belakangnya. Sama seperti warna.dart, di sinilah warna lahir.
+        if (f.path.endsWith('gaya_kaca.dart')) continue;
 
         final isi = f.readAsStringSync();
         for (final m in pola.allMatches(isi)) {

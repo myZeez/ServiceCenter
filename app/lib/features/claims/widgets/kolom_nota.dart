@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/data/models.dart';
+import '../../../core/kaca/panel_kaca.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/swiss_widgets.dart';
 import '../../service/service_status.dart';
@@ -76,7 +77,11 @@ class KolomNota extends StatelessWidget {
               onFieldSubmitted: (_) => onSubmit(),
               decoration: InputDecoration(
                 suffixIcon: terpilih == null
-                    ? Icon(Icons.search, size: 17, color: context.warna.teksLembut)
+                    ? Icon(
+                        Icons.search,
+                        size: 17,
+                        color: context.warna.teksLembut,
+                      )
                     : IconButton(
                         tooltip: 'Lepas tautan nota',
                         iconSize: 16,
@@ -90,13 +95,13 @@ class KolomNota extends StatelessWidget {
             ),
             optionsViewBuilder: (context, onSelected, options) => Align(
               alignment: Alignment.topLeft,
-              child: Material(
-                elevation: 0,
-                color: context.warna.permukaan,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.base),
-                  side: BorderSide(color: context.warna.teks),
-                ),
+              // Melayang di atas formulir, jadi ia berkaca seperti menu
+              // pilihan -- lihat PanelKaca. Bukan rute, jadi PengamatKaca
+              // tidak melihatnya dan buramnya dibawa sendiri.
+              child: PanelKaca(
+                tingkat: TingkatKaca.tebal,
+                radius: BorderRadius.circular(AppRadius.base),
+                bayangan: true,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(
                     maxHeight: 280,
@@ -169,7 +174,9 @@ class KolomNota extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.xs),
             decoration: BoxDecoration(
               color: context.warna.aksen.withValues(alpha: 0.05),
-              border: Border(left: BorderSide(color: context.warna.aksen, width: 3)),
+              border: Border(
+                left: BorderSide(color: context.warna.aksen, width: 3),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

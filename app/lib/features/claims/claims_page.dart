@@ -11,9 +11,7 @@ import '../../core/theme.dart';
 import '../../core/widgets/gagal_muat.dart';
 import '../../core/widgets/koneksi.dart';
 import '../../core/widgets/swiss_widgets.dart';
-import '../mywork/my_work_page.dart';
 import '../parts/parts_page.dart';
-import '../service/service_page.dart';
 import '../service/servisku_view.dart';
 import '../reports/reports_page.dart';
 import '../scan/scan_page.dart';
@@ -22,6 +20,7 @@ import '../settlement/settlement_page.dart';
 import 'claim_detail_page.dart';
 import 'claim_form_page.dart';
 import 'dock_utama.dart';
+import 'widgets/klaim_saya_summary.dart';
 
 final _dateFmt = DateFormat('dd/MM/yy');
 
@@ -57,6 +56,10 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
     final profile = ref.watch(currentProfileProvider);
 
     return Scaffold(
+      // Di mode kaca isinya mulai dari puncak layar dan AppBar-nya bening,
+      // supaya kepala daftar yang berkaca menutupi keduanya sebagai satu
+      // bidang -- lihat KepalaMengambang.
+      extendBodyBehindAppBar: context.kaca != null,
       appBar: AppBar(
         titleSpacing: AppSpacing.sm,
         title: Column(
@@ -83,12 +86,8 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
             position: PopupMenuPosition.under,
             onSelected: (v) {
               switch (v) {
-                case 'servis':
-                  _push(context, const ServicePage());
                 case 'part':
                   _push(context, const PartsPage());
-                case 'pekerjaanku':
-                  _push(context, const MyWorkPage());
                 case 'rekap':
                   _push(context, const ReportsPage());
                 case 'rekap_brand':
@@ -100,14 +99,9 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
               }
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'servis', child: Text('Servis')),
               // Sedang disimpan -- lihat fiturTanyaHargaProvider.
               if (adaPart)
                 const PopupMenuItem(value: 'part', child: Text('Part')),
-              const PopupMenuItem(
-                value: 'pekerjaanku',
-                child: Text('Pekerjaanku'),
-              ),
               if (isAdmin) ...[
                 const PopupMenuItem(value: 'rekap', child: Text('Rekap')),
                 const PopupMenuItem(
@@ -204,37 +198,11 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
                 ),
               ),
               error: (e, _) => GagalMuat(e),
-              data: (list) => list.isEmpty
-                  ? ListView(
-                      // Tetap ListView walau kosong: RefreshIndicator hanya
-                      // bekerja di atas sesuatu yang bisa digulir, dan
-                      // justru saat daftarnya kosong orang paling ingin
-                      // mencoba menyegarkan.
-                      padding: EdgeInsets.only(top: ruangAtas),
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.sizeOf(context).height * 0.6,
-                          child: EmptyState(
-                            icon: Icons.inbox_outlined,
-                            title: 'Belum ada klaim',
-                            description:
-                                'Klaim yang kamu catat akan muncul di '
-                                'sini, dan langsung terlihat di perangkat '
-                                'lain.',
-                            action: OutlinedButton(
-                              onPressed: () =>
-                                  _push(context, const ClaimFormPage()),
-                              child: const Text('CATAT KLAIM PERTAMA'),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : _ClaimCards(
-                      list,
-                      ruangAtas: ruangAtas,
-                      ruangBawah: ruangBawah,
-                    ),
+              data: (list) => _ClaimCards(
+                list,
+                ruangAtas: ruangAtas,
+                ruangBawah: ruangBawah,
+              ),
             ),
           ),
     );
@@ -289,6 +257,12 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
             controller: _search,
             decoration: InputDecoration(
               hintText: 'Cari nama, SN, RMA, telp',
+              // Kepala filter sudah menjadi satu panel kaca. Menggambar
+              // `permukaan` lagi di dalam TextField membuatnya bertumpuk
+              // dan tampak lebih gelap daripada dua dropdown di bawahnya.
+              // Di tema biasa biarkan nilai tema tetap berlaku.
+              filled: context.kaca == null ? null : true,
+              fillColor: context.kaca == null ? null : Colors.transparent,
               prefixIcon: Icon(
                 Icons.search,
                 size: 18,
@@ -429,9 +403,9 @@ class _ClaimCards extends ConsumerWidget {
 
   final List<Claim> items;
 
-  /// Ruang di puncak daftar supaya kartu pertama tidak berawal di bawah
-  /// kepala yang melayang, dan di dasarnya supaya yang terakhir tidak
-  /// tertutup dock.
+  /// Ruang di puncak daftar supaya ringkasan dan kartu pertama tidak berawal
+  /// di bawah kepala yang melayang, dan di dasarnya supaya yang terakhir
+  /// tidak tertutup dock.
   final double ruangAtas;
   final double ruangBawah;
 
@@ -447,10 +421,9 @@ class _ClaimCards extends ConsumerWidget {
           in ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[])
         p.id: p.nama,
     };
+    final kosong = items.isEmpty;
 
     return ListView.separated(
-      // Kunci ini yang membuat letak gulirnya diingat waktu orang pindah
-      // ke Servisku dan kembali.
       key: const PageStorageKey<String>('daftar-klaim'),
       padding: EdgeInsets.fromLTRB(
         AppSpacing.sm,
@@ -458,16 +431,47 @@ class _ClaimCards extends ConsumerWidget {
         AppSpacing.sm,
         ruangBawah + AppSpacing.s,
       ),
-      itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.xs),
-      itemBuilder: (context, i) => EntryAnimation(
-        index: i,
-        child: _ClaimCard(
-          claim: items[i],
-          brand: brands[items[i].brandId] ?? '—',
-          technician: techs[items[i].teknisiId],
-        ),
-      ),
+      itemCount: kosong ? 2 : items.length + 1,
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.s),
+      itemBuilder: (context, i) {
+        if (i == 0) {
+          return const KlaimSayaSummary(judul: 'Ringkasan Klaim Saya');
+        }
+        if (kosong) {
+          return Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.inbox_outlined, color: context.warna.teksLembut),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Belum ada klaim',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ClaimFormPage()),
+                  ),
+                  child: const Text('CATAT KLAIM PERTAMA'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final index = i - 1;
+        return EntryAnimation(
+          index: index,
+          child: _ClaimCard(
+            claim: items[index],
+            brand: brands[items[index].brandId] ?? '—',
+            technician: techs[items[index].teknisiId],
+          ),
+        );
+      },
     );
   }
 }

@@ -423,6 +423,49 @@ void main() {
       );
     });
 
+    testWidgets('menu titik tiga tidak lagi membuka Servis atau Pekerjaanku', (
+      tester,
+    ) async {
+      await _lukisHalaman(tester);
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Servis'), findsNothing);
+      expect(find.text('Pekerjaanku'), findsNothing);
+    });
+
+    testWidgets('ringkasan klaim pribadi berada di halaman Klaim Garansi', (
+      tester,
+    ) async {
+      await _lukisHalaman(tester, klaim: [_klaim('1', 'Pelanggan Klaim')]);
+
+      expect(find.text('RINGKASAN KLAIM SAYA'), findsOneWidget);
+      expect(find.text('UNIT GARANSI SELESAI'), findsOneWidget);
+      expect(find.text('LAPORAN GARANSI'), findsNothing);
+    });
+
+    testWidgets('Servisku mencari unit dengan cepat lewat nomor nota', (
+      tester,
+    ) async {
+      await _lukisHalaman(tester, nota: [_nota('Jamal'), _nota('Soni')]);
+      await tester.tap(_didock('Servisku'));
+      await tester.pumpAndSettle();
+
+      final cari = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.hintText == 'Cari no nota, nama, SN, telp',
+      );
+      expect(cari, findsOneWidget);
+
+      await tester.enterText(cari, 'SVR-Jamal');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Jamal'), findsOneWidget);
+      expect(find.text('Soni'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
     testWidgets(
       'Servisku hanya memuat unit yang sedang dikerjakan atas namaku',
       (tester) async {

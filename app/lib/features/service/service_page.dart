@@ -73,6 +73,8 @@ class _ServicePageState extends ConsumerState<ServicePage> {
     };
 
     return Scaffold(
+      // Lihat ClaimsPage: kepala daftar yang berkaca menutupi AppBar juga.
+      extendBodyBehindAppBar: context.kaca != null,
       appBar: AppBar(
         titleSpacing: AppSpacing.sm,
         title: const Text('Servis'),
@@ -198,6 +200,10 @@ class _KotakCari extends StatelessWidget {
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
           hintText: 'Cari no nota, nama, SN, telp',
+          // Kepala daftar sudah memburamkan latar. Di mode kaca field tidak
+          // perlu menambah bidang putih/gelap sendiri.
+          filled: context.kaca == null ? null : true,
+          fillColor: context.kaca == null ? null : Colors.transparent,
           prefixIcon: Icon(
             Icons.search,
             size: 18,
@@ -304,7 +310,14 @@ class ChipSaringan extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: aktif ? context.warna.teks : context.warna.permukaan,
+            // Warna padat tetap diperlukan untuk pilihan aktif. Filter yang
+            // tidak dipilih cukup dibatasi garis agar tidak menjadi blok
+            // putih di mode kaca.
+            color: aktif
+                ? context.warna.teks
+                : (context.kaca == null
+                      ? context.warna.permukaan
+                      : Colors.transparent),
             border: Border.all(color: context.warna.teks),
             borderRadius: BorderRadius.circular(AppRadius.small),
           ),
@@ -610,6 +623,16 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
           ),
           const SizedBox(height: AppSpacing.sm),
 
+          if (keluhanPelanggan.isNotEmpty) ...[
+            LabeledField(
+              label: 'Keluhan Pelanggan',
+              child: Text(
+                keluhanPelanggan,
+                style: TextStyle(color: context.warna.teksLembut, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s),
+          ],
           if (klaim == null)
             LabeledField(
               label: 'Status',

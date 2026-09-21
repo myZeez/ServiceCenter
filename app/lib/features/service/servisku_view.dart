@@ -1,22 +1,19 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/data/models.dart';
 import '../../core/kaca/kepala_mengambang.dart';
+import '../../core/nota/cocok_cari.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/gagal_muat.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import 'service_page.dart';
 import 'servisku.dart';
+import 'widgets/omset_saya_card.dart';
 
 final _tgl = DateFormat('dd-MM-yyyy');
-
-/// Sama dengan tanggal masuk di kartu, supaya dua tanggal di satu baris
-/// terbaca sepasang.
 final _tglPendek = DateFormat('dd/MM/yy');
 
 /// Nota yang sedang dipegang pengguna yang login. Kosong bila belum ada
@@ -30,17 +27,11 @@ final notaBerjalanSayaProvider = Provider<List<ServiceOrderEntry>>(
 
 enum _Tampilan { berjalan, selesai }
 
-/// Servisku: unit yang sedang dikerjakan atas namamu -- baru masuk sampai
-/// menunggu part -- dan, lewat tombol di atasnya, yang sudah selesai dalam
-/// tiga bulan terakhir.
-///
-/// Sekadar menyaring daftar Servis menurut teknisinya. Yang bisa diubah
-/// dari sini sama persis dengan di sana: ketuk kartunya, dan lembar ubah
-/// pekerjaan terbuka.
+/// Servisku menyatukan daftar unit pribadi, pencarian cepat, dan omset bulan
+/// berjalan agar teknisi tidak perlu berpindah ke Pekerjaanku atau Servis.
 class ServiskuView extends ConsumerStatefulWidget {
   const ServiskuView({super.key, this.ruangBawah = 0});
 
-  /// Ruang di dasar daftar untuk sesuatu yang melayang di atasnya.
   final double ruangBawah;
 
   @override
@@ -49,6 +40,14 @@ class ServiskuView extends ConsumerStatefulWidget {
 
 class _ServiskuViewState extends ConsumerState<ServiskuView> {
   _Tampilan _tampil = _Tampilan.berjalan;
+  final _pencarian = TextEditingController();
+  String _kata = '';
+
+  @override
+  void dispose() {
+    _pencarian.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,11 +64,25 @@ class _ServiskuViewState extends ConsumerState<ServiskuView> {
     final berjalan = ref.watch(notaBerjalanSayaProvider);
     final selesai = notaSelesaiSaya(semua, saya, sekarang);
     final dipilih = _tampil == _Tampilan.berjalan ? berjalan : selesai;
+    final tampil = [
+      for (final n in dipilih)
+        if (cocokCariNota(n, _kata)) n,
+    ];
+    final sedangMencari = _kata.trim().isNotEmpty;
 
     return KepalaMengambang(
       kepala: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          _PencarianServisku(
+            controller: _pencarian,
+            adaIsi: sedangMencari,
+            onUbah: (v) => setState(() => _kata = v),
+            onHapus: () {
+              _pencarian.clear();
+              setState(() => _kata = '');
+            },
+          ),
           Container(
             decoration: context.kaca != null
                 ? null
@@ -133,54 +146,99 @@ class _ServiskuViewState extends ConsumerState<ServiskuView> {
             ),
           ),
           error: (e, _) => GagalMuat(e),
-          data: (_) {
-            if (dipilih.isEmpty) {
-              return ListView(
-                key: const PageStorageKey<String>('servisku-kosong'),
-                padding: EdgeInsets.only(top: ruangAtas),
-                children: [
-                  SizedBox(
-                    // Ada batas bawahnya: di layar pendek separuh tinggi
-                    // tak cukup memuat ikon, judul, dan penjelasannya.
-                    height: math.max(
-                      360.0,
-                      MediaQuery.sizeOf(context).height * 0.5,
-                    ),
-                    child: EmptyState(
-                      icon: _tampil == _Tampilan.berjalan
-                          ? Icons.build_outlined
-                          : Icons.task_alt_outlined,
-                      title: _tampil == _Tampilan.berjalan
-                          ? 'Tidak ada unit yang sedang kamu kerjakan'
-                          : 'Belum ada unit selesai',
-                      description: _tampil == _Tampilan.berjalan
-                          ? 'Unit yang ditugaskan kepadamu muncul di '
-                                'sini sejak masuk sampai selesai.'
-                          : 'Unit atas namamu yang selesai dalam tiga '
-                                'bulan terakhir muncul di sini.',
-                    ),
+          data: (_) => ListView(
+            key: PageStorageKey<String>('servisku-${_tampil.name}'),
+            padding: EdgeInsets.only(
+              top: ruangAtas + AppSpacing.s,
+              bottom: AppSpacing.md + widget.ruangBawah,
+            ),
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.s),
+                child: OmsetSayaCard(),
+              ),
+              const SizedBox(height: AppSpacing.s),
+              if (tampil.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
                   ),
-                ],
-              );
-            }
-
-            return ListView.builder(
-              key: PageStorageKey<String>('servisku-${_tampil.name}'),
-              padding: EdgeInsets.only(
-                top: ruangAtas,
-                bottom: AppSpacing.md + widget.ruangBawah,
-              ),
-              itemCount: dipilih.length,
-              itemBuilder: (context, i) => KartuNotaServis(
-                nota: dipilih[i],
-                teknisi: techs,
-                keteranganBaris: _tampil == _Tampilan.selesai
-                    ? 'Selesai ${_tglPendek.format(kapanSelesai(dipilih[i]))}'
-                    : null,
-              ),
-            );
-          },
+                  child: EmptyState(
+                    icon: sedangMencari
+                        ? Icons.search_off_outlined
+                        : (_tampil == _Tampilan.berjalan
+                              ? Icons.build_outlined
+                              : Icons.task_alt_outlined),
+                    title: sedangMencari
+                        ? 'Tidak ada unit yang cocok'
+                        : (_tampil == _Tampilan.berjalan
+                              ? 'Tidak ada unit yang sedang kamu kerjakan'
+                              : 'Belum ada unit selesai'),
+                  ),
+                )
+              else
+                for (final n in tampil)
+                  KartuNotaServis(
+                    nota: n,
+                    teknisi: techs,
+                    keteranganBaris: _tampil == _Tampilan.selesai
+                        ? 'Selesai ${_tglPendek.format(kapanSelesai(n))}'
+                        : null,
+                  ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _PencarianServisku extends StatelessWidget {
+  const _PencarianServisku({
+    required this.controller,
+    required this.adaIsi,
+    required this.onUbah,
+    required this.onHapus,
+  });
+
+  final TextEditingController controller;
+  final bool adaIsi;
+  final ValueChanged<String> onUbah;
+  final VoidCallback onHapus;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        0,
+        AppSpacing.sm,
+        AppSpacing.xs,
+      ),
+      child: TextField(
+        controller: controller,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: 'Cari no nota, nama, SN, telp',
+          filled: context.kaca == null ? null : true,
+          fillColor: context.kaca == null ? null : Colors.transparent,
+          prefixIcon: Icon(
+            Icons.search,
+            size: 18,
+            color: context.warna.teksLembut,
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 38),
+          suffixIcon: adaIsi
+              ? IconButton(
+                  tooltip: 'Hapus kata pencarian',
+                  iconSize: 18,
+                  color: context.warna.teksLembut,
+                  icon: const Icon(Icons.close),
+                  onPressed: onHapus,
+                )
+              : null,
+        ),
+        onChanged: onUbah,
       ),
     );
   }

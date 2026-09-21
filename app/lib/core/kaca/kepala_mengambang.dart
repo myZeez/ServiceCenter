@@ -15,6 +15,17 @@ import 'panel_kaca.dart';
 /// daftar di bawahnya, tidak ada yang bertumpuk. Karena itu [isi] menerima
 /// berapa ruang yang harus disisakan di puncak daftar -- nol kalau memang
 /// tidak ada yang menutupinya.
+///
+/// AppBar ikut tertutup kaca yang sama. Sempat panelnya baru dimulai di
+/// bawah AppBar, dan yang terlihat adalah tepi keras di antara keduanya:
+/// AppBar yang bening memperlihatkan latar berwarna, panel di bawahnya
+/// berwarna lebih gelap oleh kacanya sendiri. Sekarang panelnya dimulai
+/// dari puncak layar dan AppBar -- yang bening -- duduk di atasnya, jadi
+/// keduanya satu bidang yang menyambung.
+///
+/// Syaratnya: Scaffold pemakainya harus `extendBodyBehindAppBar` selama
+/// kacanya menyala, supaya isinya mulai dari puncak layar dan tahu
+/// setinggi apa AppBar-nya lewat `MediaQuery.padding.top`.
 class KepalaMengambang extends StatefulWidget {
   const KepalaMengambang({super.key, required this.kepala, required this.isi});
 
@@ -39,6 +50,10 @@ class _KepalaMengambangState extends State<KepalaMengambang> {
       );
     }
 
+    // Setinggi AppBar beserta status bar di atasnya, kalau Scaffold-nya
+    // memang memperpanjang isi ke belakang AppBar. Nol kalau tidak ada.
+    final atas = MediaQuery.paddingOf(context).top;
+
     return Stack(
       children: [
         Positioned.fill(child: widget.isi(context, _tinggi)),
@@ -49,6 +64,7 @@ class _KepalaMengambangState extends State<KepalaMengambang> {
           child: PanelKaca(
             tingkat: TingkatKaca.ringan,
             tepi: Tepi.bawah,
+            transparan: true,
             child: _Ukur(
               onTinggi: (t) {
                 if ((t - _tinggi).abs() < 0.5) return;
@@ -59,7 +75,13 @@ class _KepalaMengambangState extends State<KepalaMengambang> {
                   if (mounted) setState(() => _tinggi = t);
                 });
               },
-              child: widget.kepala,
+              // Diukur bersama ruang di atasnya: yang dilaporkan adalah
+              // seluruh tinggi panel, dan itu yang harus disisakan di
+              // puncak daftar.
+              child: Padding(
+                padding: EdgeInsets.only(top: atas),
+                child: widget.kepala,
+              ),
             ),
           ),
         ),

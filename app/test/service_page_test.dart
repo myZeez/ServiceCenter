@@ -89,6 +89,8 @@ void main() {
     // Hanya kolom pekerjaan yang boleh disentuh teknisi.
     expect(find.text('STATUS'), findsOneWidget);
     expect(find.text('TEKNISI'), findsOneWidget);
+    expect(find.text('KELUHAN PELANGGAN'), findsOneWidget);
+    expect(find.text('Mati total'), findsWidgets);
     expect(find.text('PERBAIKAN'), findsOneWidget);
     expect(find.text('SIMPAN'), findsOneWidget);
     // Yang tidak boleh disentuh tidak ditampilkan sama sekali, supaya tidak

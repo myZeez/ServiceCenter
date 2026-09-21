@@ -25,6 +25,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show User;
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/kaca/kerangka_app.dart';
 import 'package:sc_management/core/kaca/latar_kaca.dart';
+import 'package:sc_management/core/kaca/panel_kaca.dart';
 import 'package:sc_management/core/providers.dart';
 import 'package:sc_management/core/revenue/revenue_providers.dart';
 import 'package:sc_management/core/theme.dart';
@@ -87,8 +88,17 @@ Future<void> _lukis(
   WidgetTester tester,
   Widget halaman, {
   Size ukuran = const Size(400, 900),
+  bool kaca = true,
+
+  /// Tinggi status bar dalam dp. HP sungguhan punya sekitar 47; tes tanpa
+  /// ini tidak akan pernah melihat AppBar yang lebih tinggi dari 56.
+  double statusBar = 0,
 }) async {
   await tester.binding.setSurfaceSize(ukuran);
+  tester.view.devicePixelRatio = 1;
+  tester.view.padding = FakeViewPadding(top: statusBar);
+  tester.view.viewPadding = FakeViewPadding(top: statusBar);
+  addTearDown(tester.view.reset);
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
   await tester.pumpWidget(
@@ -123,7 +133,7 @@ Future<void> _lukis(
         koneksiProvider.overrideWith((ref) => Stream.value(true)),
         prefsProvider.overrideWithValue(prefs),
       ],
-      child: KerangkaApp(kaca: true, home: halaman),
+      child: KerangkaApp(kaca: kaca, home: halaman),
     ),
   );
   await tester.pump();
@@ -330,6 +340,114 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(_bidangPadat(tester), isEmpty);
+    });
+  });
+
+  group('Kepala daftar menyambung dengan AppBar', () {
+    // Pernah ada tepi keras tepat di bawah judul: AppBar yang bening
+    // memperlihatkan latar berwarna, sedangkan panel kaca di bawahnya
+    // sudah bertinta gelap -- dua bidang yang terlihat ditempel. Panelnya
+    // harus dimulai dari puncak layar dan menutupi AppBar juga.
+    //
+    // Status bar disimulasikan 47dp seperti HP sungguhan: tanpa itu AppBar
+    // hanya 56dp dan jarak antar bidang yang salah tidak kelihatan.
+    const statusBar = 47.0;
+
+    Finder panelDari(Finder isi) =>
+        find.ancestor(of: isi.first, matching: find.byType(PanelKaca)).first;
+
+    void periksa(WidgetTester tester, Finder isiKepala) {
+      final panel = tester.getRect(panelDari(isiKepala));
+      final appBar = tester.getRect(find.byType(AppBar));
+
+      expect(appBar.top, 0);
+      expect(appBar.bottom, greaterThan(statusBar), reason: 'AppBar utuh');
+      expect(panel.top, 0, reason: 'panel kaca mulai dari puncak layar');
+      expect(
+        panel.bottom,
+        greaterThan(appBar.bottom),
+        reason: 'panel menutupi AppBar, bukan berawal di bawahnya',
+      );
+      // Isi kepalanya sendiri tetap di bawah AppBar, tidak tertimpa.
+      expect(
+        tester.getRect(isiKepala.first).top,
+        greaterThanOrEqualTo(appBar.bottom),
+      );
+    }
+
+    testWidgets('Klaim: panel menutupi AppBar', (tester) async {
+      await _lukis(tester, const ClaimsPage(), statusBar: statusBar);
+
+      periksa(tester, find.byType(TextField));
+
+      // Dan kartu pertama mulai di bawah panelnya, tidak di bawah AppBar.
+      final panel = tester.getRect(panelDari(find.byType(TextField)));
+      expect(
+        tester.getRect(find.text('Pelanggan 1')).top,
+        greaterThanOrEqualTo(panel.bottom),
+      );
+    });
+
+    testWidgets('Servis: panel menutupi AppBar', (tester) async {
+      await _lukis(tester, const ServicePage(), statusBar: statusBar);
+
+      periksa(tester, find.byType(TextField));
+
+      final panel = tester.getRect(panelDari(find.byType(TextField)));
+      expect(
+        tester.getRect(find.text('Jamal')).top,
+        greaterThanOrEqualTo(panel.bottom),
+      );
+    });
+
+    testWidgets('Servisku: panel menutupi AppBar', (tester) async {
+      await _lukis(tester, const ClaimsPage(), statusBar: statusBar);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(DockUtama),
+          matching: find.text('Servisku'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      periksa(tester, find.textContaining('SEDANG DIKERJAKAN'));
+    });
+
+    testWidgets('Scaffold-nya memperpanjang isi ke belakang AppBar', (
+      tester,
+    ) async {
+      // Syarat KepalaMengambang: tanpa ini isinya mulai di bawah AppBar dan
+      // panelnya tidak akan pernah bisa menutupinya.
+      for (final halaman in [const ClaimsPage(), const ServicePage()]) {
+        await _lukis(tester, halaman, statusBar: statusBar);
+        expect(
+          tester
+              .widget<Scaffold>(find.byType(Scaffold).first)
+              .extendBodyBehindAppBar,
+          isTrue,
+          reason: halaman.runtimeType.toString(),
+        );
+      }
+    });
+
+    testWidgets('tanpa kaca (Windows) susunannya tidak berubah', (
+      tester,
+    ) async {
+      await _lukis(tester, const ServicePage(), kaca: false);
+
+      expect(
+        tester
+            .widget<Scaffold>(find.byType(Scaffold).first)
+            .extendBodyBehindAppBar,
+        isFalse,
+      );
+      expect(find.byType(PanelKaca), findsNothing);
+
+      // Kotak pencarian tetap di bawah AppBar, seperti semula.
+      expect(
+        tester.getRect(find.byType(TextField)).top,
+        greaterThanOrEqualTo(tester.getRect(find.byType(AppBar)).bottom),
+      );
     });
   });
 

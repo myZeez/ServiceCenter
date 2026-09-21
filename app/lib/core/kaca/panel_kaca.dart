@@ -22,6 +22,7 @@ class PanelKaca extends StatelessWidget {
     this.radius = BorderRadius.zero,
     this.bayangan = false,
     this.tepi = Tepi.keliling,
+    this.transparan = false,
   });
 
   final Widget child;
@@ -32,6 +33,11 @@ class PanelKaca extends StatelessWidget {
   final bool bayangan;
 
   final Tepi tepi;
+
+  /// Menahan tint bidang, tetapi tetap memburamkan isi di belakangnya.
+  /// Cocok untuk kepala daftar yang hanya butuh pemisah dan blur, bukan
+  /// blok warna tambahan di atas latar kaca.
+  final bool transparan;
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +79,7 @@ class PanelKaca extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: s, sigmaY: s),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: kaca.isiUntuk(tingkat),
+              color: transparan ? Colors.transparent : kaca.isiUntuk(tingkat),
               borderRadius: lengkung,
               border: garis,
             ),

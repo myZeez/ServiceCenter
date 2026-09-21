@@ -231,13 +231,10 @@ void main() {
     expect(find.text('UNIT GARANSI SELESAI'), findsOneWidget);
   });
 
-  testWidgets('angka status klaim rata di tepi kanan, apa pun labelnya', (
+  testWidgets('ringkasan klaim menyatu dalam satu kartu dan tetap muat', (
     tester,
   ) async {
-    // Pernah bergeser mengikuti panjang label chip di sebelahnya: angka di
-    // samping "TUNGGU PART" terdorong ke kanan, di samping "CLOSE" tertarik
-    // ke kiri.
-    await tester.binding.setSurfaceSize(const Size(400, 1200));
+    await tester.binding.setSurfaceSize(const Size(320, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final kini = DateTime.now();
@@ -286,22 +283,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final kartu = find.ancestor(
-      of: find.text('STATUS KLAIM'),
-      matching: find.byType(BentoCard),
-    );
     expect(tester.takeException(), isNull);
-    final angka = find.descendant(
-      of: kartu,
-      matching: find.byWidgetPredicate(
-        (w) => w is Text && RegExp(r'^\d+$').hasMatch(w.data ?? ''),
-      ),
-    );
-    // 1, 3, 1, 27, 1 -- lima baris status.
-    expect(angka, findsNWidgets(5));
-    final tepi = {
-      for (final e in angka.evaluate()) tester.getTopRight(find.byWidget(e.widget)).dx,
-    };
-    expect(tepi, hasLength(1), reason: 'tepi kanan tiap angka: $tepi');
+    expect(find.byType(BentoCard), findsOneWidget);
+    expect(find.text('RINGKASAN GARANSI'), findsOneWidget);
+    expect(find.text('UNIT GARANSI SELESAI'), findsOneWidget);
+    for (final label in [
+      'Dikerjakan',
+      'Tunggu Part',
+      'Selesai',
+      'Close',
+      'Batal',
+    ]) {
+      expect(find.text(label), findsOneWidget);
+    }
   });
 }

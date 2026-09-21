@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import 'package:sc_management/core/data/models.dart';
@@ -30,9 +31,18 @@ import 'package:sc_management/core/theme.dart';
 import 'package:sc_management/features/auth/login_page.dart';
 import 'package:sc_management/features/claims/claims_page.dart';
 import 'package:sc_management/features/claims/dock_utama.dart';
+import 'package:sc_management/core/data/prefs.dart';
+import 'package:sc_management/features/claims/claim_detail_page.dart';
+import 'package:sc_management/features/claims/claim_form_page.dart';
 import 'package:sc_management/features/mywork/my_work_page.dart';
+import 'package:sc_management/features/reports/reports_page.dart';
+import 'package:sc_management/features/parts/parts_page.dart';
+import 'package:sc_management/features/settings/settings_page.dart';
+import 'package:sc_management/features/shell/admin_shell.dart';
+import 'package:sc_management/features/settlement/settlement_page.dart';
 import 'package:sc_management/features/service/service_page.dart';
 import 'package:sc_management/features/service/service_reports_view.dart';
+import 'package:sc_management/features/settings/tampilan_card.dart';
 
 const _saya = User(
   id: 't1',
@@ -71,8 +81,14 @@ Claim _klaim(String id) => Claim(
   updatedAt: DateTime.now(),
 );
 
-Future<void> _lukis(WidgetTester tester, Widget halaman) async {
-  await tester.binding.setSurfaceSize(const Size(400, 900));
+late Prefs prefs;
+
+Future<void> _lukis(
+  WidgetTester tester,
+  Widget halaman, {
+  Size ukuran = const Size(400, 900),
+}) async {
+  await tester.binding.setSurfaceSize(ukuran);
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
   await tester.pumpWidget(
@@ -105,6 +121,7 @@ Future<void> _lukis(WidgetTester tester, Widget halaman) async {
         brandFeesProvider.overrideWith((ref) => Stream.value([])),
         settlementsProvider.overrideWith((ref) => Stream.value([])),
         koneksiProvider.overrideWith((ref) => Stream.value(true)),
+        prefsProvider.overrideWithValue(prefs),
       ],
       child: KerangkaApp(kaca: true, home: halaman),
     ),
@@ -128,6 +145,19 @@ const _padat = {
 List<String> _bidangPadat(WidgetTester tester) {
   final pelanggar = <String>[];
 
+  // Pratinjau tema di Pengaturan memang melukis palet yang SEDANG TIDAK
+  // dipakai, lengkap dengan warna padatnya -- gunanya justru memperlihatkan
+  // yang belum dipilih. Isi kotak itu dilewati.
+  final abaikan = <Widget>{};
+  void kumpul(Element e) {
+    abaikan.add(e.widget);
+    e.visitChildren(kumpul);
+  }
+
+  for (final e in find.byKey(kunciPratinjauTema).evaluate()) {
+    kumpul(e);
+  }
+
   void periksa(Object pemilik, Color? c) {
     if (c == null) return;
     final nilai = c.toARGB32();
@@ -139,6 +169,7 @@ List<String> _bidangPadat(WidgetTester tester) {
   }
 
   for (final w in tester.allWidgets) {
+    if (abaikan.contains(w)) continue;
     switch (w) {
       case ColoredBox(:final color):
         periksa(w.runtimeType, color);
@@ -163,7 +194,11 @@ List<String> _bidangPadat(WidgetTester tester) {
 
 void main() {
   // Halaman Pekerjaanku menulis nama bulan dalam bahasa Indonesia.
-  setUpAll(() => initializeDateFormatting('id', null));
+  setUpAll(() async {
+    await initializeDateFormatting('id', null);
+    SharedPreferences.setMockInitialValues({});
+    prefs = await Prefs.buka();
+  });
 
   group('Semua dialog dan lembar lewat satu pintu', () {
     // Nama berkas yang memang berisi pembungkusnya.
@@ -207,12 +242,36 @@ void main() {
   });
 
   group('Tidak ada bidang padat yang tersisa', () {
+    // Layar HP.
     final halaman = <String, Widget>{
       'Klaim': const ClaimsPage(),
       'Servis': const ServicePage(),
       'Pekerjaanku': const MyWorkPage(),
       'Login': const LoginPage(),
+      'Klaim Baru': const ClaimFormPage(),
+      'Rincian Klaim': const ClaimDetailPage('1'),
+      'Part': const PartsPage(),
     };
+
+    // Tiga halaman yang isinya memang disusun untuk layar lebar; di HP
+    // isinya meluap -- itu sudah begitu sebelum ada mode kaca, dan bukan
+    // yang sedang diuji di sini. Yang diperiksa tetap warna bidangnya.
+    final halamanLuas = <String, Widget>{
+      'Rekap': const ReportsPage(),
+      'Rekap Brand': const SettlementPage(),
+      'Pengaturan': const SettingsPage(),
+      // Tablet Android memakai kerangka bersidebar seperti Windows.
+      'Kerangka lebar': const AdminShell(),
+    };
+
+    for (final e in halamanLuas.entries) {
+      testWidgets('${e.key} berkaca seluruhnya', (tester) async {
+        await _lukis(tester, e.value, ukuran: const Size(1100, 1400));
+
+        expect(find.byType(LatarKaca), findsWidgets, reason: 'latar kaca');
+        expect(_bidangPadat(tester), isEmpty);
+      });
+    }
 
     for (final e in halaman.entries) {
       testWidgets('${e.key} berkaca seluruhnya', (tester) async {

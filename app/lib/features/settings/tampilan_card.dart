@@ -139,6 +139,10 @@ class _Baris extends StatelessWidget {
   }
 }
 
+/// Penanda pratinjau tema. Isinya sengaja memakai warna padat dari palet
+/// lain, jadi pemeriksa cakupan kaca melewatinya.
+const kunciPratinjauTema = ValueKey<String>('pratinjau-tema');
+
 /// Sepotong tampilan mode gelap, dilukis dengan paletnya sendiri.
 ///
 /// Sengaja tidak ikut tema yang sedang berlaku: gunanya justru
@@ -152,6 +156,7 @@ class _Contoh extends StatelessWidget {
     const w = WarnaApp.gelap;
 
     return Container(
+      key: kunciPratinjauTema,
       padding: const EdgeInsets.all(AppSpacing.s),
       decoration: BoxDecoration(
         color: w.latar,

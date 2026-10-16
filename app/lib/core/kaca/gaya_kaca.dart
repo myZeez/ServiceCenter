@@ -87,14 +87,14 @@ class GayaKaca extends ThemeExtension<GayaKaca> {
   );
 
   static const gelap = GayaKaca(
-    dasar: Color(0xFF0B1623),
-    isi: Color(0xFF12202F),
+    dasar: Color(0xFF171717),
+    isi: Color(0xFF242424),
     tepi: Color(0x24FFFFFF),
     bayangan: Color(0x66000000),
     bola: [
-      (Color(0x662A5C9E), Offset(0.0, 0.05), 0.7),
-      (Color(0x26FF9F30), Offset(1.0, 0.7), 0.5),
-      (Color(0x1A00FF9D), Offset(0.3, 1.05), 0.45),
+      (Color(0x263A3A3A), Offset(0.0, 0.05), 0.7),
+      (Color(0x18F0A13A), Offset(1.0, 0.7), 0.5),
+      (Color(0x143A3A3A), Offset(0.3, 1.05), 0.45),
     ],
     pekat: {
       TingkatKaca.tipis: 0.62,

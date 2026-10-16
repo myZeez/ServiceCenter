@@ -1,5 +1,5 @@
 ; =====================================================================
-;  Installer Klaim Garansi
+;  Installer Service Center
 ;
 ;  Dibangun dengan Inno Setup 6. Menghasilkan satu berkas exe yang bisa
 ;  dijalankan di PC mana pun tanpa perlu Flutter atau alat lain.
@@ -10,8 +10,8 @@
 ;  Jalankan "flutter build windows --release" lebih dulu.
 ; =====================================================================
 
-#define NamaApp        "Klaim Garansi"
-#define Versi          "2.34.0"
+#define NamaApp        "Service Center"
+#define Versi          "2.35.23"
 #define Penerbit       "Cellcom PLK"
 #define NamaExe        "sc_management.exe"
 #define SumberRelease  "..\app\build\windows\x64\runner\Release"
@@ -28,7 +28,7 @@ DefaultGroupName={#NamaApp}
 UninstallDisplayName={#NamaApp}
 UninstallDisplayIcon={app}\{#NamaExe}
 OutputDir=output
-OutputBaseFilename=KlaimGaransi-Setup-{#Versi}
+OutputBaseFilename=ServiceCenter-Setup-{#Versi}
 SetupIconFile=..\app\windows\runner\resources\app_icon.ico
 Compression=lzma2/max
 SolidCompression=yes
@@ -78,3 +78,4 @@ Filename: "{app}\{#NamaExe}"; \
 ; Basis data lokal disimpan di Documents dan sengaja TIDAK dihapus:
 ; di dalamnya bisa ada klaim yang belum sempat terkirim ke server.
 Type: filesandordirs; Name: "{app}\data"
+

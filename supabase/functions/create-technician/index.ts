@@ -1,4 +1,4 @@
-// Membuat akun teknisi / admin baru.
+// Membuat akun teknisi / admin / pemantau klaim baru.
 //
 // Fungsi ini berjalan di server Supabase, bukan di aplikasi. Alasannya:
 // membuat user butuh service_role key, dan kunci itu tidak boleh ada di
@@ -68,7 +68,9 @@ Deno.serve(async (req) => {
   const email = (body.email ?? '').trim().toLowerCase();
   const password = body.password ?? '';
   const nama = (body.nama ?? '').trim();
-  const role = body.role === 'admin' ? 'admin' : 'teknisi';
+  const role = ['admin', 'admin_sc', 'teknisi'].includes(body.role ?? '')
+    ? body.role!
+    : 'teknisi';
 
   if (!email.includes('@')) return reply({ error: 'Email tidak valid.' }, 400);
   if (password.length < 8) {

@@ -19,6 +19,7 @@ import 'revenue_cards.dart';
 import 'metode_bayar_card.dart';
 import 'tampilan_card.dart';
 import 'up_toko_card.dart';
+import 'sql_import_dialog.dart';
 
 /// Semua pengaturan dalam satu layar.
 ///
@@ -54,6 +55,16 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                       'tepi kirinya untuk memindah'
                 : 'Pengguna dan data master yang dipakai seluruh aplikasi',
             actions: [
+              if (ref.watch(isAdminProvider))
+                OutlinedButton.icon(
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const SqlImportDialog(),
+                  ),
+                  icon: const Icon(Icons.upload_file, size: 16),
+                  label: const Text('IMPOR SQL'),
+                ),
               if (_menata &&
                   !(ref.watch(gridLayoutProvider('pengaturan')).valueOrNull ??
                           const GridLayout())
@@ -100,7 +111,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             padding: const EdgeInsets.all(AppSpacing.s),
             decoration: BoxDecoration(
               color: context.warna.aksen.withValues(alpha: 0.05),
-              border: Border(left: BorderSide(color: context.warna.aksen, width: 3)),
+              border: Border(
+                left: BorderSide(color: context.warna.aksen, width: 3),
+              ),
             ),
             child: Text(
               'Perubahan di halaman ini berlaku untuk semua perangkat dan '
@@ -360,7 +373,11 @@ class _UserRow extends ConsumerWidget {
             // tidak punya admin sama sekali.
             Tooltip(
               message: 'Akun sendiri tidak bisa diubah dari sini',
-              child: Icon(Icons.lock_outline, size: 15, color: context.warna.teksLembut),
+              child: Icon(
+                Icons.lock_outline,
+                size: 15,
+                color: context.warna.teksLembut,
+              ),
             )
           else ...[
             InlineAction(
@@ -613,14 +630,19 @@ class _MasterRow extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.3,
-                    color: aktif ? context.warna.teks : context.warna.teksLembut,
+                    color: aktif
+                        ? context.warna.teks
+                        : context.warna.teksLembut,
                     decoration: aktif ? null : TextDecoration.lineThrough,
                   ),
                 ),
                 if (subtitle != null)
                   Text(
                     subtitle!,
-                    style: TextStyle(fontSize: 12, color: context.warna.teksLembut),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.warna.teksLembut,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
               ],
@@ -650,7 +672,9 @@ class _Tag extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
         color: filled ? context.warna.teks : Colors.transparent,
-        border: Border.all(color: filled ? context.warna.teks : context.warna.teksLembut),
+        border: Border.all(
+          color: filled ? context.warna.teks : context.warna.teksLembut,
+        ),
         borderRadius: BorderRadius.circular(3),
       ),
       child: Text(
@@ -905,6 +929,10 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
                         child: Text('Teknisi'),
                       ),
                       DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                      DropdownMenuItem(
+                        value: 'admin_sc',
+                        child: Text('Admin SC — pantau klaim'),
+                      ),
                     ],
                     onChanged: (v) => setState(() => _role = v!),
                   ),
@@ -914,6 +942,13 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
                   const _Notice(
                     'Admin dapat mengubah semua data klaim dan menambah '
                     'pengguna lain.',
+                  ),
+                ],
+                if (_role == 'admin_sc') ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  const _Notice(
+                    'Admin SC hanya dapat melihat seluruh klaim garansi. '
+                    'Ia tidak dapat membuka atau mengubah nota servis.',
                   ),
                 ],
                 if (_error != null) ...[

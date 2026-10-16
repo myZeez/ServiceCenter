@@ -95,6 +95,10 @@ void main() {
     Map<String, dynamic> baris({
       Object? selesai = '2026-09-04',
       Object? biaya = 150000,
+      Object? biayaKirimCabang,
+      Object? waktuLunas,
+      Object? diambil = '2026-09-04',
+      Object? waktuDiambil,
     }) => {
       'id': 'n1',
       'no_nota': 'SVR-04092628177',
@@ -118,7 +122,11 @@ void main() {
       'biaya': biaya,
       'cara_bayar': null,
       'tanggal_lunas': null,
+      'waktu_lunas': waktuLunas,
       'tanggal_selesai': selesai,
+      'tanggal_diambil': diambil,
+      'waktu_diambil': waktuDiambil,
+      'biaya_dikirim_cabang': biayaKirimCabang,
       'keterangan': null,
       'updated_at': '2026-09-04T02:00:00+00:00',
     };
@@ -151,6 +159,30 @@ void main() {
       final n = ServiceOrderEntry.fromMap(baris(biaya: 99500));
       expect(n.biaya, isA<double>());
       expect(n.biaya, 99500.0);
+    });
+
+    test('waktu pembayaran dibaca sebagai waktu lokal', () {
+      final n = ServiceOrderEntry.fromMap(
+        baris(waktuLunas: '2026-09-04T02:15:00+00:00'),
+      );
+      expect(n.waktuLunas, DateTime(2026, 9, 4, 9, 15));
+    });
+
+    test('tanggal dan waktu pengambilan dibaca untuk nota keluar', () {
+      final n = ServiceOrderEntry.fromMap(
+        baris(waktuDiambil: '2026-09-04T10:20:00+00:00'),
+      );
+      expect(n.tanggalDiambil, DateTime(2026, 9, 4));
+      expect(n.waktuDiambil, DateTime(2026, 9, 4, 17, 20));
+    });
+
+    test('status biaya pengiriman cabang ikut dibaca', () {
+      expect(
+        ServiceOrderEntry.fromMap(baris(biayaKirimCabang: false))
+            .biayaDikirimCabang,
+        isFalse,
+      );
+      expect(ServiceOrderEntry.fromMap(baris()).biayaDikirimCabang, isNull);
     });
   });
 

@@ -33,7 +33,10 @@ class Db {
   /// belum terdaftar di publikasi Realtime, tidak melempar galat apa pun --
   /// alirannya hanya berhenti mengirim, dan layar membeku pada tarikan
   /// pertama tanpa satu pun tanda bahwa ada yang salah.
-  static const _jedaSegar = Duration(seconds: 90);
+  // Realtime memberi perubahan seketika. Tarikan penuh ini hanya sabuk
+  // pengaman jika websocket berhenti diam-diam, jadi tidak perlu membebani
+  // server setiap 90 detik di semua perangkat.
+  static const _jedaSegar = Duration(minutes: 5);
 
   /// Berapa baris diminta sekali jalan.
   ///
@@ -44,17 +47,18 @@ class Db {
   /// Seluruh isi tabel, diperbarui sendiri saat ada perubahan di server.
   ///
   /// Sengaja tidak disaring di sisi server. Satu langganan per tabel jauh
-  /// lebih hemat daripada satu langganan per kombinasi filter, dan tabel di
-  /// sini semuanya kecil. Penyaringan dan pengurutan dikerjakan di Dart oleh
-  /// yang memakainya.
+  /// lebih hemat daripada satu langganan per kombinasi filter. Penyaringan
+  /// dan pengurutan dikerjakan di Dart oleh yang memakainya.
   ///
   /// Tiga sumber mengisi aliran ini: satu tarikan awal supaya layar segera
   /// terisi, kabar Realtime supaya perubahan tampak seketika, dan penarikan
   /// berkala supaya keadaan selalu kembali benar dengan sendirinya.
   ///
-  /// Penarikan berkala mengganti seluruh daftar, bukan menambahinya, jadi
-  /// baris yang dihapus di server tetap hilang di layar -- lebih lambat
-  /// daripada Realtime, tetapi tidak pernah salah.
+  /// Perubahan Realtime diterapkan ke daftar yang sudah ada, satu baris per
+  /// satu baris. Dulu satu INSERT kecil membuat seluruh tabel diunduh lagi;
+  /// setelah arsip ribuan nota dimigrasikan, itu membuat simpan nota dan
+  /// perpindahan layar terasa seperti koneksi putus. Tarikan berkala tetap
+  /// mengganti seluruh daftar sebagai pemulihan jika ada pesan yang luput.
   ///
   /// Galat hanya diteruskan bila tarikan pertama gagal. Sesudah ada isi di
   /// layar, gangguan jaringan ditelan diam-diam: keadaan terakhir yang
@@ -80,7 +84,7 @@ class Db {
     /// Halaman terakhir yang kebetulan pas jumlahnya menghasilkan satu
     /// permintaan tambahan yang kosong; itu harga yang jauh lebih murah
     /// daripada diam-diam kehilangan sisanya.
-    Future<List<T>> tarik() async {
+    Future<List<Map<String, dynamic>>> tarik() async {
       final semua = <Map<String, dynamic>>[];
       for (var mulai = 0; ; mulai += _seHalaman) {
         final halaman = await _c
@@ -90,27 +94,89 @@ class Db {
         semua.addAll(halaman);
         if (halaman.length < _seHalaman) break;
       }
-      return olah(semua);
+      return semua;
     }
 
     final keluar = StreamController<List<T>>();
-    StreamSubscription<List<Map<String, dynamic>>>? langganan;
+    RealtimeChannel? saluran;
     Timer? jam;
     Timer? tunda;
     var hidup = false;
     var pernahTerisi = false;
+    var sedangTarik = false;
+    var tarikLagi = false;
+    var baris = <Map<String, dynamic>>[];
+
+    bool kunciSama(Map<String, dynamic> kiri, Map<String, dynamic> kanan) =>
+        kunci.every(
+          (nama) =>
+              kiri[nama] != null &&
+              kanan[nama] != null &&
+              kiri[nama].toString() == kanan[nama].toString(),
+        );
+
+    void kirim() {
+      if (hidup) keluar.add(olah(List<Map<String, dynamic>>.from(baris)));
+    }
 
     Future<void> segarkan() async {
       if (!hidup) return;
+      // Jangan mengirim dua pemindaian tabel yang sama secara bersamaan.
+      // Bila ada perubahan ketika pemindaian masih berjalan, satu pemindaian
+      // lanjutan sudah cukup untuk mendapat keadaan terakhir.
+      if (sedangTarik) {
+        tarikLagi = true;
+        return;
+      }
+      sedangTarik = true;
       try {
         final isi = await tarik();
         if (!hidup) return;
+        baris = isi;
         pernahTerisi = true;
-        keluar.add(isi);
+        kirim();
       } catch (e, s) {
         if (!hidup) return;
         if (!pernahTerisi) keluar.addError(e, s);
+      } finally {
+        sedangTarik = false;
+        if (hidup && tarikLagi) {
+          tarikLagi = false;
+          unawaited(segarkan());
+        }
       }
+    }
+
+    void jadwalkanTarikUlang() {
+      tunda?.cancel();
+      tunda = Timer(const Duration(milliseconds: 400), segarkan);
+    }
+
+    void terapkanPerubahan(PostgresChangePayload perubahan) {
+      final sumber = perubahan.eventType == PostgresChangeEvent.delete
+          ? perubahan.oldRecord
+          : perubahan.newRecord;
+
+      // Replica identity yang tidak lengkap atau kebijakan RLS dapat membuat
+      // payload tidak membawa primary key. Dalam keadaan langka itu jangan
+      // menerka-nerka barisnya: tarik ulang sekali agar daftar tetap benar.
+      if (sumber.isEmpty || kunci.any((nama) => sumber[nama] == null)) {
+        jadwalkanTarikUlang();
+        return;
+      }
+
+      if (perubahan.eventType == PostgresChangeEvent.delete) {
+        baris.removeWhere((lama) => kunciSama(lama, sumber));
+      } else {
+        final indeks = baris.indexWhere((lama) => kunciSama(lama, sumber));
+        if (indeks < 0) {
+          baris.add(sumber);
+        } else {
+          baris[indeks] = sumber;
+        }
+      }
+      pernahTerisi = true;
+      kirim();
     }
 
     keluar.onListen = () {
@@ -122,44 +188,29 @@ class Db {
         if (Siklus.aktif) segarkan();
       });
 
-      langganan = _c.from(tabel).stream(primaryKey: kunci).listen(
-        (rows) {
-          if (!hidup) return;
-          // Kedatangan dicatat, bukan hanya kegagalan. Langganan ke
-          // tabel yang tidak terdaftar di publikasi tetap terpasang
-          // tanpa protes -- ia hanya tidak pernah mengirim apa pun, dan
-          // tanpa catatan ini keadaan itu tidak bisa dibedakan dari
-          // server yang memang sedang sepi.
-          debugPrint('[realtime] $tabel: ${rows.length} baris');
-
-          // Barisnya SENGAJA tidak dipakai langsung. Langganan
-          // membawa daftarnya sendiri, dan daftar itu terkena batas
-          // baris yang sama -- memakainya berarti daftar lengkap
-          // hasil penarikan berhalaman tadi tertimpa versi terpotong
-          // setiap kali ada satu perubahan kecil di tabel.
-          //
-          // Jadi yang diambil dari sini hanya kabarnya: ada yang
-          // berubah, tarik ulang. Ditunda sesaat supaya perubahan
-          // beruntun -- menyimpan sebuah formulir menyentuh beberapa
-          // baris sekaligus -- cukup menghasilkan satu penarikan.
-          tunda?.cancel();
-          tunda = Timer(const Duration(milliseconds: 400), segarkan);
-        },
-        // Tidak diteruskan ke layar dengan sengaja: langganan yang
-        // gagal bukan alasan mengosongkan halaman, karena penarikan
-        // berkala tetap menjaga isinya benar. Tetapi dicatat -- galat
-        // yang ditelan tanpa sisa membuat penyebabnya tidak bisa
-        // diperiksa siapa pun kemudian.
-        onError: (Object e) =>
-            debugPrint('[realtime] langganan $tabel gagal: $e'),
-      );
+      saluran = _c
+          .channel('sinkron-$tabel-${DateTime.now().microsecondsSinceEpoch}')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: tabel,
+            callback: (perubahan) {
+              if (!hidup) return;
+              debugPrint(
+                '[realtime] $tabel: ${perubahan.eventType.name} satu baris',
+              );
+              terapkanPerubahan(perubahan);
+            },
+          )
+          .subscribe();
     };
 
     keluar.onCancel = () async {
       hidup = false;
       jam?.cancel();
       tunda?.cancel();
-      await langganan?.cancel();
+      final channel = saluran;
+      if (channel != null) await _c.removeChannel(channel);
     };
 
     return keluar.stream;
@@ -284,6 +335,32 @@ class Db {
     'nota servis',
   );
 
+  /// Menyimpan nota baru, kartu pelanggan, klaim, dan tanya harga dalam
+  /// SATU request. [requestId] membuat retry setelah jaringan putus aman:
+  /// server akan mengembalikan nota semula, bukan membuat nomor baru.
+  Future<Map<String, dynamic>> simpanNotaBaruAtomik({
+    required String requestId,
+    required Map<String, dynamic> nota,
+    Map<String, dynamic>? pelanggan,
+    Map<String, dynamic>? klaim,
+    Map<String, dynamic>? part,
+  }) async {
+    final hasil = await _c.rpc<dynamic>(
+      'simpan_nota_baru',
+      params: {
+        'p_request_id': requestId,
+        'p_nota': nota,
+        'p_pelanggan': pelanggan,
+        'p_klaim': klaim,
+        'p_part': part,
+      },
+    );
+    if (hasil is! Map || hasil['nota'] is! Map) {
+      throw const FormatException('Server tidak mengembalikan nota tersimpan.');
+    }
+    return Map<String, dynamic>.from(hasil['nota'] as Map);
+  }
+
   /// Menandai sebuah nota bergaransi dan menghubungkannya ke klaimnya.
   ///
   /// Sengaja bukan update biasa. Penjaga kolom di server menutup garansi
@@ -303,10 +380,38 @@ class Db {
     return hasil as String;
   }
 
+  /// Melepas tanda garansi oleh admin tanpa menghapus riwayat klaim.
+  ///
+  /// Server sekaligus menandai klaim yang tertaut sebagai batal, sehingga
+  /// nota tidak lagi dihitung sebagai garansi tetapi jejak pemeriksaannya
+  /// tetap dapat ditelusuri.
+  Future<String> batalkanGaransiNota(String notaId) async {
+    final hasil = await _c.rpc<dynamic>(
+      'batalkan_garansi_nota',
+      params: {'p_nota': notaId},
+    );
+    return hasil as String;
+  }
+
   Stream<List<ShipmentEntry>> watchShipments() => _semua(
     'shipments',
     ShipmentEntry.fromMap,
   ).map((l) => l..sort((a, b) => b.tanggalKirim.compareTo(a.tanggalKirim)));
+
+  /// Servis yang dikirim untuk dikerjakan partner. Baris ini hanya menyimpan
+  /// status dan biaya partner; detail pelanggan/unit tetap berasal dari nota.
+  Stream<List<PartnerServiceEntry>> watchPartnerServices() => _semua(
+    'service_partner_orders',
+    PartnerServiceEntry.fromMap,
+  ).map((l) => l..sort((a, b) => b.createdAt.compareTo(a.createdAt)));
+
+  Future<void> simpanPartnerService(Map<String, dynamic> data) => _pastikan(
+    _c
+        .from('service_partner_orders')
+        .upsert(data, onConflict: 'service_order_id')
+        .select('id'),
+    'servis partner',
+  );
 
   Stream<List<CustomerEntry>> watchCustomers() => _semua(
     'customers',

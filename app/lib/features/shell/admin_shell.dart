@@ -6,6 +6,7 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/koneksi.dart';
 import '../claims/claims_view.dart';
+import '../claims/part_kembali_view.dart';
 import '../mywork/my_work_view.dart';
 import '../parts/part_orders_view.dart';
 import '../parts/parts_view.dart';
@@ -13,6 +14,8 @@ import '../reports/reports_view.dart';
 import '../revenue/revenue_view.dart';
 import '../service/all_notes_view.dart';
 import '../service/kerja_teknisi_view.dart';
+import '../service/piutang_view.dart';
+import '../service/partner_view.dart';
 import '../service/service_reports_view.dart';
 import '../service/service_view.dart';
 import '../settings/settings_view.dart';
@@ -35,55 +38,75 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   @override
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(isAdminProvider);
+    final isAdminSc = ref.watch(isAdminScProvider);
     final adaPart = ref.watch(fiturTanyaHargaProvider);
 
     // Dikelompokkan supaya dua dunia yang berbeda tidak tercampur: layanan
     // ke pelanggan di satu sisi, pengajuan ke brand di sisi lain. Keduanya
     // menyangkut unit yang sama tetapi lawan bicaranya berbeda.
-    final sections = <_Section>[
-      if (isAdmin) ...[
-        const _Section(
-          'Servis',
-          Icons.receipt_long_outlined,
-          grup: 'Pelanggan',
-        ),
-        const _Section('Semua Nota', Icons.inventory_2_outlined),
-        const _Section('Kerja Teknisi', Icons.assignment_ind_outlined),
-        const _Section('Laporan Servis', Icons.summarize_outlined),
-        // Dua layar atas satu tabel yang sama: yang pertama meja
-        // tanya-jawabnya, yang kedua pesanan yang sudah berjalan.
-        // Keduanya sedang disimpan -- lihat fiturTanyaHargaProvider.
-        if (adaPart) ...[
-          const _Section('Tanya Harga', Icons.request_quote_outlined),
-          const _Section('Pemesanan Part', Icons.local_shipping_outlined),
-        ],
-      ],
-      _Section(
-        'Klaim',
-        Icons.description_outlined,
-        grup: isAdmin ? 'Garansi' : null,
-      ),
-      if (isAdmin) ...[
-        const _Section('Rekap', Icons.insights_outlined),
-        const _Section('Rekap Brand', Icons.fact_check_outlined),
-        const _Section('Pendapatan', Icons.payments_outlined),
-      ],
-      // Terbuka untuk semua peran: tiap orang berhak melihat hasil kerjanya
-      // sendiri, dan halaman ini tidak memuat angka rupiah.
-      _Section(
-        'Pekerjaanku',
-        Icons.engineering_outlined,
-        grup: isAdmin ? 'Lainnya' : null,
-      ),
-      if (isAdmin) const _Section('Pengaturan', Icons.tune),
-    ];
+    final sections = isAdminSc
+        ? const <_Section>[
+            _Section('Klaim', Icons.description_outlined, grup: 'Garansi'),
+            _Section('Part Kembali', Icons.assignment_return_outlined),
+            _Section('Rekap', Icons.insights_outlined),
+            _Section('Rekap Brand', Icons.fact_check_outlined),
+            _Section(
+              'Laporan Servis',
+              Icons.summarize_outlined,
+              grup: 'Servis',
+            ),
+            _Section('Piutang', Icons.account_balance_wallet_outlined),
+          ]
+        : <_Section>[
+            if (isAdmin) ...[
+              const _Section(
+                'Servis',
+                Icons.receipt_long_outlined,
+                grup: 'Pelanggan',
+              ),
+              const _Section('Semua Nota', Icons.inventory_2_outlined),
+              const _Section('Kerja Teknisi', Icons.assignment_ind_outlined),
+              const _Section('Laporan Servis', Icons.summarize_outlined),
+              const _Section('Piutang', Icons.account_balance_wallet_outlined),
+              const _Section('Kirim Partner', Icons.handshake_outlined),
+              // Dua layar atas satu tabel yang sama: yang pertama meja
+              // tanya-jawabnya, yang kedua pesanan yang sudah berjalan.
+              // Keduanya sedang disimpan -- lihat fiturTanyaHargaProvider.
+              if (adaPart) ...[
+                const _Section('Tanya Harga', Icons.request_quote_outlined),
+                const _Section('Pemesanan Part', Icons.local_shipping_outlined),
+              ],
+            ],
+            _Section(
+              'Klaim',
+              Icons.description_outlined,
+              grup: isAdmin ? 'Garansi' : null,
+            ),
+            if (isAdmin) ...[
+              const _Section('Part Kembali', Icons.assignment_return_outlined),
+              const _Section('Rekap', Icons.insights_outlined),
+              const _Section('Rekap Brand', Icons.fact_check_outlined),
+              const _Section('Pendapatan', Icons.payments_outlined),
+            ],
+            // Terbuka untuk semua peran: tiap orang berhak melihat hasil kerjanya
+            // sendiri, dan halaman ini tidak memuat angka rupiah.
+            _Section(
+              'Pekerjaanku',
+              Icons.engineering_outlined,
+              grup: isAdmin ? 'Lainnya' : null,
+            ),
+            if (isAdmin) const _Section('Pengaturan', Icons.tune),
+          ];
 
     // Peran bisa berubah saat sinkronisasi menurunkan profil; jangan sampai
     // tersisa di bagian yang tidak lagi boleh dibuka.
     final index = _index.clamp(0, sections.length - 1);
 
     return Scaffold(
-      backgroundColor: context.warna.teredam,
+      // Latar dan sidebar harus menjadi dua tingkat yang tegas. Bila
+      // keduanya memakai teredam, menu kiri tenggelam pada monitor yang
+      // kontrasnya kurang baik.
+      backgroundColor: context.warna.latar,
       body: Padding(
         // Jarak di keempat sisi membuat sidebar tampak mengambang di atas
         // bidang, bukan menempel pada tepi jendela.
@@ -102,14 +125,17 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                 'Semua Nota' => const AllNotesView(),
                 'Kerja Teknisi' => const KerjaTeknisiView(),
                 'Laporan Servis' => const ServiceReportsView(),
+                'Piutang' => const PiutangView(),
+                'Kirim Partner' => const PartnerView(),
                 'Tanya Harga' => const PartsView(),
                 'Pemesanan Part' => const PartOrdersView(),
                 'Pekerjaanku' => const MyWorkView(),
+                'Part Kembali' => const PartKembaliView(),
                 'Rekap' => const ReportsView(),
                 'Rekap Brand' => const SettlementView(),
                 'Pendapatan' => const RevenueView(),
                 'Pengaturan' => const SettingsView(),
-                _ => const ClaimsView(),
+                _ => ClaimsView(readOnly: isAdminSc),
               },
             ),
           ],
@@ -151,7 +177,7 @@ class _Sidebar extends ConsumerWidget {
       decoration: BoxDecoration(
         color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.base),
-        border: Border.all(color: context.warna.garisHalus),
+        border: Border.all(color: context.warna.garis),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -285,7 +311,9 @@ class _NavItemState extends State<_NavItem> {
           decoration: BoxDecoration(
             color: active
                 ? context.warna.teredam
-                : (_hover ? context.warna.teks.withValues(alpha: 0.03) : Colors.transparent),
+                : (_hover
+                      ? context.warna.teks.withValues(alpha: 0.03)
+                      : Colors.transparent),
             // Batang merah menandai bagian yang sedang dibuka.
             border: Border(
               left: BorderSide(

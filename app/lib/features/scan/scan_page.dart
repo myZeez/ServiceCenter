@@ -152,50 +152,59 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.s),
-        // Kaca di atas gambar kamera: yang di belakang tombol jadi kabur,
-        // jadi ikon putih tetap terbaca di atas apa pun yang sedang
-        // disorot.
-        child: PanelKaca(
-          tingkat: TingkatKaca.sedang,
-          radius: BorderRadius.circular(AppRadius.base * 2),
-          child: Row(
-            children: [
-              IconButton(
-                icon: Icon(Icons.close, color: context.warna.kertas),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              Expanded(
-                child: Text(
-                  title.toUpperCase(),
-                  style: TextStyle(
-                    color: context.warna.kertas,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
+    // StackFit.expand memberi anak yang tidak diposisikan tinggi layar.
+    // Tanpa Positioned, PanelKaca ini ikut setinggi preview dan seluruh
+    // kamera menjadi panel buram. Kontrol hanya boleh memburamkan strip di
+    // atasnya.
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.s),
+          // Kaca di atas gambar kamera: yang di belakang tombol jadi kabur,
+          // jadi ikon putih tetap terbaca di atas apa pun yang sedang
+          // disorot.
+          child: PanelKaca(
+            tingkat: TingkatKaca.sedang,
+            radius: BorderRadius.circular(AppRadius.base * 2),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.close, color: context.warna.kertas),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                Expanded(
+                  child: Text(
+                    title.toUpperCase(),
+                    style: TextStyle(
+                      color: context.warna.kertas,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                    ),
                   ),
                 ),
-              ),
-              ValueListenableBuilder<MobileScannerState>(
-                valueListenable: controller,
-                builder: (context, state, _) {
-                  if (state.torchState == TorchState.unavailable) {
-                    return const SizedBox.shrink();
-                  }
-                  final on = state.torchState == TorchState.on;
-                  return IconButton(
-                    tooltip: 'Senter',
-                    icon: Icon(
-                      on ? Icons.flashlight_on : Icons.flashlight_off,
-                      color: on ? context.warna.bahaya : context.warna.kertas,
-                    ),
-                    onPressed: controller.toggleTorch,
-                  );
-                },
-              ),
-            ],
+                ValueListenableBuilder<MobileScannerState>(
+                  valueListenable: controller,
+                  builder: (context, state, _) {
+                    if (state.torchState == TorchState.unavailable) {
+                      return const SizedBox.shrink();
+                    }
+                    final on = state.torchState == TorchState.on;
+                    return IconButton(
+                      tooltip: 'Senter',
+                      icon: Icon(
+                        on ? Icons.flashlight_on : Icons.flashlight_off,
+                        color: on ? context.warna.bahaya : context.warna.kertas,
+                      ),
+                      onPressed: controller.toggleTorch,
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

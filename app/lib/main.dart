@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,6 +40,21 @@ Future<void> main() async {
     // terlihat kalau lalu lintasnya sendiri yang diamati.
     httpClient: PemantauHttp.bungkus(),
   );
+
+  // Komputer Windows dipakai bergantian oleh admin. Sesi lokal dibersihkan
+  // setiap aplikasi Windows dibuka, sehingga sesudah aplikasi ditutup lalu
+  // dijalankan kembali pengguna wajib login lagi. Scope local memastikan
+  // sesi di Android/perangkat lain tidak ikut keluar. Penghapusan lokal
+  // terjadi sebelum permintaan jaringan; bila sedang offline, login tetap
+  // dipaksa ulang pada komputer ini.
+  if (Platform.isWindows) {
+    try {
+      await Supabase.instance.client.auth.signOut(scope: SignOutScope.local);
+    } catch (_) {
+      // SDK sudah menghapus sesi lokal terlebih dahulu. Kegagalan mengabari
+      // server (misalnya saat offline) tidak boleh memulihkan sesi Windows.
+    }
+  }
 
   // Printer dan susunan kartu dibaca lebih dulu supaya layar tidak perlu
   // menunggui berkas pengaturan yang isinya sekadar nama printer.

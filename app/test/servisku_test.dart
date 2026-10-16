@@ -22,6 +22,8 @@ ServiceOrderEntry _nota(
   String? sn,
   String barang = 'ASUS',
   String? tipe,
+  String? claimId,
+  bool garansi = false,
 }) => ServiceOrderEntry(
   id: id,
   noNota: id,
@@ -32,6 +34,8 @@ ServiceOrderEntry _nota(
   barangType: tipe,
   barangSn: sn,
   teknisiId: teknisi,
+  claimId: claimId,
+  garansi: garansi,
   status: status,
   tanggalSelesai: selesai,
   updatedAt: DateTime(2026, 9, 1),

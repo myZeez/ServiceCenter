@@ -73,6 +73,12 @@ final isAdminProvider = Provider<bool>(
   (ref) => ref.watch(currentProfileProvider)?.role == 'admin',
 );
 
+/// Pemantau khusus klaim garansi. Ia dapat membaca seluruh klaim, tetapi
+/// tidak diberi akses nota, servis, maupun perubahan data apa pun.
+final isAdminScProvider = Provider<bool>(
+  (ref) => ref.watch(currentProfileProvider)?.role == 'admin_sc',
+);
+
 // ---------------------------------------------------------------------
 // Master data
 //
@@ -259,6 +265,10 @@ final claimsProvider = Provider<AsyncValue<List<Claim>>>((ref) {
       .watch(allClaimsProvider)
       .whenData(
         (list) => list.where((c) {
+          // Garansi toko dicatat bersama nota servisnya, tetapi tidak pernah
+          // ditagihkan atau dikembalikan ke brand. Jangan sampai ia masuk ke
+          // halaman Klaim Garansi hanya karena memakai tabel yang sama.
+          if (!ClaimJenis.ditagihkan(c.jenis)) return false;
           if (filter.brandId != null && c.brandId != filter.brandId) {
             return false;
           }
@@ -278,6 +288,7 @@ final statusCountsProvider = Provider<AsyncValue<Map<String, int>>>(
   (ref) => ref.watch(allClaimsProvider).whenData((list) {
     final hasil = <String, int>{};
     for (final c in list) {
+      if (!ClaimJenis.ditagihkan(c.jenis)) continue;
       hasil[c.status] = (hasil[c.status] ?? 0) + 1;
     }
     return hasil;
@@ -333,10 +344,7 @@ final klaimPerIdProvider = Provider<Map<String, Claim>>(
 /// status klaimnya -- Wait Approval Warranty, Ship ASUS Pusat, dan
 /// seterusnya. Garansi toko tidak termasuk; ia tidak berurusan dengan
 /// brand mana pun, dan status nota biasa sudah cukup menceritakannya.
-final klaimBrandNotaProvider = Provider.family<Claim?, String?>((
-  ref,
-  claimId,
-) {
+final klaimBrandNotaProvider = Provider.family<Claim?, String?>((ref, claimId) {
   if (claimId == null) return null;
   final c = ref.watch(klaimPerIdProvider)[claimId];
   return c != null && ClaimJenis.ditagihkan(c.jenis) ? c : null;
@@ -356,6 +364,10 @@ final namaBrandProvider = Provider<Map<int, String>>(
 
 final serviceOrdersProvider = StreamProvider<List<ServiceOrderEntry>>(
   (ref) => ref.watch(databaseProvider).watchServiceOrders(),
+);
+
+final partnerServicesProvider = StreamProvider<List<PartnerServiceEntry>>(
+  (ref) => ref.watch(databaseProvider).watchPartnerServices(),
 );
 
 final customersProvider = StreamProvider<List<CustomerEntry>>(

@@ -99,7 +99,9 @@ void main() {
     expect(find.textContaining('diubah dari meja depan'), findsOneWidget);
   });
 
-  testWidgets('nota garansi brand memakai status klaimnya', (tester) async {
+  testWidgets('nota garansi brand menampilkan status klaim dan nota', (
+    tester,
+  ) async {
     final nota = ServiceOrderEntry(
       id: 'n1',
       noNota: 'SVR-009',
@@ -150,14 +152,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Di daftar, chip-nya membaca status klaim, bukan "Dikerjakan".
+    // Di daftar, dua chip menjelaskan proses klaim dan posisi unit.
     expect(find.text('PART READY'), findsOneWidget);
+    expect(find.text('DIKERJAKAN'), findsOneWidget);
 
     await tester.tap(find.text('Rara'));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+    expect(find.text('STATUS NOTA'), findsOneWidget);
     expect(find.text('STATUS GARANSI'), findsOneWidget);
+    expect(find.text('Dikerjakan'), findsOneWidget);
     expect(find.text('Part Ready'), findsOneWidget);
 
     // Teknisi menulis hasil pengecekannya di sini. Keluhan pelanggan

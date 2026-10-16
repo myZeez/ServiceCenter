@@ -26,14 +26,18 @@ final _stampFmt = DateFormat('dd MMM yyyy · HH:mm');
 /// Daftar di belakangnya tetap terlihat samar, jadi tidak ada rasa
 /// "berpindah tempat" -- yang mahal ketika admin membuka puluhan klaim
 /// berturut-turut. [claim] null berarti membuat klaim baru.
-Future<void> showClaimDialog(BuildContext context, {Claim? claim}) {
+Future<void> showClaimDialog(
+  BuildContext context, {
+  Claim? claim,
+  bool readOnly = false,
+}) {
   return tampilkanDialogUmum(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Tutup',
     barrierColor: const Color(0x33000000),
     transitionDuration: const Duration(milliseconds: 220),
-    pageBuilder: (_, _, _) => ClaimDialog(claim: claim),
+    pageBuilder: (_, _, _) => ClaimDialog(claim: claim, readOnly: readOnly),
     transitionBuilder: (context, anim, _, child) {
       final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
       return BackdropFilter(
@@ -54,9 +58,10 @@ Future<void> showClaimDialog(BuildContext context, {Claim? claim}) {
 }
 
 class ClaimDialog extends ConsumerStatefulWidget {
-  const ClaimDialog({super.key, this.claim});
+  const ClaimDialog({super.key, this.claim, this.readOnly = false});
 
   final Claim? claim;
+  final bool readOnly;
 
   bool get isNew => claim == null;
 
@@ -215,6 +220,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
   void _lepasNota() => setState(() => _nota = null);
 
   Future<void> _save() async {
+    if (widget.readOnly) return;
     if (!_formKey.currentState!.validate()) return;
 
     final user = ref.read(currentUserProvider);
@@ -302,6 +308,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
   /// trigger di server, jadi sengaja tidak ikut dikirim -- kolom yang bisa
   /// diketik lalu ditolak diam-diam lebih buruk daripada yang terkunci.
   Future<void> _saveTeknisiScope() async {
+    if (widget.readOnly) return;
     final c = widget.claim;
     if (c == null) return;
     setState(() => _busy = true);
@@ -398,22 +405,25 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
                       children: [
                         _header(brandName, isAdmin),
                         Flexible(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.sm,
-                              AppSpacing.s,
-                              AppSpacing.sm,
-                              AppSpacing.sm,
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(child: _leftColumn(brands, isAdmin)),
-                                const SizedBox(width: AppSpacing.md),
-                                Expanded(
-                                  child: _rightColumn(techs, types, isAdmin),
-                                ),
-                              ],
+                          child: IgnorePointer(
+                            ignoring: widget.readOnly,
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.sm,
+                                AppSpacing.s,
+                                AppSpacing.sm,
+                                AppSpacing.sm,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: _leftColumn(brands, isAdmin)),
+                                  const SizedBox(width: AppSpacing.md),
+                                  Expanded(
+                                    child: _rightColumn(techs, types, isAdmin),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -473,7 +483,7 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
             StatusChip(_status, brand: brandName),
             const SizedBox(width: AppSpacing.s),
           ],
-          if (!isAdmin && !widget.isNew)
+          if (!isAdmin && !widget.isNew && !widget.readOnly)
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.xs),
               child: Tooltip(
@@ -875,24 +885,31 @@ class _ClaimDialogState extends ConsumerState<ClaimDialog> {
               style: Theme.of(context).textTheme.labelSmall,
             ),
           ),
-          TextButton(
-            onPressed: _busy ? null : () => Navigator.of(context).pop(),
-            child: const Text('BATAL'),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          FilledButton(
-            onPressed: _busy ? null : (editable ? _save : _saveTeknisiScope),
-            child: _busy
-                ? SizedBox(
-                    height: 14,
-                    width: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: context.warna.kertas,
-                    ),
-                  )
-                : Text(widget.isNew ? 'SIMPAN KLAIM' : 'SIMPAN PERUBAHAN'),
-          ),
+          if (widget.readOnly)
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('TUTUP'),
+            )
+          else ...[
+            TextButton(
+              onPressed: _busy ? null : () => Navigator.of(context).pop(),
+              child: const Text('BATAL'),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            FilledButton(
+              onPressed: _busy ? null : (editable ? _save : _saveTeknisiScope),
+              child: _busy
+                  ? SizedBox(
+                      height: 14,
+                      width: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: context.warna.kertas,
+                      ),
+                    )
+                  : Text(widget.isNew ? 'SIMPAN KLAIM' : 'SIMPAN PERUBAHAN'),
+            ),
+          ],
         ],
       ),
     );

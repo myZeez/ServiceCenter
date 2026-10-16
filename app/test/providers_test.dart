@@ -145,18 +145,25 @@ void main() {
   // yang didapat. Yang diperiksa cukup penyaringnya.
 
   group('Filter klaim', () {
-    Claim k(String id, int brand, String status, String nama, String sn) =>
-        Claim(
-          id: id,
-          tanggal: DateTime(2026, 9, 4),
-          brandId: brand,
-          namaPelanggan: nama,
-          sn: sn,
-          status: status,
-          createdBy: 'adm',
-          createdAt: DateTime(2026, 9, 4),
-          updatedAt: DateTime(2026, 9, 4),
-        );
+    Claim k(
+      String id,
+      int brand,
+      String status,
+      String nama,
+      String sn, {
+      String jenis = 'brand',
+    }) => Claim(
+      id: id,
+      tanggal: DateTime(2026, 9, 4),
+      brandId: brand,
+      namaPelanggan: nama,
+      sn: sn,
+      jenis: jenis,
+      status: status,
+      createdBy: 'adm',
+      createdAt: DateTime(2026, 9, 4),
+      updatedAt: DateTime(2026, 9, 4),
+    );
 
     ProviderContainer wadahKlaim(List<Claim> klaim) {
       final c = ProviderContainer(
@@ -211,5 +218,19 @@ void main() {
 
       expect(c.read(statusCountsProvider).valueOrNull, {'open': 2, 'close': 1});
     });
+
+    test(
+      'garansi toko tidak masuk daftar maupun hitungan klaim brand',
+      () async {
+        final c = wadahKlaim([
+          k('brand', 1, 'open', 'Brand', 'A'),
+          k('toko', 1, 'close', 'Toko', 'B', jenis: 'toko'),
+        ]);
+        await c.read(allClaimsProvider.future);
+
+        expect(c.read(claimsProvider).valueOrNull!.map((x) => x.id), ['brand']);
+        expect(c.read(statusCountsProvider).valueOrNull, {'open': 1});
+      },
+    );
   });
 }

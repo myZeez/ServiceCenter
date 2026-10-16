@@ -172,30 +172,26 @@ class WarnaApp extends ThemeExtension<WarnaApp> {
   );
 
   // -------------------------------------------------------------------
-  // Gelap -- Blueprint
+  // Gelap -- abu arang
   // -------------------------------------------------------------------
-  //  Cetak biru: garis terang di atas biru tua. Bentuk itu lahir bukan
-  //  karena bagus melainkan karena murah diperbanyak, dan justru itu yang
-  //  membuatnya cocok di sini -- yang dibaca gambarnya, bukan hiasannya.
-  //
-  //  Merahnya dinaikkan dari #D82C2C. Merah pekat yang bagus di atas
-  //  kertas putih berubah jadi gumpalan gelap di atas biru tua, dan yang
-  //  hilang justru warna yang paling perlu terlihat.
+  //  Layar kantor yang kalibrasinya kurang baik sering menarik biru tua
+  //  menjadi hitam kebiruan yang keruh. Abu arang memberi tingkat bidang
+  //  yang lebih mudah dibedakan tanpa mengubah warna bermakna.
   static const gelap = WarnaApp(
     teks: Color(0xFFF0F0F0),
-    teksLembut: Color(0xFF8B9BB4),
-    garis: Color(0xFF1C2B3A),
-    garisHalus: Color(0xFF1C2B3A),
-    garisIsian: Color(0xFF26384A),
-    latar: Color(0xFF0B1623),
-    permukaan: Color(0xFF12202F),
-    teredam: Color(0xFF1C2B3A),
-    aksen: Color(0xFFFF9F30),
-    diAksen: Color(0xFF0B1623),
-    bahaya: Color(0xFFFF5C5C),
-    garansi: Color(0xFF00FF9D),
-    kertas: Color(0xFF12202F),
-    diTeks: Color(0xFF0B1623),
+    teksLembut: Color(0xFFA6A6A6),
+    garis: Color(0xFF3A3A3A),
+    garisHalus: Color(0xFF363636),
+    garisIsian: Color(0xFF4A4A4A),
+    latar: Color(0xFF171717),
+    permukaan: Color(0xFF222222),
+    teredam: Color(0xFF2C2C2C),
+    aksen: Color(0xFFF0A13A),
+    diAksen: Color(0xFF171717),
+    bahaya: Color(0xFFFF6B6B),
+    garansi: Color(0xFF68D391),
+    kertas: Color(0xFF222222),
+    diTeks: Color(0xFF171717),
   );
 
   // -------------------------------------------------------------------
@@ -232,19 +228,19 @@ class WarnaApp extends ThemeExtension<WarnaApp> {
 
   static const gelapKaca = WarnaApp(
     teks: Color(0xFFF0F0F0),
-    teksLembut: Color(0xFF93A3BC),
-    garis: Color(0xFF2A3D52),
+    teksLembut: Color(0xFFB2B2B2),
+    garis: Color(0xFF565656),
     garisHalus: Color(0x1FFFFFFF),
-    garisIsian: Color(0x2EFFFFFF),
-    latar: Color(0x000B1623),
-    permukaan: Color(0x9E12202F),
-    teredam: Color(0x12FFFFFF),
-    aksen: Color(0xFFFF9F30),
-    diAksen: Color(0xFF0B1623),
-    bahaya: Color(0xFFFF5C5C),
-    garansi: Color(0xFF00FF9D),
-    kertas: Color(0xFF12202F),
-    diTeks: Color(0xFF0B1623),
+    garisIsian: Color(0x33FFFFFF),
+    latar: Color(0x00171717),
+    permukaan: Color(0xA3222222),
+    teredam: Color(0x1AFFFFFF),
+    aksen: Color(0xFFF0A13A),
+    diAksen: Color(0xFF171717),
+    bahaya: Color(0xFFFF6B6B),
+    garansi: Color(0xFF68D391),
+    kertas: Color(0xFF222222),
+    diTeks: Color(0xFF171717),
   );
 }
 
@@ -254,6 +250,5 @@ class WarnaApp extends ThemeExtension<WarnaApp> {
 /// -- yang kedua terlalu panjang untuk ditulis empat ratus kali, dan yang
 /// panjang selalu berakhir jadi warna mentah yang ditulis langsung.
 extension WarnaKonteks on BuildContext {
-  WarnaApp get warna =>
-      Theme.of(this).extension<WarnaApp>() ?? WarnaApp.terang;
+  WarnaApp get warna => Theme.of(this).extension<WarnaApp>() ?? WarnaApp.terang;
 }

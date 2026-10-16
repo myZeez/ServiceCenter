@@ -19,7 +19,7 @@ void main() {
       r.teknisi.firstWhere((e) => e.teknisiId == id);
 
   group('Omset toko', () {
-    test('menjumlahkan seluruh jasa pada periode', () {
+    test('menjumlahkan seluruh jasa selesai', () {
       final hasil = hitungOmset(
         nota: [...nota(30, 100000, budi), ...nota(10, 250000, irwan)],
         settings: const OmsetSettings(),
@@ -29,7 +29,7 @@ void main() {
       expect(hasil.jumlahNota, 40);
     });
 
-    test('memisahkan yang sudah dibayar dari piutang', () {
+    test('piutang tetap masuk omzet tetapi dipisahkan dari uang masuk', () {
       final hasil = hitungOmset(
         nota: [
           ...nota(10, 100000, budi),
@@ -45,7 +45,7 @@ void main() {
   });
 
   group('Omset teknisi', () {
-    test('memakai jasa kotor, bukan bagian setelah dipotong', () {
+    test('memakai seluruh jasa, bukan hanya yang sudah lunas', () {
       // Instal ulang Rp100rb masuk penuh Rp100rb ke omset teknisinya.
       final hasil = hitungOmset(
         nota: nota(1, 100000, budi),
@@ -56,14 +56,13 @@ void main() {
     });
 
     test('piutang tetap dihitung sebagai omset teknisi', () {
-      // Pelanggan yang menunda membayar bukan salah teknisi yang
-      // mengerjakannya.
       final hasil = hitungOmset(
         nota: nota(10, 200000, budi, lunas: false),
         settings: const OmsetSettings(),
       );
 
       expect(cari(hasil, budi).omset, 2000000);
+      expect(cari(hasil, budi).jumlahNota, 10);
       expect(hasil.piutang, 2000000);
     });
 
@@ -128,17 +127,20 @@ void main() {
   });
 
   group('Data yang belum lengkap', () {
-    test('nota tanpa teknisi masuk omset toko tapi tidak ke siapa pun', () {
-      final hasil = hitungOmset(
-        nota: [...nota(10, 100000, budi), ...nota(5, 100000, null)],
-        settings: const OmsetSettings(),
-      );
+    test(
+      'nota lunas tanpa teknisi masuk omset toko tapi tidak ke siapa pun',
+      () {
+        final hasil = hitungOmset(
+          nota: [...nota(10, 100000, budi), ...nota(5, 100000, null)],
+          settings: const OmsetSettings(),
+        );
 
-      expect(hasil.omsetToko, 1500000);
-      expect(hasil.notaTanpaTeknisi, 5);
-      expect(cari(hasil, budi).omset, 1000000);
-      expect(hasil.teknisi.length, 1);
-    });
+        expect(hasil.omsetToko, 1500000);
+        expect(hasil.notaTanpaTeknisi, 5);
+        expect(cari(hasil, budi).omset, 1000000);
+        expect(hasil.teknisi.length, 1);
+      },
+    );
 
     test('periode tanpa nota tidak membuat perhitungan gagal', () {
       final hasil = hitungOmset(

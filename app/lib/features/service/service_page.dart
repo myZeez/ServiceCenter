@@ -492,6 +492,7 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
   /// Tanggalnya diambil dari nota hanya kalau nota itu memang sedang
   /// dalam pengiriman; selain itu hari ini.
   late String? _cabang = widget.nota.cabangTujuan;
+  late bool? _biayaDikirimCabang = widget.nota.biayaDikirimCabang;
   late DateTime _tanggalKirim =
       widget.nota.status == ServiceStatus.dikirimCabang &&
           widget.nota.tanggalKirim != null
@@ -522,7 +523,7 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
 
   Future<void> _simpan() async {
     final klaim = ref.read(klaimBrandNotaProvider(widget.nota.claimId));
-    final kirim = klaim == null && _status == ServiceStatus.dikirimCabang;
+    final kirim = _status == ServiceStatus.dikirimCabang;
 
     // Lembar ini bukan Form, jadi cabang yang belum dipilih dicegat di
     // sini -- server menolaknya juga, tetapi dengan pesan yang tidak
@@ -533,18 +534,27 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
       );
       return;
     }
+    if (kirim && _biayaDikirimCabang == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tentukan pengiriman ini tanpa biaya atau ada biaya.'),
+        ),
+      );
+      return;
+    }
 
     setState(() => _busy = true);
     try {
       final db = ref.read(databaseProvider);
       await db.ubahNota(widget.nota.id, {
-        // Nota garansi brand: status notanya diturunkan server dari klaim.
-        if (klaim == null) 'status': _status,
+        // Posisi unit adalah milik nota; tidak lagi diturunkan dari klaim.
+        'status': _status,
         // Cabang dan tanggal hanya ditulis saat statusnya Dikirim ke
         // Cabang; di status lain dibiarkan sebagai jejak.
         if (kirim) ...{
           'cabang_tujuan': _cabang,
           'tanggal_kirim': DateFormat('yyyy-MM-dd').format(_tanggalKirim),
+          'biaya_dikirim_cabang': _biayaDikirimCabang,
         },
         'teknisi_id': _teknisiId,
         'perbaikan': _perbaikan.text.trim().isEmpty
@@ -633,36 +643,37 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
             ),
             const SizedBox(height: AppSpacing.s),
           ],
-          if (klaim == null)
-            LabeledField(
-              label: 'Status',
-              child: DropdownButtonFormField<String>(
-                initialValue: _status,
-                isExpanded: true,
-                items: [
-                  for (final s in ServiceStatus.all)
-                    DropdownMenuItem(
-                      value: s,
-                      child: Text(ServiceStatus.label(s)),
-                    ),
-                ],
-                onChanged: (v) => setState(() {
-                  if (v == null) return;
-                  // Dikirim ke Cabang dari status lain berarti unitnya
-                  // dikirim sekarang, bukan pada tanggal pengiriman lama
-                  // yang masih tersimpan sebagai jejak.
-                  if (v == ServiceStatus.dikirimCabang &&
-                      widget.nota.status != ServiceStatus.dikirimCabang) {
-                    _tanggalKirim = hariIniKalender();
-                  }
-                  _status = v;
-                }),
-              ),
-            )
-          else
+          LabeledField(
+            label: klaim == null ? 'Status' : 'Status Nota',
+            hint: klaim == null
+                ? null
+                : 'Posisi unit: meja, pelanggan, atau cabang.',
+            child: DropdownButtonFormField<String>(
+              initialValue: _status,
+              isExpanded: true,
+              items: [
+                for (final s in ServiceStatus.all)
+                  DropdownMenuItem(
+                    value: s,
+                    child: Text(ServiceStatus.label(s)),
+                  ),
+              ],
+              onChanged: (v) => setState(() {
+                if (v == null) return;
+                if (v == ServiceStatus.dikirimCabang &&
+                    widget.nota.status != ServiceStatus.dikirimCabang) {
+                  _tanggalKirim = hariIniKalender();
+                  _biayaDikirimCabang = null;
+                }
+                _status = v;
+              }),
+            ),
+          ),
+          if (klaim != null) ...[
+            const SizedBox(height: AppSpacing.s),
             LabeledField(
               label: 'Status Garansi',
-              hint: 'Ikut mengubah status klaimnya.',
+              hint: 'Proses pengajuan dan part ke brand.',
               child: DropdownButtonFormField<String>(
                 key: ValueKey(klaim.id),
                 initialValue: _statusKlaim ?? klaim.status,
@@ -682,13 +693,41 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
                 onChanged: (v) => setState(() => _statusKlaim = v),
               ),
             ),
-          if (klaim == null && _status == ServiceStatus.dikirimCabang) ...[
+          ],
+          if (_status == ServiceStatus.dikirimCabang) ...[
             const SizedBox(height: AppSpacing.s),
             KirimCabangFields(
               cabang: _cabang,
               tanggal: _tanggalKirim,
               onCabang: (v) => setState(() => _cabang = v),
               onTanggal: (d) => setState(() => _tanggalKirim = d),
+            ),
+            const SizedBox(height: AppSpacing.s),
+            LabeledField(
+              label: 'Biaya Pengiriman Cabang',
+              required: true,
+              hint: switch (_biayaDikirimCabang) {
+                null => 'Tentukan sebelum status pengiriman disimpan.',
+                true => 'Nominal biayanya tetap diisi admin pada nota.',
+                false => 'Tidak ada tagihan untuk pengiriman ini.',
+              },
+              child: Wrap(
+                spacing: AppSpacing.xs,
+                children: [
+                  ChoiceChip(
+                    label: const Text('TANPA BIAYA'),
+                    selected: _biayaDikirimCabang == false,
+                    onSelected: (_) =>
+                        setState(() => _biayaDikirimCabang = false),
+                  ),
+                  ChoiceChip(
+                    label: const Text('ADA BIAYA'),
+                    selected: _biayaDikirimCabang == true,
+                    onSelected: (_) =>
+                        setState(() => _biayaDikirimCabang = true),
+                  ),
+                ],
+              ),
             ),
           ],
           const SizedBox(height: AppSpacing.s),

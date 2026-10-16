@@ -33,6 +33,7 @@ List<ServiceOrderEntry> _nota() => [
       status: 'diambil',
       biaya: (600000 - i * 50000).toDouble(),
       tanggalSelesai: DateTime(2026, 9, 5),
+      tanggalDiambil: DateTime(2026, 9, 5),
       tanggalLunas: DateTime(2026, 9, 5),
       updatedAt: DateTime(2026, 9, 5),
     ),

@@ -23,6 +23,7 @@ final _rp = NumberFormat.currency(
   decimalDigits: 0,
 );
 final _tgl = DateFormat('dd/MM/yyyy');
+final _tglJam = DateFormat('dd/MM/yyyy HH:mm');
 final _tglPanjang = DateFormat('EEEE, d MMMM yyyy', 'id');
 final _namaBulan = DateFormat('MMMM yyyy', 'id');
 final _namaHari = DateFormat('EEEE', 'id');
@@ -150,20 +151,19 @@ class _Harian extends ConsumerWidget {
         ref.watch(serviceOrdersProvider).valueOrNull ??
         const <ServiceOrderEntry>[];
 
-    // Keluar: pekerjaannya rampung hari itu. Masuk: unitnya diterima hari
-    // itu. Keduanya termasuk garansi maupun reguler -- pusat membaca
-    // seluruh lalu lintas unit, bukan hanya yang berbayar.
-    //
-    // Batasnya sengaja berbeda. Nota keluar ditutup jam 17.00: laporannya
-    // dikirim ke pusat sore itu, jadi unit yang selesai sesudahnya masuk
-    // laporan besok -- tanggal_selesai sudah distempel server dengan
-    // aturan itu, dan dibandingkan apa adanya. Nota masuk memakai hari
-    // kalender: unit yang diterima jam 19.45 diterima hari itu juga.
-    //
-    // Nota keluar dikelompokkan menurut uangnya -- berbiaya, piutang,
-    // garansi, cancel -- baru menurut nomor nota di dalam tiap kelompok.
+    // Keluar berarti unit benar-benar sudah meninggalkan toko: diambil
+    // pelanggan atau dibatalkan lalu dikembalikan. tanggal_diambil dicap
+    // server pada kedua keadaan ini dan mengikuti tutup_jam Pengaturan.
+    // Nota masuk tetap memakai hari kalender penerimaan unit.
     final keluar =
-        semua.where((n) => _hariSama(n.tanggalSelesai, tanggal)).toList()
+        semua
+            .where(
+              (n) =>
+                  (n.status == ServiceStatus.diambil ||
+                      n.status == ServiceStatus.batal) &&
+                  _hariSama(n.tanggalDiambil, tanggal),
+            )
+            .toList()
           ..sort(bandingHarian);
     final masuk =
         semua.where((n) => _hariSama(n.tanggalMasuk, tanggal)).toList()
@@ -336,7 +336,7 @@ class _KartuHarianKeluar extends StatelessWidget {
       judul: 'Nota Keluar',
       ringkas: '${keluar.length} nota  ·  ${_rp.format(total)}',
       kosong: keluar.isEmpty,
-      pesanKosong: 'Belum ada unit yang selesai pada tanggal ini.',
+      pesanKosong: 'Belum ada unit yang keluar pada tanggal ini.',
       child: _TabelHarian(
         kolom: const [
           (0, 'Nama', 2),
@@ -411,7 +411,11 @@ class _KartuHarianMasuk extends StatelessWidget {
                 n.customerTelp ?? '—',
                 _barang(n),
                 n.keluhan ?? '—',
-                n.tanggalLunas == null ? '—' : _tgl.format(n.tanggalLunas!),
+                n.tanggalLunas == null
+                    ? '—'
+                    : n.waktuLunas == null
+                    ? _tgl.format(n.tanggalLunas!)
+                    : _tglJam.format(n.waktuLunas!),
               ],
             ),
         ],
@@ -557,7 +561,7 @@ class _Omset extends ConsumerWidget {
                   catatan: '${hasil.jumlahNota} nota selesai ${bulan.label}',
                   aksen: context.warna.bahaya,
                   rincian: [
-                    ('Sudah masuk', _rp.format(hasil.sudahMasuk)),
+                    ('Uang sudah masuk', _rp.format(hasil.sudahMasuk)),
                     ('Masih piutang', _rp.format(hasil.piutang)),
                   ],
                 ),
@@ -797,13 +801,22 @@ class _Pelunasan extends ConsumerWidget {
           in ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[])
         p.id: p.nama,
     };
+    final kodePiutang = {
+      for (final m
+          in ref.watch(allMetodeBayarProvider).valueOrNull ??
+              const <MetodeBayar>[])
+        if (m.piutang) m.kode,
+    };
 
     // Dikelompokkan menurut tanggal LUNAS, bukan tanggal masuk: yang
     // dilaporkan di sini adalah uang yang diterima hari itu.
     final lunas =
         semua
             .where(
-              (n) => n.tanggalLunas != null && bulan.memuat(n.tanggalLunas!),
+              (n) =>
+                  n.tanggalLunas != null &&
+                  !kodePiutang.contains(n.caraBayar) &&
+                  bulan.memuat(n.tanggalLunas!),
             )
             .toList()
           ..sort((a, b) => b.tanggalLunas!.compareTo(a.tanggalLunas!));
@@ -923,10 +936,12 @@ class _Keseluruhan extends ConsumerWidget {
     };
 
     final tunai = nota
-        .where((n) => n.tanggalLunas != null)
+        .where(
+          (n) => n.tanggalLunas != null && !kodePiutang.contains(n.caraBayar),
+        )
         .fold<double>(0, (a, n) => a + n.biaya);
     final piutang = nota
-        .where((n) => n.biaya > 0 && n.tanggalLunas == null)
+        .where((n) => n.biaya > 0 && kodePiutang.contains(n.caraBayar))
         .fold<double>(0, (a, n) => a + n.biaya);
 
     return _Kartu(
@@ -995,8 +1010,8 @@ class _Keseluruhan extends ConsumerWidget {
   static String _bayar(ServiceOrderEntry n, Set<String> kodePiutang) {
     if (n.biaya == 0) return '—';
     final nilai = _rp.format(n.biaya);
-    if (n.tanggalLunas != null) return '$nilai LUNAS';
     if (kodePiutang.contains(n.caraBayar)) return '$nilai PIUTANG';
+    if (n.tanggalLunas != null) return '$nilai LUNAS';
     return nilai;
   }
 }

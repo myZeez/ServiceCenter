@@ -618,8 +618,9 @@ class _NilaiSel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final hanyaBaca = ref.watch(isAdminScProvider);
     return InkWell(
-      onTap: () => ubahNilai(context, ref, unit),
+      onTap: hanyaBaca ? null : () => ubahNilai(context, ref, unit),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Column(
@@ -631,7 +632,9 @@ class _NilaiSel extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: unit.dikoreksi ? FontWeight.w700 : FontWeight.w400,
-                color: unit.dikoreksi ? context.warna.teks : context.warna.teksLembut,
+                color: unit.dikoreksi
+                    ? context.warna.teks
+                    : context.warna.teksLembut,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -651,11 +654,14 @@ class _CocokBox extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final hanyaBaca = ref.watch(isAdminScProvider);
     return Checkbox(
       value: unit.cocok,
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      onChanged: (v) => setCocok(context, ref, unit, v ?? false),
+      onChanged: hanyaBaca
+          ? null
+          : (v) => setCocok(context, ref, unit, v ?? false),
     );
   }
 }
@@ -717,7 +723,9 @@ class _KartuBaris extends StatelessWidget {
                           fontSize: rma.isEmpty ? 9.5 : 12,
                           fontWeight: FontWeight.w700,
                           letterSpacing: rma.isEmpty ? 0.8 : 0.3,
-                          color: rma.isEmpty ? context.warna.bahaya : context.warna.teks,
+                          color: rma.isEmpty
+                              ? context.warna.bahaya
+                              : context.warna.teks,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),

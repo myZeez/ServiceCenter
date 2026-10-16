@@ -22,7 +22,8 @@ ServiceOrderEntry _nota({
   required DateTime masuk,
   DateTime? selesai,
   String nama = 'Budi',
-  String status = 'selesai',
+  String status = 'diambil',
+  DateTime? diambil,
   double biaya = 150000,
   bool garansi = false,
   String? keterangan,
@@ -40,6 +41,7 @@ ServiceOrderEntry _nota({
   status: status,
   biaya: biaya,
   tanggalSelesai: selesai,
+  tanggalDiambil: diambil ?? selesai,
   keterangan: keterangan,
   updatedAt: masuk,
 );
@@ -150,6 +152,51 @@ void main() {
       expect(find.text('SVR-0001'), findsOneWidget);
     });
 
+    testWidgets(
+      'nota keluar memuat unit yang diambil atau dibatalkan lalu keluar',
+      (tester) async {
+        await _lukis(tester, [
+          _nota(
+            noNota: 'SVR-SELESAI',
+            nama: 'Baru Selesai',
+            masuk: _kemarin,
+            selesai: _hari,
+            status: 'selesai',
+          ),
+          _nota(
+            noNota: 'SVR-DIKERJAKAN',
+            nama: 'Dikerjakan Lagi',
+            masuk: _kemarin,
+            selesai: _hari,
+            diambil: _hari,
+            status: 'dikerjakan',
+          ),
+          _nota(
+            noNota: 'SVR-DIAMBIL',
+            nama: 'Sudah Diambil',
+            masuk: _kemarin,
+            selesai: _kemarin,
+            diambil: _hari,
+            status: 'diambil',
+          ),
+          _nota(
+            noNota: 'SVR-BATAL',
+            nama: 'Batal dan Keluar',
+            masuk: _kemarin,
+            selesai: _hari,
+            diambil: _hari,
+            status: 'batal',
+            biaya: 0,
+          ),
+        ]);
+
+        expect(find.text('NOTA KELUAR  (2)'), findsOneWidget);
+        expect(find.text('Sudah Diambil'), findsOneWidget);
+        expect(find.text('Batal dan Keluar'), findsOneWidget);
+        expect(find.text('Baru Selesai'), findsNothing);
+        expect(find.text('Dikerjakan Lagi'), findsNothing);
+      },
+    );
     testWidgets('nota keluar dipisah dari nota masuk', (tester) async {
       final hari = _hari;
       final kemarin = _kemarin;
@@ -183,10 +230,7 @@ void main() {
       await _lukis(tester, [_nota(noNota: 'SVR-0001', masuk: lama)]);
 
       expect(tester.takeException(), isNull);
-      expect(
-        find.textContaining('Belum ada unit yang selesai'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Belum ada unit yang keluar'), findsOneWidget);
 
       await _bukaTabMasuk(tester);
       expect(find.textContaining('Belum ada unit yang masuk'), findsOneWidget);

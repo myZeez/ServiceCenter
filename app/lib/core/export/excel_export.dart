@@ -716,11 +716,10 @@ class ExcelExport {
 
   /// Satu tanggal: dua tabel bertumpuk, nota keluar lalu nota masuk.
   ///
-  /// Batas harinya berbeda untuk keduanya. Nota keluar ditutup jam 17.00,
-  /// saat laporannya dikirim ke pusat: unit yang selesai sesudahnya masuk
-  /// laporan besok. Aturan itu sudah dijalankan server waktu menstempel
-  /// tanggal_selesai, jadi di sini tanggalnya dibandingkan apa adanya --
-  /// menggesernya sekali lagi memindahkan unit sehari terlalu jauh.
+  /// Nota keluar memuat unit yang diambil maupun dibatalkan lalu
+  /// dikembalikan. Server mencap tanggal_diambil ketika statusnya berubah
+  /// dan menghitungnya dengan tutup_jam dari Pengaturan; di sini tanggal itu
+  /// dibandingkan apa adanya.
   ///
   /// Nota masuk memakai hari kalender: unit yang diterima jam 19.45
   /// tercatat hari itu juga, sama seperti di buku meja depan.
@@ -729,11 +728,17 @@ class ExcelExport {
     required DateTime tanggal,
     String? namaLembar,
   }) {
-    // Nota keluar dikelompokkan menurut uangnya -- berbiaya, piutang, garansi,
-    // cancel -- baru menurut nomor nota di dalam tiap kelompok. Nota masuk
-    // tidak punya biaya untuk dikelompokkan, jadi tetap menurut nomor nota.
+    // Unit selesai atau dibuka kembali bukan Nota Keluar. Unit Batal sudah
+    // kembali ke pelanggan sehingga, seperti Diambil, dicetak pada hari
+    // keluarnya.
     final keluar =
-        semua.where((n) => _hariSama(n.tanggalSelesai, tanggal)).toList()
+        semua
+            .where(
+              (n) =>
+                  (n.status == 'diambil' || n.status == 'batal') &&
+                  _hariSama(n.tanggalDiambil, tanggal),
+            )
+            .toList()
           ..sort(bandingHarian);
     final masuk =
         semua.where((n) => _hariSama(n.tanggalMasuk, tanggal)).toList()
@@ -815,6 +820,149 @@ class ExcelExport {
   // hasil kerja teknisi. Menyatukannya membuat kedua angka itu tidak bisa
   // dibaca lagi sebagai apa pun.
   // ------------------------------------------------------------------
+
+  // ------------------------------------------------------------------
+  // Servis partner
+  // ------------------------------------------------------------------
+
+  /// Laporan biaya pekerjaan yang dikirim ke partner luar.
+  ///
+  /// Satu berkas berisi dua tampilan dari daftar yang sama: tab lengkap
+  /// untuk laporan periode (bulanan atau mingguan), lalu tab ringkas yang
+  /// bisa langsung dipakai mengecek HPP, up biaya, dan selisih. Identitas
+  /// selalu diambil dari nota sumber agar perubahan nama/unit pada nota
+  /// langsung tercermin di laporan ini.
+  static Future<String?> partner({
+    required List<PartnerServiceEntry> data,
+    required Map<String, ServiceOrderEntry> nota,
+    required String periode,
+  }) => simpanBanyak(
+    namaBerkas: 'Biaya Service Luar ${_aman(periode)}.xlsx',
+    lembar: lembarPartner(data: data, nota: nota, periode: periode),
+  );
+
+  static List<LembarExcel> lembarPartner({
+    required List<PartnerServiceEntry> data,
+    required Map<String, ServiceOrderEntry> nota,
+    required String periode,
+  }) {
+    final urut =
+        [
+          for (final p in data)
+            if (nota.containsKey(p.serviceOrderId))
+              (partner: p, nota: nota[p.serviceOrderId]!),
+        ]..sort((a, b) {
+          final tanggal = a.partner.createdAt.compareTo(b.partner.createdAt);
+          return tanggal != 0
+              ? tanggal
+              : bandingNomorNota(a.nota.noNota, b.nota.noNota);
+        });
+
+    var totalHpp = 0.0;
+    var totalUp = 0.0;
+    var totalSelisih = 0.0;
+    final lengkap = <List<CellValue?>>[];
+    final ringkas = <List<CellValue?>>[];
+
+    for (var i = 0; i < urut.length; i++) {
+      final p = urut[i].partner;
+      final n = urut[i].nota;
+      final hpp = p.hpp;
+      // Nilai tagihan partner tidak punya input sendiri: satu-satunya
+      // sumbernya adalah Biaya di nota. Dengan begitu koreksi biaya nota
+      // langsung ikut ke laporan tanpa admin memasukkan angka dua kali.
+      final up = n.biaya;
+      final selisih = hpp == null ? null : up - hpp;
+
+      totalHpp += hpp ?? 0;
+      totalUp += up;
+      totalSelisih += selisih ?? 0;
+
+      lengkap.add([
+        TextCellValue(n.customerNama),
+        TextCellValue(n.noNota),
+        TextCellValue(_barang(n)),
+        TextCellValue(n.perbaikan ?? n.keluhan ?? ''),
+        hpp == null ? null : DoubleCellValue(hpp),
+        DoubleCellValue(up),
+        selisih == null ? null : DoubleCellValue(selisih),
+        _tanggal(n.tanggalMasuk),
+        _tanggal(n.tanggalDiambil),
+      ]);
+      ringkas.add([
+        IntCellValue(i + 1),
+        TextCellValue(n.noNota),
+        hpp == null ? null : DoubleCellValue(hpp),
+        DoubleCellValue(up),
+        selisih == null ? null : DoubleCellValue(selisih),
+      ]);
+    }
+
+    return [
+      LembarExcel(
+        nama: 'Laporan Partner',
+        tabel: [
+          TabelExcel(
+            judul:
+                'LAPORAN BIAYA SERVICE LUAR CELLCOM PALANGKA RAYA  ·  ${periode.toUpperCase()}',
+            kolom: const [
+              KolomExcel('NAMA', lebar: 24),
+              KolomExcel('NO NOTA', jenis: JenisKolom.kode, lebar: 22),
+              KolomExcel('JENIS BARANG', lebar: 32),
+              KolomExcel('PERBAIKAN', lebar: 54),
+              KolomExcel('HPP', jenis: JenisKolom.rupiah, lebar: 16),
+              KolomExcel(
+                'UP BIAYA SERVICE',
+                jenis: JenisKolom.rupiah,
+                lebar: 19,
+              ),
+              KolomExcel('INCOME/SELISIH', jenis: JenisKolom.rupiah, lebar: 18),
+              KolomExcel('TANGGAL MASUK', jenis: JenisKolom.tanggal, lebar: 16),
+              KolomExcel(
+                'TANGGAL KELUAR',
+                jenis: JenisKolom.tanggal,
+                lebar: 16,
+              ),
+            ],
+            baris: lengkap,
+            penutup: [
+              null,
+              null,
+              null,
+              TextCellValue('TOTAL'),
+              DoubleCellValue(totalHpp),
+              DoubleCellValue(totalUp),
+              DoubleCellValue(totalSelisih),
+            ],
+          ),
+        ],
+      ),
+      LembarExcel(
+        nama: 'Ringkas',
+        tabel: [
+          TabelExcel(
+            judul:
+                'BIAYA SERVICE LUAR CELLCOM PALANGKA RAYA  ·  ${periode.toUpperCase()}',
+            kolom: const [
+              KolomExcel('NO', jenis: JenisKolom.angka, lebar: 8),
+              KolomExcel('NOTA', jenis: JenisKolom.kode, lebar: 22),
+              KolomExcel('HPP', jenis: JenisKolom.rupiah, lebar: 16),
+              KolomExcel('UP', jenis: JenisKolom.rupiah, lebar: 16),
+              KolomExcel('SELISIH', jenis: JenisKolom.rupiah, lebar: 16),
+            ],
+            baris: ringkas,
+            penutup: [
+              null,
+              TextCellValue('TOTAL'),
+              DoubleCellValue(totalHpp),
+              DoubleCellValue(totalUp),
+              DoubleCellValue(totalSelisih),
+            ],
+          ),
+        ],
+      ),
+    ];
+  }
 
   static Future<String?> part({
     required List<PartOrder> pesanan,

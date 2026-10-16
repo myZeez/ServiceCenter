@@ -17,7 +17,8 @@ class OmsetSettings {
 }
 
 /// Nota yang ikut dihitung. Pemanggil bertanggung jawab menyaring periode
-/// dan memastikan pekerjaannya memang sudah selesai.
+/// pekerjaan selesai. Omzet adalah nilai jasa yang sudah dihasilkan;
+/// pelunasan hanya membedakan uang yang sudah diterima dan piutang.
 class OmsetNota {
   const OmsetNota({
     required this.teknisiId,
@@ -28,9 +29,7 @@ class OmsetNota {
   final String? teknisiId;
   final double biaya;
 
-  /// Dipakai hanya untuk memisahkan mana yang uangnya sudah masuk. Omset
-  /// tetap dihitung penuh: pelanggan yang menunda membayar bukan salah
-  /// teknisi yang mengerjakannya.
+  /// Apakah tagihan ini sudah dilunasi pelanggan.
   final bool lunas;
 }
 
@@ -65,19 +64,23 @@ class OmsetResult {
     required this.teknisi,
   });
 
-  /// Seluruh jasa yang dihasilkan pada periode ini.
+  /// Total nilai jasa yang sudah dihasilkan pada periode ini, termasuk
+  /// piutang. Nilai ini dipakai sebagai omzet utama dan target teknisi.
   final double omsetToko;
 
   final int jumlahNota;
 
-  /// Bagian omset yang uangnya sudah diterima, dan yang masih tertahan.
+  /// Bagian dari omzet yang benar-benar sudah diterima.
   final double sudahMasuk;
+
+  /// Bagian dari omzet yang belum diterima tetapi tetap tercatat sebagai
+  /// hasil jasa. Rinciannya dipantau di halaman Piutang.
   final double piutang;
 
   /// Imbalan admin: fee per nota dikalikan jumlah nota yang keluar.
   final double omsetAdmin;
 
-  /// Nota selesai yang kolom teknisinya kosong. Nilainya tetap masuk omset
+  /// Nota selesai yang kolom teknisinya kosong. Nilainya tetap masuk omzet
   /// toko, tetapi tidak jatuh ke siapa pun -- diangkat tersendiri supaya
   /// kekosongan datanya terlihat.
   final int notaTanpaTeknisi;
@@ -98,12 +101,16 @@ OmsetResult hitungOmset({
   final nilaiPer = <String, double>{};
 
   for (final n in nota) {
-    toko += n.biaya;
-    if (n.lunas) {
-      masuk += n.biaya;
-    } else {
+    // Piutang tetap merupakan hasil jasa toko dan teknisi. Yang dibedakan
+    // hanya kas yang sudah diterima, supaya omzet tidak mengecil sementara
+    // daftar Piutang tetap menjadi pengingat penagihan.
+    if (!n.lunas) {
       tertahan += n.biaya;
+    } else {
+      masuk += n.biaya;
     }
+
+    toko += n.biaya;
 
     final t = n.teknisiId;
     if (t == null) {

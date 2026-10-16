@@ -317,7 +317,9 @@ void main() {
       updatedAt: DateTime(2026, 9, 5),
     );
 
-    testWidgets('garansi brand memilih dari status klaimnya', (tester) async {
+    testWidgets('garansi brand menampilkan status nota dan klaim terpisah', (
+      tester,
+    ) async {
       await _lukis(
         tester,
         nota: _nota(claimId: 'klaim-1'),
@@ -325,7 +327,9 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
+      expect(find.text('STATUS NOTA'), findsOneWidget);
       expect(find.text('STATUS GARANSI'), findsOneWidget);
+      expect(find.text('Masuk'), findsOneWidget);
       expect(find.text('Wait Approval Warranty'), findsOneWidget);
     });
 
@@ -399,99 +403,30 @@ void main() {
   // angka yang muncul di sana hampir selalu salah ketik.
   // -------------------------------------------------------------------
   group('Biaya pada nota bergaransi', () {
-    test('ditanyakan saat angkanya baru muncul', () {
-      expect(
-        perluKonfirmasiBiayaGaransi(garansi: true, biaya: 150000, biayaLama: 0),
-        isTrue,
-      );
-    });
-
-    test('nota tanpa garansi tidak pernah ditanyakan', () {
-      expect(
-        perluKonfirmasiBiayaGaransi(
-          garansi: false,
-          biaya: 150000,
-          biayaLama: 0,
-        ),
-        isFalse,
-      );
-    });
-
-    test('garansi tanpa biaya adalah keadaan yang normal', () {
-      expect(
-        perluKonfirmasiBiayaGaransi(garansi: true, biaya: 0, biayaLama: 0),
-        isFalse,
-      );
-      // Termasuk saat biayanya justru dihapus jadi nol.
-      expect(
-        perluKonfirmasiBiayaGaransi(garansi: true, biaya: 0, biayaLama: 150000),
-        isFalse,
-      );
-    });
-
-    test('angka yang tidak berubah tidak ditanyakan lagi', () {
-      // Layanan tambahannya sudah dikonfirmasi sekali. Menanyakannya tiap
-      // kali nota itu dibuka dan disimpan lagi hanya melatih orang
-      // menekan tombolnya tanpa membaca.
-      expect(
-        perluKonfirmasiBiayaGaransi(
-          garansi: true,
-          biaya: 150000,
-          biayaLama: 150000,
-        ),
-        isFalse,
-      );
-    });
-
-    test('angka yang diubah ditanyakan ulang', () {
-      expect(
-        perluKonfirmasiBiayaGaransi(
-          garansi: true,
-          biaya: 200000,
-          biayaLama: 150000,
-        ),
-        isTrue,
-      );
-    });
-
-    testWidgets('kolom biayanya menyebutkan aturannya lebih dulu', (
-      tester,
-    ) async {
+    testWidgets('garansi bawaan 100 persen gratis', (tester) async {
       await _lukis(tester, nota: _nota(claimId: 'klaim-1'));
 
-      // Yang paling murah adalah salah ketik yang tidak jadi diketik.
+      expect(find.text('Ada biaya layanan atau part tambahan'), findsOneWidget);
       expect(
-        find.textContaining('Unit bergaransi ditanggung brand'),
+        find.text('Tidak dicentang: garansi ini 100% gratis.'),
         findsOneWidget,
       );
+      final biaya = tester.widget<TextFormField>(
+        find.widgetWithText(TextFormField, 'Rp ').first,
+      );
+      expect(biaya.enabled, isFalse);
     });
 
-    testWidgets('menyimpan dengan biaya memunculkan pertanyaannya', (
-      tester,
-    ) async {
+    testWidgets('biaya garansi hanya aktif setelah dicentang', (tester) async {
       await _lukis(tester, nota: _nota(claimId: 'klaim-1'));
 
-      await tester.enterText(
+      await _ketuk(tester, find.text('Ada biaya layanan atau part tambahan'));
+      expect(find.text('Biaya dan cara bayarnya wajib diisi.'), findsOneWidget);
+
+      final biaya = tester.widget<TextFormField>(
         find.widgetWithText(TextFormField, 'Rp ').first,
-        '150000',
       );
-      await tester.pumpAndSettle();
-      await _ketuk(
-        tester,
-        find.widgetWithText(FilledButton, 'SIMPAN PERUBAHAN'),
-      );
-
-      expect(find.text('Unit bergaransi, tetapi ada biaya'), findsOneWidget);
-      expect(find.textContaining('Rp150.000'), findsOneWidget);
-
-      // "Periksa lagi" mengembalikan ke formulirnya tanpa menyimpan apa
-      // pun -- termasuk tanpa menyentuh server.
-      await tester.tap(find.text('PERIKSA LAGI'));
-      await tester.pumpAndSettle();
-
-      expect(tester.takeException(), isNull);
-      expect(find.text('Unit bergaransi, tetapi ada biaya'), findsNothing);
-      expect(find.text('150000'), findsWidgets);
+      expect(biaya.enabled, isTrue);
     });
   });
 }

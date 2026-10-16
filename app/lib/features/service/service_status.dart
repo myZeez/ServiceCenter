@@ -97,6 +97,7 @@ class ServiceStatusChip extends StatelessWidget {
     this.compact = false,
     this.cabang,
     this.tanggalKirim,
+    this.biayaDikirimCabang,
   });
 
   final String status;
@@ -107,6 +108,7 @@ class ServiceStatusChip extends StatelessWidget {
   /// muncul sebagai keterangan saat chip ditahan atau diarahi kursor.
   final String? cabang;
   final DateTime? tanggalKirim;
+  final bool? biayaDikirimCabang;
 
   @override
   Widget build(BuildContext context) {
@@ -115,8 +117,15 @@ class ServiceStatusChip extends StatelessWidget {
 
     final tujuan = (cabang ?? '').trim();
     final kirim = status == ServiceStatus.dikirimCabang && tujuan.isNotEmpty;
+    final penandaBiaya = status == ServiceStatus.dikirimCabang
+        ? switch (biayaDikirimCabang) {
+            true => compact ? ' • BIAYA' : ' • BERBIAYA',
+            false => compact ? ' • GRATIS' : ' • TANPA BIAYA',
+            null => '',
+          }
+        : '';
     final teks = kirim
-        ? (compact ? 'Ke $tujuan' : 'Dikirim ke $tujuan')
+        ? "${compact ? 'Ke $tujuan' : 'Dikirim ke $tujuan'}$penandaBiaya"
         : ServiceStatus.label(status);
 
     final chip = Container(
@@ -141,8 +150,14 @@ class ServiceStatusChip extends StatelessWidget {
     );
 
     if (!kirim || tanggalKirim == null) return chip;
+    final biayaTooltip = switch (biayaDikirimCabang) {
+      true => ' dengan biaya',
+      false => ' tanpa biaya',
+      null => '',
+    };
     return Tooltip(
-      message: ServiceStatus.keteranganKirim(tujuan, tanggalKirim!),
+      message:
+          ServiceStatus.keteranganKirim(tujuan, tanggalKirim!) + biayaTooltip,
       child: chip,
     );
   }
@@ -150,10 +165,10 @@ class ServiceStatusChip extends StatelessWidget {
 
 /// Status sebuah nota seperti yang dibaca di meja depan.
 ///
-/// Nota garansi brand memakai status klaimnya -- Wait Approval Warranty,
-/// Ship ASUS Pusat, Part Ready -- karena di sanalah pekerjaannya benar-
-/// benar tertahan, dan "Dikerjakan" saja tidak menceritakan apa pun.
-/// Servis reguler dan garansi toko tetap memakai status nota biasa.
+/// Status klaim brand dan status nota sengaja berdampingan, bukan saling
+/// menggantikan. Yang pertama menjelaskan proses ke brand; yang kedua
+/// menjelaskan posisi unit pelanggan: masih dikerjakan, dikirim ke cabang,
+/// sudah selesai, atau sudah diambil.
 class StatusNotaChip extends ConsumerWidget {
   const StatusNotaChip(this.nota, {super.key, this.compact = false});
 
@@ -169,13 +184,34 @@ class StatusNotaChip extends ConsumerWidget {
         compact: compact,
         cabang: nota.cabangTujuan,
         tanggalKirim: nota.tanggalKirim,
+        biayaDikirimCabang: nota.biayaDikirimCabang,
       );
     }
 
-    return StatusChip(
-      klaim.status,
-      compact: compact,
-      brand: ref.watch(namaBrandProvider)[klaim.brandId],
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      alignment: WrapAlignment.end,
+      children: [
+        Tooltip(
+          message: 'Status garansi',
+          child: StatusChip(
+            klaim.status,
+            compact: compact,
+            brand: ref.watch(namaBrandProvider)[klaim.brandId],
+          ),
+        ),
+        Tooltip(
+          message: 'Status nota',
+          child: ServiceStatusChip(
+            nota.status,
+            compact: compact,
+            cabang: nota.cabangTujuan,
+            tanggalKirim: nota.tanggalKirim,
+            biayaDikirimCabang: nota.biayaDikirimCabang,
+          ),
+        ),
+      ],
     );
   }
 }

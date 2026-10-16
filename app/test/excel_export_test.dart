@@ -55,16 +55,19 @@ ServiceOrderEntry _nota({
   required String noNota,
   required DateTime masuk,
   DateTime? selesai,
+  DateTime? diambil,
   double biaya = 150000,
+  String status = 'diambil',
 }) => ServiceOrderEntry(
   id: noNota,
   noNota: noNota,
   tanggalMasuk: masuk,
   customerNama: 'Budi',
   barangNama: 'ASUS',
-  status: 'diambil',
+  status: status,
   biaya: biaya,
   tanggalSelesai: selesai,
+  tanggalDiambil: diambil ?? selesai,
   updatedAt: masuk,
 );
 
@@ -341,10 +344,33 @@ void main() {
       );
 
       expect(lembar.tabel.length, 2);
-      // Keluar: selesai hari itu. Masuk: diterima hari itu.
+      // Keluar: sudah diambil hari itu. Masuk: diterima hari itu.
       expect(lembar.tabel[0].baris.length, 1);
       expect(lembar.tabel[1].baris.length, 1);
     });
+
+    test(
+      'nota batal tercetak sebagai unit keluar pada tanggal pengembaliannya',
+      () {
+        final lembar = ExcelExport.lembarHarian(
+          semua: [
+            _nota(
+              noNota: 'BATAL',
+              masuk: DateTime(2026, 9, 3),
+              selesai: DateTime(2026, 9, 4),
+              status: 'batal',
+            ),
+          ],
+          tanggal: DateTime(2026, 9, 4),
+        );
+
+        expect(lembar.tabel[0].baris.length, 1);
+        expect(
+          (lembar.tabel[0].baris.single[1] as TextCellValue).value.text,
+          'BATAL',
+        );
+      },
+    );
 
     test('tiap tanggal hanya memuat transaksinya sendiri', () {
       final lembar = ExcelExport.lembarHarianBulanan(
@@ -384,12 +410,12 @@ void main() {
       expect(lembar[4].tabel[1].baris.length, 0, reason: 'tanggal 5');
     });
 
-    test('nota keluar ikut tanggal selesai yang distempel server', () {
+    test('nota keluar ikut tanggal pengambilan yang distempel server', () {
       // Jam tutup nota keluar dijalankan server waktu menstempel
-      // tanggal_selesai. Ekspor ini tidak menggeser apa pun lagi --
+      // tanggal_diambil. Ekspor ini tidak menggeser apa pun lagi --
       // menggeser dua kali memindahkan unit sehari terlalu jauh.
       //
-      // Unit ini masuk tanggal 4 pagi dan selesai sesudah jam 17.00
+      // Unit ini masuk tanggal 4 pagi dan diambil sesudah jam 17.00
       // tanggal 4, jadi server menstempelnya tanggal 5: masuknya di tab
       // 4, keluarnya di tab 5.
       final lembar = ExcelExport.lembarHarianBulanan(
@@ -397,7 +423,8 @@ void main() {
           _nota(
             noNota: 'SORE',
             masuk: DateTime(2026, 9, 4, 10, 0),
-            selesai: DateTime(2026, 9, 5),
+            selesai: DateTime(2026, 9, 4),
+            diambil: DateTime(2026, 9, 5),
           ),
         ],
         bulan: DateTime(2026, 9),
@@ -784,6 +811,70 @@ void main() {
         expect(_latar(sheet, c, 4), ExcelColor.green300, reason: 'kolom $c');
       }
     });
+  });
+  group('Laporan partner', () {
+    test(
+      'tab lengkap dan ringkas memakai nota yang sama serta menjumlahkan biaya',
+      () {
+        final nota = _nota(
+          noNota: 'SVR-01092628110',
+          masuk: DateTime(2026, 9, 1, 9),
+          diambil: DateTime(2026, 9, 4),
+          biaya: 400000,
+        );
+        final lembar = ExcelExport.lembarPartner(
+          data: [
+            PartnerServiceEntry(
+              id: 'partner-1',
+              serviceOrderId: nota.id,
+              status: 'selesai',
+              hpp: 270000,
+              upBiaya: 400000,
+              createdAt: DateTime(2026, 9, 1),
+              updatedAt: DateTime(2026, 9, 4),
+            ),
+          ],
+          nota: {nota.id: nota},
+          periode: '01 Sep 2026 — 30 Sep 2026',
+        );
+
+        expect(lembar.map((l) => l.nama), ['Laporan Partner', 'Ringkas']);
+
+        final lengkap = lembar.first.tabel.single;
+        expect(lengkap.kolom.map((k) => k.judul), [
+          'NAMA',
+          'NO NOTA',
+          'JENIS BARANG',
+          'PERBAIKAN',
+          'HPP',
+          'UP BIAYA SERVICE',
+          'INCOME/SELISIH',
+          'TANGGAL MASUK',
+          'TANGGAL KELUAR',
+        ]);
+        expect(
+          (lengkap.baris.single[1] as TextCellValue).value.text,
+          nota.noNota,
+        );
+        expect((lengkap.baris.single[6] as DoubleCellValue).value, 130000);
+        expect((lengkap.penutup![4] as DoubleCellValue).value, 270000);
+        expect((lengkap.penutup![5] as DoubleCellValue).value, 400000);
+        expect((lengkap.penutup![6] as DoubleCellValue).value, 130000);
+
+        final ringkas = lembar.last.tabel.single;
+        expect(ringkas.kolom.map((k) => k.judul), [
+          'NO',
+          'NOTA',
+          'HPP',
+          'UP',
+          'SELISIH',
+        ]);
+        expect(
+          (ringkas.baris.single[1] as TextCellValue).value.text,
+          nota.noNota,
+        );
+      },
+    );
   });
 }
 

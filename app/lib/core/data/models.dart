@@ -181,6 +181,7 @@ class Claim {
     this.noPerbaikan,
     required this.status,
     this.tanggalClose,
+    this.tanggalPartKembali,
     this.catatan,
     required this.createdBy,
     required this.createdAt,
@@ -216,6 +217,10 @@ class Claim {
   /// karena unit yang masuk akhir Maret sering baru tuntas di April.
   final DateTime? tanggalClose;
 
+  /// Kapan part/unit klaim yang sudah ditutup diserahkan kembali ke brand.
+  /// Null berarti masih menunggu dikembalikan.
+  final DateTime? tanggalPartKembali;
+
   final String? catatan;
   final String createdBy;
   final DateTime createdAt;
@@ -239,6 +244,9 @@ class Claim {
     noPerbaikan: r['no_perbaikan'] as String?,
     status: r['status'] as String,
     tanggalClose: _tgl(r['tanggal_close']),
+    tanggalPartKembali: r['tanggal_part_kembali'] == null
+        ? null
+        : _ts(r['tanggal_part_kembali']),
     catatan: r['catatan'] as String?,
     createdBy: r['created_by'] as String,
     createdAt: _ts(r['created_at']),
@@ -410,9 +418,13 @@ class ServiceOrderEntry {
     this.biaya = 0,
     this.caraBayar,
     this.tanggalLunas,
+    this.waktuLunas,
     this.tanggalSelesai,
+    this.tanggalDiambil,
+    this.waktuDiambil,
     this.cabangTujuan,
     this.tanggalKirim,
+    this.biayaDikirimCabang,
     this.keterangan,
     required this.updatedAt,
   });
@@ -450,16 +462,35 @@ class ServiceOrderEntry {
   final String status;
   final double biaya;
   final String? caraBayar;
+
+  /// Hari laporan pembayaran. Tetap bertipe date agar rekap lama tidak
+  /// berubah akibat penambahan jam.
   final DateTime? tanggalLunas;
+
+  /// Saat pembayaran sebenarnya. Kosong pada pembayaran arsip yang dulu
+  /// hanya mencatat tanggalnya.
+  final DateTime? waktuLunas;
 
   /// Kapan pekerjaannya dinyatakan rampung. Dasar perhitungan omset --
   /// bukan tanggal masuk, bukan pula tanggal pelunasan.
   final DateTime? tanggalSelesai;
 
+  /// Hari laporan saat unit benar-benar diambil pelanggan. Hanya dipakai
+  /// Nota Keluar; pekerjaan yang baru Selesai belum boleh muncul di sana.
+  final DateTime? tanggalDiambil;
+
+  /// Saat unit ditandai diambil. Server menghitung [tanggalDiambil] dengan
+  /// jam tutup yang diatur admin, bukan dengan jam tetap aplikasi.
+  final DateTime? waktuDiambil;
+
   /// Ke mana unit dikirim, dan kapan. Bermakna hanya selama statusnya
   /// Dikirim ke Cabang; sesudahnya dibiarkan sebagai jejak.
   final String? cabangTujuan;
   final DateTime? tanggalKirim;
+
+  /// Jawaban saat unit dikirim ke cabang: pekerjaan ini tanpa biaya atau
+  /// membutuhkan biaya. Null hanya mungkin pada arsip sebelum kolomnya ada.
+  final bool? biayaDikirimCabang;
 
   /// "Unit dikirim ke Cabang ... Tanggal ..." selama unitnya memang sedang
   /// dikirim dan keterangannya lengkap; selain itu kosong -- cabang dan
@@ -501,10 +532,58 @@ class ServiceOrderEntry {
         biaya: _num(r['biaya']),
         caraBayar: r['cara_bayar'] as String?,
         tanggalLunas: _tgl(r['tanggal_lunas']),
+        waktuLunas: r['waktu_lunas'] == null ? null : _ts(r['waktu_lunas']),
         tanggalSelesai: _tgl(r['tanggal_selesai']),
+        tanggalDiambil: _tgl(r['tanggal_diambil']),
+        waktuDiambil: r['waktu_diambil'] == null
+            ? null
+            : _ts(r['waktu_diambil']),
         cabangTujuan: r['cabang_tujuan'] as String?,
         tanggalKirim: _tgl(r['tanggal_kirim']),
+        biayaDikirimCabang: r['biaya_dikirim_cabang'] as bool?,
         keterangan: r['keterangan'] as String?,
+        updatedAt: _ts(r['updated_at']),
+      );
+}
+
+/// Status dan biaya servis yang dikerjakan pihak partner.
+///
+/// Identitas pelanggan dan unit sengaja tidak disalin ke sini. Halaman
+/// partner membacanya dari [ServiceOrderEntry] lewat [serviceOrderId], jadi
+/// laporan partner selalu mengikuti nota sumber yang sama.
+class PartnerServiceEntry {
+  const PartnerServiceEntry({
+    required this.id,
+    required this.serviceOrderId,
+    required this.status,
+    this.hpp,
+    this.upBiaya,
+    this.catatan,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String serviceOrderId;
+  final String status;
+  final double? hpp;
+  final double? upBiaya;
+  final String? catatan;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  double? get selisih =>
+      hpp == null || upBiaya == null ? null : upBiaya! - hpp!;
+
+  factory PartnerServiceEntry.fromMap(Map<String, dynamic> r) =>
+      PartnerServiceEntry(
+        id: r['id'] as String,
+        serviceOrderId: r['service_order_id'] as String,
+        status: r['status'] as String,
+        hpp: _numN(r['hpp']),
+        upBiaya: _numN(r['up_biaya']),
+        catatan: r['catatan'] as String?,
+        createdAt: _ts(r['created_at']),
         updatedAt: _ts(r['updated_at']),
       );
 }

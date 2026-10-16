@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.cellcom" "\0"
-            VALUE "FileDescription", "sc_management" "\0"
+            VALUE "FileDescription", "Service Center" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "sc_management" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.cellcom. All rights reserved." "\0"
             VALUE "OriginalFilename", "sc_management.exe" "\0"
-            VALUE "ProductName", "sc_management" "\0"
+            VALUE "ProductName", "Service Center" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

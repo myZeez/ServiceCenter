@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/data/models.dart';
+import '../../core/hari_laporan.dart';
 import '../../core/kaca/overlay_kaca.dart';
 import '../../core/print/nota_template.dart';
 import '../../core/print/raw_printer.dart';
@@ -25,11 +26,6 @@ import 'kirim_cabang_fields.dart';
 import 'service_status.dart';
 
 const _uuid = Uuid();
-final _rp = NumberFormat.currency(
-  locale: 'id_ID',
-  symbol: 'Rp',
-  decimalDigits: 0,
-);
 final _tglFmt = DateFormat('dd MMM yyyy');
 final _tglJamFmt = DateFormat('dd MMM yyyy · HH:mm');
 final _iso = DateFormat('yyyy-MM-dd');
@@ -64,26 +60,6 @@ Future<void> showServiceDialog(
   );
 }
 
-/// Apakah biaya pada sebuah nota bergaransi perlu ditanyakan lebih dulu.
-///
-/// Aturan di toko: unit bergaransi tidak dikenakan biaya sama sekali --
-/// perbaikannya ditanggung brand. Yang berbayar hanya layanan tambahan di
-/// luar garansi, dan itu jarang. Jadi angka yang muncul pada nota
-/// bergaransi hampir selalu salah ketik, bukan keputusan.
-///
-/// Bertanya, bukan menolak. Layanan tambahan memang ada, dan aturan yang
-/// mengunci akan memaksa admin mencatatnya di tempat lain -- yang berarti
-/// uang yang benar-benar masuk tidak terbaca di laporan mana pun.
-///
-/// Hanya saat angkanya berubah. Ditanyakan tiap kali nota yang sama
-/// disimpan, pertanyaan ini berubah jadi tombol yang ditekan tanpa dibaca,
-/// dan sesudah itu ia tidak menjaga apa-apa lagi.
-bool perluKonfirmasiBiayaGaransi({
-  required bool garansi,
-  required double biaya,
-  required double biayaLama,
-}) => garansi && biaya > 0 && biaya != biayaLama;
-
 class ServiceDialog extends ConsumerStatefulWidget {
   const ServiceDialog({super.key, this.nota});
 
@@ -110,6 +86,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   final _biaya = TextEditingController();
   final _keterangan = TextEditingController();
   final _partReq = TextEditingController();
+  final _hppPartner = TextEditingController();
+  final _catatanPartner = TextEditingController();
 
   /// Keluhan garansi -- milik KLAIMNYA, bukan nota ini. Hanya tampil pada
   /// nota garansi brand. Lihat [_kolomKeluhanGaransi].
@@ -130,6 +108,15 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   DateTime? _estimasi;
   bool _garansi = false;
 
+  /// Garansi selalu gratis kecuali admin sengaja menyatakan ada layanan atau
+  /// part di luar garansi. Pilihan ini menggantikan konfirmasi saat simpan.
+  bool _adaBiayaTambahanGaransi = false;
+
+  /// Servis biasa dapat selesai tanpa tagihan. Ini dipisahkan dari garansi,
+  /// pembatalan, dan kirim cabang karena ketiganya memiliki aturan biaya
+  /// khusus masing-masing.
+  bool _tanpaBiayaServis = false;
+
   /// Jenis klaim yang akan lahir dari nota ini. Hanya berlaku saat
   /// centang garansi menyala dan klaimnya memang belum ada.
   String _jenisGaransi = ClaimJenis.brand;
@@ -143,15 +130,29 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   String? _partKeterangan;
   String? _partBaru;
   String? _claimBaru;
+  String? _requestSimpanBaru;
   String _status = ServiceStatus.masuk;
   String? _caraBayar;
   DateTime? _tanggalLunas;
+
+  /// Saat pembayaran sebenarnya. Tanggal laporan tetap ada terpisah agar
+  /// aturan hari kerja/tutup jam tidak berubah.
+  DateTime? _waktuLunas;
+
+  /// Saat unit benar-benar diambil pelanggan. Berbeda dari tanggal masuk
+  /// dan pelunasan: inilah satu-satunya waktu yang menentukan Nota Keluar.
+  DateTime? _tanggalDiambil;
+  DateTime? _waktuDiambil;
 
   /// Ke mana unit dikirim, dan kapan -- hanya dipakai saat statusnya
   /// Dikirim ke Cabang. Tanggalnya terisi hari ini sejak awal; ia baru
   /// diambil dari nota kalau nota itu memang sedang dalam pengiriman.
   String? _cabang;
   DateTime _tanggalKirim = hariIniKalender();
+
+  /// Status biaya khusus ketika unit dikirim ke cabang. Null berarti belum
+  /// ditentukan dan tidak boleh disimpan.
+  bool? _biayaDikirimCabang;
 
   /// Jawaban atas "apakah pembatalan ini berbiaya?". Null berarti belum
   /// dijawab -- dan nota batal tidak bisa disimpan sebelum dijawab.
@@ -161,14 +162,20 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   /// diisi sebelum unitnya batal terbaca sebagai tagihan yang harus dibayar.
   bool? _biayaBatal;
 
+  /// Pekerjaan partner adalah turunan nota, bukan status nota baru. Dengan
+  /// begitu kasir tetap dapat mengubah biaya dan pembayaran nota di form
+  /// yang sama, sementara proses pekerjaan partner punya status sendiri.
+  bool _partnerAktif = false;
+  String _statusPartner = 'dikirim';
+  String? _partnerDimuat;
+
   /// Status klaim yang dipilih di formulir. Kosong berarti belum disentuh
   /// -- dan klaim yang tidak disentuh tidak ditulis, supaya perubahan dari
   /// layar lain selama formulir ini terbuka tidak tertimpa nilai lama.
   ///
-  /// Hanya berlaku untuk nota garansi brand. Pada nota seperti itu status
-  /// nota tidak dikirim sama sekali: server yang menurunkannya dari klaim
-  /// (migrasi 0027). Mengirim keduanya berarti dua penulisan yang saling
-  /// menimpa, dan yang kalah adalah status yang lebih rinci.
+  /// Hanya berlaku untuk klaim brand. Status ini terpisah dari status
+  /// nota: klaim mencatat proses ke brand, sedangkan nota mencatat posisi
+  /// unit pelanggan.
   String? _statusKlaim;
 
   bool _busy = false;
@@ -194,10 +201,17 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     _teknisiId = n.teknisiId;
     _estimasi = n.estimasiSelesai;
     _garansi = n.garansi;
+    _adaBiayaTambahanGaransi = n.garansi && n.biaya > 0;
+    _tanpaBiayaServis =
+        !n.garansi && n.status == ServiceStatus.diambil && n.biaya == 0;
     _status = n.status;
     _caraBayar = n.caraBayar;
     _tanggalLunas = n.tanggalLunas;
+    _waktuLunas = n.waktuLunas;
+    _tanggalDiambil = n.tanggalDiambil;
+    _waktuDiambil = n.waktuDiambil;
     _cabang = n.cabangTujuan;
+    _biayaDikirimCabang = n.biayaDikirimCabang;
     // Nota yang sudah batal: jawabannya dibaca dari biayanya, supaya yang
     // dibuka tampil apa adanya. Yang belum batal harus menjawab sendiri.
     if (n.status == ServiceStatus.batal) _biayaBatal = n.biaya > 0;
@@ -215,6 +229,9 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       if (baru == ServiceStatus.dikirimCabang &&
           widget.nota?.status != ServiceStatus.dikirimCabang) {
         _tanggalKirim = hariIniKalender();
+        // Pengiriman baru harus dijawab lagi, walau nota ini pernah
+        // dikirim sebelumnya dan menyimpan jejak pilihannya.
+        _biayaDikirimCabang = null;
       }
       // Batal dari status lain: biayanya belum dijawab, dan harga taksiran
       // yang mungkin sudah terisi tidak boleh ikut terbaca sebagai tagihan.
@@ -237,14 +254,90 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         _biaya.clear();
         _caraBayar = null;
         _tanggalLunas = null;
+        _waktuLunas = null;
       }
     });
   }
 
-  /// Biaya, cara bayar, dan tanggal lunas dikunci selama pembatalannya
-  /// dinyatakan tanpa biaya.
+  /// Menyalakan/mematikan garansi. Saat baru dinyalakan, biaya lama tidak
+  /// boleh tersisa sebagai tagihan diam-diam.
+  void _aturGaransi(bool aktif) {
+    setState(() {
+      _garansi = aktif;
+      if (aktif) {
+        _adaBiayaTambahanGaransi = false;
+        _biaya.clear();
+        _caraBayar = null;
+        _tanggalLunas = null;
+        _waktuLunas = null;
+      }
+    });
+  }
+
+  /// Layanan atau part tambahan adalah satu-satunya alasan nota garansi
+  /// boleh berbiaya. Mematikannya menghapus seluruh jejak tagihan.
+  void _aturBiayaTambahanGaransi(bool ada) {
+    setState(() {
+      _adaBiayaTambahanGaransi = ada;
+      if (!ada) {
+        _biaya.clear();
+        _caraBayar = null;
+        _tanggalLunas = null;
+        _waktuLunas = null;
+      }
+    });
+  }
+
+  void _pilihBiayaDikirimCabang(bool ada) {
+    setState(() {
+      _biayaDikirimCabang = ada;
+      if (!ada) {
+        _biaya.clear();
+        _caraBayar = null;
+        _tanggalLunas = null;
+        _waktuLunas = null;
+      }
+    });
+  }
+
+  void _aturTanpaBiayaServis(bool tanpaBiaya) {
+    setState(() {
+      _tanpaBiayaServis = tanpaBiaya;
+      if (tanpaBiaya) {
+        _biaya.clear();
+        _caraBayar = null;
+        _tanggalLunas = null;
+        _waktuLunas = null;
+      }
+    });
+  }
+
+  bool get _garansiGratis => _garansi && !_adaBiayaTambahanGaransi;
+  bool get _kirimCabangGratis =>
+      _status == ServiceStatus.dikirimCabang && _biayaDikirimCabang == false;
+
+  bool get _servisTanpaBiaya =>
+      !_garansi &&
+      _status != ServiceStatus.batal &&
+      _status != ServiceStatus.dikirimCabang &&
+      _tanpaBiayaServis;
+
+  /// Biaya, cara bayar, dan tanggal lunas dikunci untuk pembatalan gratis,
+  /// garansi biasa, atau pengiriman cabang tanpa biaya.
   bool get _kunciBiaya =>
-      _status == ServiceStatus.batal && _biayaBatal == false;
+      (_status == ServiceStatus.batal && _biayaBatal == false) ||
+      _garansiGratis ||
+      _kirimCabangGratis ||
+      _servisTanpaBiaya;
+
+  /// Tanggal laporan dihitung dari waktu perangkat dengan aturan toko yang
+  /// sedang aktif. Jam transaksi tetap waktu nyata perangkat, tetapi nota
+  /// pada atau sesudah jam tutup harus masuk ke hari kerja berikutnya.
+  DateTime _hariLaporanPerangkat(DateTime saat) => hariLaporan(
+    saat,
+    ref.read(jamTutupProvider),
+    ref.read(hariLiburProvider),
+  );
 
   @override
   void dispose() {
@@ -261,6 +354,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       _biaya,
       _keterangan,
       _partReq,
+      _hppPartner,
+      _catatanPartner,
       _keluhanGaransi,
     ]) {
       c.dispose();
@@ -271,6 +366,84 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
 
   String? _kosongNull(TextEditingController c) =>
       c.text.trim().isEmpty ? null : c.text.trim();
+
+  /// Memilih tanggal dan jam pembayaran manual. Jam bawaan memakai waktu
+  /// perangkat saat ini; setelah itu keduanya dapat dipilih ulang kapan pun.
+  Future<void> _pilihWaktuLunas() async {
+    final sekarang = DateTime.now();
+    final awal =
+        _waktuLunas ??
+        DateTime(
+          _tanggalLunas?.year ?? sekarang.year,
+          _tanggalLunas?.month ?? sekarang.month,
+          _tanggalLunas?.day ?? sekarang.day,
+          sekarang.hour,
+          sekarang.minute,
+        );
+    final tanggal = await showDatePicker(
+      context: context,
+      initialDate: awal,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (tanggal == null || !mounted) return;
+
+    final jam = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(awal),
+    );
+    if (jam == null || !mounted) return;
+
+    setState(() {
+      _waktuLunas = DateTime(
+        tanggal.year,
+        tanggal.month,
+        tanggal.day,
+        jam.hour,
+        jam.minute,
+      );
+      _tanggalLunas = _hariLaporanPerangkat(_waktuLunas!);
+    });
+  }
+
+  /// Memilih saat unit benar-benar diambil. Ini dipisahkan dari pelunasan
+  /// karena Nota Keluar mengikuti perpindahan unit, bukan uangnya.
+  Future<void> _pilihWaktuDiambil() async {
+    final sekarang = DateTime.now();
+    final awal =
+        _waktuDiambil ??
+        DateTime(
+          _tanggalDiambil?.year ?? sekarang.year,
+          _tanggalDiambil?.month ?? sekarang.month,
+          _tanggalDiambil?.day ?? sekarang.day,
+          sekarang.hour,
+          sekarang.minute,
+        );
+    final tanggal = await showDatePicker(
+      context: context,
+      initialDate: awal,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (tanggal == null || !mounted) return;
+
+    final jam = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(awal),
+    );
+    if (jam == null || !mounted) return;
+
+    setState(() {
+      _waktuDiambil = DateTime(
+        tanggal.year,
+        tanggal.month,
+        tanggal.day,
+        jam.hour,
+        jam.minute,
+      );
+      _tanggalDiambil = _hariLaporanPerangkat(_waktuDiambil!);
+    });
+  }
 
   /// Apakah tanda garansi pada nota ini masih boleh dinyalakan.
   ///
@@ -288,6 +461,36 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       widget.nota == null ||
       (!widget.nota!.garansi && widget.nota!.claimId == null);
 
+  /// Pembatalan hanya berlaku pada nota lama yang memang sudah garansi.
+  /// Server memutus tautannya secara atomik setelah admin menekan Simpan.
+  bool get _membatalkanGaransi =>
+      !widget.isNew && widget.nota!.garansi && !_garansi;
+
+  Future<void> _konfirmasiBatalkanGaransi() async {
+    final setuju = await tampilkanDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (popupContext) => AlertDialog(
+        title: const Text('Batalkan status garansi?'),
+        content: const Text(
+          'Saat Simpan, nota ini kembali menjadi servis biasa. Klaim yang '
+          'tertaut akan ditandai Batal, tetapi riwayat klaim tidak dihapus.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(popupContext).pop(false),
+            child: const Text('TETAP GARANSI'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(popupContext).pop(true),
+            child: const Text('BATALKAN GARANSI'),
+          ),
+        ],
+      ),
+    );
+    if (setuju == true && mounted) _aturGaransi(false);
+  }
+
   /// Apakah nomor seri wajib diisi pada nota ini.
   ///
   /// Hanya saat sebuah klaim KE BRAND memang akan lahir dari sini. Brand
@@ -297,41 +500,6 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   bool get _perluSn =>
       _garansi && _bolehUbahGaransi && ClaimJenis.perluSn(_jenisGaransi);
 
-  Future<bool> _biayaGaransiDisengaja(double biaya) async {
-    if (!perluKonfirmasiBiayaGaransi(
-      garansi: _garansi,
-      biaya: biaya,
-      biayaLama: widget.nota?.biaya ?? 0,
-    )) {
-      return true;
-    }
-
-    final lanjut = await tampilkanDialog<bool>(
-      context: context,
-      builder: (d) => AlertDialog(
-        title: const Text('Unit bergaransi, tetapi ada biaya'),
-        content: Text(
-          'Nota bergaransi biasanya tidak dikenakan biaya — perbaikannya '
-          'ditanggung brand.\n\n'
-          '${_rp.format(biaya)} ini hanya benar kalau memang ada layanan '
-          'tambahan di luar garansi.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(d).pop(false),
-            child: const Text('PERIKSA LAGI'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(d).pop(true),
-            child: const Text('ADA LAYANAN TAMBAHAN'),
-          ),
-        ],
-      ),
-    );
-
-    return lanjut ?? false;
-  }
-
   Future<void> _simpan() async {
     if (!_formKey.currentState!.validate()) return;
     if (_garansi && _brandId == null && _bolehUbahGaransi) {
@@ -339,11 +507,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       return;
     }
 
-    // Nota batal wajib menyatakan biayanya. Pada nota garansi brand statusnya
-    // milik klaim, jadi aturannya tidak berlaku di sini.
-    final atur =
-        _status == ServiceStatus.batal &&
-        ref.read(klaimBrandNotaProvider(widget.nota?.claimId)) == null;
+    // Pembatalan adalah keadaan nota, termasuk bila notanya bertaut ke klaim.
+    final atur = _status == ServiceStatus.batal;
     if (atur) {
       final jumlah = double.tryParse(_biaya.text) ?? 0;
       final galat = switch (_biayaBatal) {
@@ -361,8 +526,51 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         return;
       }
     }
-    if (!await _biayaGaransiDisengaja(double.tryParse(_biaya.text) ?? 0)) {
+    final kirimCabang = _status == ServiceStatus.dikirimCabang;
+    final jumlah = double.tryParse(_biaya.text) ?? 0;
+
+    if (kirimCabang && _biayaDikirimCabang == null) {
+      setState(
+        () => _error =
+            'Tentukan pengiriman cabang ini tanpa biaya atau ada biaya.',
+      );
       return;
+    }
+    if (!_kunciBiaya &&
+        (_garansi && _adaBiayaTambahanGaransi ||
+            kirimCabang && _biayaDikirimCabang == true)) {
+      if (jumlah <= 0) {
+        setState(() => _error = 'Isi jumlah biaya layanan atau part tambahan.');
+        return;
+      }
+      if (_caraBayar == null) {
+        setState(
+          () => _error = 'Pilih cara bayar biaya layanan atau part tambahan.',
+        );
+        return;
+      }
+    }
+
+    // Cap transaksi harus lahir dari perangkat yang melakukan penyimpanan.
+    // Jangan biarkan trigger menggantinya dengan jam server: lokasi server
+    // tidak selalu sama dengan zona waktu toko. Tanggal ikut kalender lokal
+    // perangkat; pemilih manual di atas tetap dapat menimpa bawaan ini.
+    final sekarangPerangkat = DateTime.now();
+    final unitKeluar =
+        _status == ServiceStatus.diambil || _status == ServiceStatus.batal;
+    final pelunasanTunai =
+        !_kunciBiaya &&
+        (_status == ServiceStatus.diambil ||
+            (_status == ServiceStatus.batal && jumlah > 0)) &&
+        _caraBayar != null &&
+        !ref.read(metodePiutang(_caraBayar));
+    if (unitKeluar && _tanggalDiambil == null) {
+      _waktuDiambil = sekarangPerangkat;
+      _tanggalDiambil = _hariLaporanPerangkat(sekarangPerangkat);
+    }
+    if (pelunasanTunai && _tanggalLunas == null) {
+      _waktuLunas = sekarangPerangkat;
+      _tanggalLunas = _hariLaporanPerangkat(sekarangPerangkat);
     }
     if (!mounted) return;
 
@@ -373,6 +581,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
 
     final client = ref.read(supabaseProvider);
     final user = ref.read(currentUserProvider);
+    final batalkanGaransi = _membatalkanGaransi;
 
     try {
       // Kartu pelanggan hanya diterbitkan untuk nota BARU.
@@ -391,15 +600,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       // Yang sudah tertaut tetap tidak disentuh: mengubah data master
       // dari formulir nota berarti satu koreksi ketik diam-diam mengubah
       // riwayat pelanggan lain yang bernama sama.
-      var customerId = _pelanggan?.id ?? widget.nota?.customerId;
-      if (customerId == null && widget.isNew) {
-        final baru = await client
-            .from('customers')
-            .insert({'nama': _nama.text.trim(), 'telp': _kosongNull(_telp)})
-            .select()
-            .single();
-        customerId = baru['id'] as String;
-      }
+      final customerId = _pelanggan?.id ?? widget.nota?.customerId;
 
       String? claimId = widget.nota?.claimId;
 
@@ -437,12 +638,6 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         'created_by': user!.id,
       };
 
-      // Pada nota baru, klaimnya disimpan lebih dulu: notanya menunjuk ke
-      // baris ini, dan server menolak tautan ke baris yang belum ada.
-      if (perluKlaim && widget.isNew) {
-        await ref.read(databaseProvider).simpanClaim(isiKlaim());
-      }
-
       final klaimBrand = ref.read(klaimBrandNotaProvider(widget.nota?.claimId));
 
       final data = {
@@ -467,13 +662,17 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         // penjaganya membandingkan nilai, bukan niat.
         'garansi': widget.isNew ? _garansi : widget.nota!.garansi,
         'claim_id': widget.isNew ? claimId : widget.nota!.claimId,
-        if (klaimBrand == null) 'status': _status,
+        // Status nota selalu disimpan sendiri. Ia tidak lagi mengubah
+        // proses klaim, dan perubahan status klaim tidak boleh memindahkan
+        // unit pelanggan diam-diam.
+        'status': _status,
         // Cabang dan tanggal hanya ditulis saat statusnya memang Dikirim
         // ke Cabang. Di status lain dibiarkan seperti yang tersimpan --
         // itu jejak ke mana unitnya pernah dikirim.
-        if (klaimBrand == null && _status == ServiceStatus.dikirimCabang) ...{
+        if (_status == ServiceStatus.dikirimCabang) ...{
           'cabang_tujuan': _cabang,
           'tanggal_kirim': _iso.format(_tanggalKirim),
+          'biaya_dikirim_cabang': _biayaDikirimCabang,
         },
         // Pembatalan tanpa biaya menulis nol, bukan apa pun yang tersisa di
         // kolomnya.
@@ -482,28 +681,84 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         'tanggal_lunas': _kunciBiaya || _tanggalLunas == null
             ? null
             : _iso.format(_tanggalLunas!),
+        'waktu_lunas': _kunciBiaya || _waktuLunas == null
+            ? null
+            : _waktuLunas!.toUtc().toIso8601String(),
+        // Unit yang diambil maupun dibatalkan sama-sama keluar dari toko.
+        // Tanggal dan jam dikirim bersama dari perangkat. Server hanya
+        // menghitung tanggal sebagai cadangan untuk klien lama yang belum
+        // mengirim tanggalnya; alasan pembatalannya tetap ada pada status.
+        if (_status == ServiceStatus.diambil ||
+            _status == ServiceStatus.batal) ...{
+          'tanggal_diambil': _tanggalDiambil == null
+              ? null
+              : _iso.format(_tanggalDiambil!),
+          'waktu_diambil': _waktuDiambil?.toUtc().toIso8601String(),
+        },
         'keterangan': _kosongNull(_keterangan),
       };
 
       String notaId;
+      ServiceOrderEntry? notaTersimpan;
       if (widget.isNew) {
-        // Idnya diminta kembali karena tanya harga di bawah menunjuk ke
-        // baris ini. Nomor notanya sendiri tetap ditetapkan server.
-        final baru = await client
-            .from('service_orders')
-            .insert(data)
-            .select('id')
-            .single();
+        final idPart = _tanyaHarga ? (_partBaru ??= _uuid.v4()) : null;
+        // Satu request, satu transaksi. Jika respons hilang di perjalanan,
+        // tombol Simpan dapat ditekan lagi dengan id yang sama tanpa
+        // menerbitkan pelanggan, klaim, part, atau nomor nota kedua.
+        final baru = await ref
+            .read(databaseProvider)
+            .simpanNotaBaruAtomik(
+              requestId: _requestSimpanBaru ??= _uuid.v4(),
+              nota: data,
+              pelanggan: customerId == null
+                  ? {'nama': _nama.text.trim(), 'telp': _kosongNull(_telp)}
+                  : null,
+              klaim: perluKlaim ? isiKlaim() : null,
+              part: idPart == null
+                  ? null
+                  : {
+                      'id': idPart,
+                      'customer_nama': _nama.text.trim(),
+                      'customer_telp': _kosongNull(_telp),
+                      'barang_type': [
+                        _barang.text.trim(),
+                        _type.text.trim(),
+                      ].where((s) => s.isNotEmpty).join(' '),
+                      'barang_sn': _kosongNull(_sn),
+                      'part_req': _partReq.text.trim(),
+                      'keterangan': _partKeterangan,
+                      'teknisi_id': _teknisiId,
+                    },
+            );
         notaId = baru['id'] as String;
+        notaTersimpan = ServiceOrderEntry.fromMap(baru);
       } else {
         notaId = widget.nota!.id;
         await client.from('service_orders').update(data).eq('id', notaId);
       }
 
+      // Satu tombol Simpan untuk nota dan partner. Detail unit tetap milik
+      // nota; tabel partner hanya menerima status kerja serta HPP. Nilai
+      // yang ditagihkan pelanggan selalu mengikuti kolom Biaya nota ini,
+      // supaya kasir tidak perlu memasukkan harga yang sama dua kali.
+      if (_partnerAktif) {
+        await ref.read(databaseProvider).simpanPartnerService({
+          'service_order_id': notaId,
+          'status': _statusPartner,
+          'hpp': _statusPartner == 'selesai'
+              ? double.tryParse(_hppPartner.text)
+              : null,
+          'up_biaya': _statusPartner == 'selesai'
+              ? (_kunciBiaya ? 0 : jumlah)
+              : null,
+          'catatan': _kosongNull(_catatanPartner),
+        });
+      }
+
       // Sesudah notanya, bukan sebelumnya: server menurunkan status nota
       // dari klaim ini, dan saat itu cara bayar yang baru saja diubah
       // harus sudah tersimpan -- dari situlah tanggal lunas distempel.
-      if (klaimBrand != null) {
+      if (klaimBrand != null && !batalkanGaransi) {
         final statusKlaim = _statusKlaim;
         final keluhanGaransi = _kosongNull(_keluhanGaransi);
         final perubahan = {
@@ -532,52 +787,29 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         await db.tautkanNotaKeKlaim(notaId, claimId!);
       }
 
-      // Tanya harga lahir SESUDAH notanya: barisnya menunjuk ke nota itu,
-      // dan server menolak tautan ke baris yang belum ada.
-      var tanyaHargaGagal = false;
-      if (widget.isNew && _tanyaHarga) {
-        // Id dibuat sekali lalu dipakai lagi bila penyimpanannya diulang,
-        // sama seperti klaim garansi di atas.
-        final idPart = _partBaru ??= _uuid.v4();
-        try {
-          await ref.read(databaseProvider).simpanPartOrder({
-            'id': idPart,
-            'customer_nama': _nama.text.trim(),
-            'customer_telp': _kosongNull(_telp),
-            'customer_id': customerId,
-            'barang_type': [
-              _barang.text.trim(),
-              _type.text.trim(),
-            ].where((s) => s.isNotEmpty).join(' '),
-            'barang_sn': _kosongNull(_sn),
-            'part_req': _partReq.text.trim(),
-            'keterangan': _partKeterangan,
-            'teknisi_id': _teknisiId,
-            'service_order_id': notaId,
-            'created_by': user!.id,
-          });
-        } catch (_) {
-          // Notanya sudah terlanjur tersimpan. Kalau kegagalan ini
-          // dilaporkan seperti kegagalan biasa, admin akan menekan simpan
-          // sekali lagi dan menerbitkan nota kedua -- membakar satu nomor
-          // nota yang dibaca pusat. Jadi dialognya tetap ditutup, dan yang
-          // dikabarkan persis apa yang terjadi.
-          tanyaHargaGagal = true;
-        }
+      if (batalkanGaransi) {
+        await ref.read(databaseProvider).batalkanGaransiNota(notaId);
+      }
+
+      // Untuk nota baru, tanya harga ikut transaksi atomik di atas. Tidak
+      // ada lagi keadaan "notanya masuk tetapi pesanan part tertinggal".
+      if (!mounted) return;
+
+      // Nota baru telah aman di server. Tanyakan cetak sebelum editor
+      // ditutup, supaya tombol "Cetak" memakai data dan nomor nota yang
+      // barusan diterbitkan server, bukan nilai formulir yang belum tentu
+      // sama dengan hasil trigger database.
+      if (widget.isNew && notaTersimpan != null && RawPrinter.didukung) {
+        final cetak = await _tanyaCetakMasuk();
+        if (!mounted) return;
+        if (cetak) await _cetakNota(notaTersimpan, JenisNota.masuk);
       }
 
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            tanyaHargaGagal
-                ? 'Nota tersimpan, tetapi tanya harganya gagal dibuat. '
-                      'Buat dari halaman Tanya Harga — jangan simpan nota '
-                      'ini lagi.'
-                : (widget.isNew ? 'Nota tersimpan' : 'Nota diperbarui'),
-          ),
-          duration: Duration(seconds: tanyaHargaGagal ? 10 : 4),
+          content: Text(widget.isNew ? 'Nota tersimpan' : 'Nota diperbarui'),
         ),
       );
     } on PostgrestException catch (e) {
@@ -599,6 +831,13 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     final n = widget.nota;
     if (n == null) return;
 
+    await _cetakNota(n, jenis);
+  }
+
+  /// Cetak nota yang sudah ada di server. Dipisahkan dari [_cetak] agar
+  /// nota yang baru saja dibuat juga dapat dicetak sebelum dialog editnya
+  /// ditutup.
+  Future<void> _cetakNota(ServiceOrderEntry n, JenisNota jenis) async {
     final printer = ref.read(printerNamaProvider).valueOrNull ?? '';
     final lebar = ref.read(printerLebarProvider).valueOrNull ?? 32;
     final toko = ref.read(storeSettingsProvider).valueOrNull;
@@ -637,11 +876,62 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     );
   }
 
+  /// Mengembalikan `true` hanya bila kasir memilih untuk langsung mencetak
+  /// Nota Masuk. Menutup popup atau memilih Nanti tidak mengubah nota yang
+  /// sudah tersimpan.
+  Future<bool> _tanyaCetakMasuk() async {
+    final cetak = await tampilkanDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (popupContext) => AlertDialog(
+        title: const Text('Nota berhasil disimpan'),
+        content: const Text('Cetak Nota Masuk sekarang?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(popupContext).pop(false),
+            child: const Text('NANTI'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(popupContext).pop(true),
+            child: const Text('CETAK NOTA MASUK'),
+          ),
+        ],
+      ),
+    );
+    return cetak ?? false;
+  }
+
+  PartnerServiceEntry? _partnerTersimpan() {
+    final idNota = widget.nota?.id;
+    if (idNota == null) return null;
+    for (final p
+        in ref.watch(partnerServicesProvider).valueOrNull ??
+            const <PartnerServiceEntry>[]) {
+      if (p.serviceOrderId == idNota) return p;
+    }
+    return null;
+  }
+
+  /// Memuat satu kali sebelum Penyelesaian dibangun. Ini penting karena HPP
+  /// sekarang berada di atas panel Partner; kalau menunggu panel bawah,
+  /// field HPP baru muncul pada render berikutnya.
+  void _sinkronPartnerTersimpan() {
+    final tersimpan = _partnerTersimpan();
+    if (tersimpan == null || _partnerDimuat == tersimpan.id) return;
+    _partnerDimuat = tersimpan.id;
+    _partnerAktif = true;
+    _statusPartner = tersimpan.status;
+    _hppPartner.text = tersimpan.hpp?.toStringAsFixed(0) ?? '';
+    _catatanPartner.text = tersimpan.catatan ?? '';
+  }
+
   @override
   Widget build(BuildContext context) {
     final techs = ref.watch(pengerjaUntukProvider(_teknisiId));
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
+    final isAdmin = ref.watch(isAdminProvider);
     final size = MediaQuery.sizeOf(context);
+    _sinkronPartnerTersimpan();
 
     // Nota yang sedang disunting mungkin sudah tertaut; tautannya dicari
     // sekali saat daftar pelanggan tersedia.
@@ -691,7 +981,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                         children: [
                           Expanded(child: _kiri()),
                           const SizedBox(width: AppSpacing.md),
-                          Expanded(child: _kanan(techs, brands)),
+                          Expanded(child: _kanan(techs, brands, isAdmin)),
                         ],
                       ),
                     ),
@@ -885,7 +1175,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     );
   }
 
-  Widget _kanan(List<Profile> techs, List<Brand> brands) {
+  Widget _kanan(List<Profile> techs, List<Brand> brands, bool isAdmin) {
     final metode = ref.watch(metodeBayarProvider);
 
     return Column(
@@ -980,12 +1270,19 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         // Tetap hidup setelah notanya tersimpan, dan itu bukan kelonggaran
         // melainkan urutan kerja yang sebenarnya: unit masuk sebagai
         // servis biasa, dibongkar, dan baru di situ ketahuan masih
-        // bergaransi. Yang dikunci hanya nota yang klaimnya sudah ada --
-        // melepasnya berarti meninggalkan klaim yatim di halaman Klaim.
+        // bergaransi. Admin masih dapat membatalkannya bila masa garansi
+        // ternyata habis; klaim terdahulu tetap disimpan sebagai riwayat.
         CheckboxListTile(
           value: _garansi,
-          onChanged: _bolehUbahGaransi
-              ? (v) => setState(() => _garansi = v ?? false)
+          onChanged: _bolehUbahGaransi || (isAdmin && _garansi)
+              ? (v) {
+                  final aktif = v ?? false;
+                  if (!aktif && widget.nota?.garansi == true) {
+                    _konfirmasiBatalkanGaransi();
+                  } else {
+                    _aturGaransi(aktif);
+                  }
+                }
               : null,
           controlAffinity: ListTileControlAffinity.leading,
           contentPadding: EdgeInsets.zero,
@@ -995,7 +1292,10 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
           subtitle: Text(
-            widget.nota?.claimId != null
+            isAdmin && widget.nota?.garansi == true && _garansi
+                ? 'Admin dapat membatalkan garansi jika masa garansi part '
+                      'sudah habis. Perubahan berlaku saat disimpan.'
+                : widget.nota?.claimId != null
                 ? 'Klaimnya sudah dibuat. Buka di halaman Klaim untuk '
                       'mengubahnya.'
                 : !_bolehUbahGaransi
@@ -1064,48 +1364,71 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
           children: [
             Expanded(child: _kolomStatus()),
             const SizedBox(width: AppSpacing.s),
-            Expanded(
-              child: LabeledField(
-                label: 'Biaya',
-                // Disebut di kolomnya, bukan cuma ditanyakan saat
-                // menyimpan: yang paling murah adalah salah ketik yang
-                // tidak jadi diketik.
-                hint: _kunciBiaya
-                    ? 'Pembatalan tanpa biaya.'
-                    : _garansi
-                    ? 'Unit bergaransi ditanggung brand — biasanya Rp0. '
-                          'Isi hanya kalau ada layanan tambahan di luar '
-                          'garansi.'
-                    : null,
-                child: TextFormField(
-                  controller: _biaya,
-                  enabled: !_kunciBiaya,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  // Dibaca ulang supaya keterangan dan pertanyaan di atas
-                  // ikut menyala begitu angkanya diketik.
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(prefixText: 'Rp '),
-                ),
-              ),
-            ),
+            if (_partnerAktif && _statusPartner == 'selesai') ...[
+              Expanded(child: _kolomHppPartner()),
+              const SizedBox(width: AppSpacing.s),
+            ],
+            Expanded(child: _kolomBiayaNota()),
           ],
         ),
-        if (_status == ServiceStatus.batal &&
-            ref.watch(klaimBrandNotaProvider(widget.nota?.claimId)) ==
-                null) ...[
+        if (_partnerAktif && _statusPartner == 'selesai') ...[
+          const SizedBox(height: AppSpacing.xs),
+          _ringkasanMarginPartner(),
+        ],
+        if (_garansi) ...[
+          const SizedBox(height: AppSpacing.s),
+          _pilihanBiayaTambahanGaransi(),
+        ],
+        if (!_garansi &&
+            _status != ServiceStatus.batal &&
+            _status != ServiceStatus.dikirimCabang) ...[
+          const SizedBox(height: AppSpacing.s),
+          _pilihanTanpaBiayaServis(),
+        ],
+        if (_status == ServiceStatus.batal) ...[
           const SizedBox(height: AppSpacing.s),
           _pilihanBiayaBatal(),
         ],
-        if (_status == ServiceStatus.dikirimCabang &&
-            ref.watch(klaimBrandNotaProvider(widget.nota?.claimId)) ==
-                null) ...[
+        if (_status == ServiceStatus.dikirimCabang) ...[
           const SizedBox(height: AppSpacing.s),
           KirimCabangFields(
             cabang: _cabang,
             tanggal: _tanggalKirim,
             onCabang: (v) => setState(() => _cabang = v),
             onTanggal: (d) => setState(() => _tanggalKirim = d),
+          ),
+          const SizedBox(height: AppSpacing.s),
+          _pilihanBiayaDikirimCabang(),
+        ],
+        if (_status == ServiceStatus.diambil ||
+            _status == ServiceStatus.batal) ...[
+          const SizedBox(height: AppSpacing.s),
+          LabeledField(
+            label: _status == ServiceStatus.batal
+                ? 'Tanggal & Jam Unit Keluar'
+                : 'Tanggal & Jam Diambil',
+            hint: 'Menentukan tanggal di Nota Keluar.',
+            child: OutlinedButton(
+              onPressed: _pilihWaktuDiambil,
+              style: _tombolTanggal(context),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _tanggalDiambil == null
+                      ? 'Diisi otomatis oleh jam perangkat saat disimpan'
+                      : _waktuDiambil == null
+                      ? '${_tglFmt.format(_tanggalDiambil!)} · jam belum dicatat'
+                      : _tglJamFmt.format(_waktuDiambil!),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: _tanggalDiambil == null
+                        ? context.warna.teksLembut
+                        : context.warna.teks,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
         const SizedBox(height: AppSpacing.s),
@@ -1142,28 +1465,19 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             const SizedBox(width: AppSpacing.s),
             Expanded(
               child: LabeledField(
-                label: 'Tanggal Lunas',
+                label: 'Tanggal & Jam Lunas',
+                hint: 'Bawaan manual mengikuti waktu perangkat.',
                 child: OutlinedButton(
-                  onPressed: _kunciBiaya
-                      ? null
-                      : () async {
-                          final p = await showDatePicker(
-                            context: context,
-                            initialDate: _tanggalLunas ?? DateTime.now(),
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime.now().add(
-                              const Duration(days: 365),
-                            ),
-                          );
-                          if (p != null) setState(() => _tanggalLunas = p);
-                        },
+                  onPressed: _kunciBiaya ? null : _pilihWaktuLunas,
                   style: _tombolTanggal(context),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       _tanggalLunas == null
                           ? 'Belum lunas'
-                          : _tglFmt.format(_tanggalLunas!),
+                          : _waktuLunas == null
+                          ? '${_tglFmt.format(_tanggalLunas!)} · jam belum dicatat'
+                          : _tglJamFmt.format(_waktuLunas!),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
@@ -1178,6 +1492,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             ),
           ],
         ),
+        _bagianPartner(),
         const SizedBox(height: AppSpacing.s),
         LabeledField(
           label: 'Perbaikan yang Dilakukan',
@@ -1195,6 +1510,195 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         LabeledField(
           label: 'Keterangan',
           child: TextFormField(controller: _keterangan, maxLines: 2),
+        ),
+      ],
+    );
+  }
+
+  /// Biaya yang ditagihkan ke pelanggan. Pada unit Partner ini adalah satu-
+  /// satunya harga jual: tercetak di nota dan menjadi dasar up biaya.
+  Widget _kolomBiayaNota() => LabeledField(
+    label: 'Biaya',
+    hint: _kunciBiaya
+        ? _status == ServiceStatus.batal
+              ? 'Pembatalan tanpa biaya.'
+              : _status == ServiceStatus.dikirimCabang
+              ? 'Pengiriman ke cabang tanpa biaya.'
+              : _servisTanpaBiaya
+              ? 'Servis tanpa biaya.'
+              : 'Garansi gratis. Centang biaya tambahan bila ada layanan atau part di luar garansi.'
+        : _garansi
+        ? 'Biaya layanan atau part tambahan di luar garansi.'
+        : _partnerAktif
+        ? 'Harga ke pelanggan; akan tercetak di nota.'
+        : null,
+    child: TextFormField(
+      controller: _biaya,
+      enabled: !_kunciBiaya,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      onChanged: (_) => setState(() {}),
+      decoration: const InputDecoration(prefixText: 'Rp '),
+    ),
+  );
+
+  Widget _kolomHppPartner() => LabeledField(
+    label: 'HPP',
+    required: true,
+    hint: 'Biaya yang dibayarkan ke partner. Tidak tercetak di nota.',
+    child: TextFormField(
+      controller: _hppPartner,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      onChanged: (_) => setState(() {}),
+      decoration: const InputDecoration(prefixText: 'Rp '),
+      validator: (_) =>
+          double.tryParse(_hppPartner.text) == null ? 'Isi HPP' : null,
+    ),
+  );
+
+  Widget _ringkasanMarginPartner() {
+    final hpp = double.tryParse(_hppPartner.text);
+    final biaya = _kunciBiaya ? 0 : (double.tryParse(_biaya.text) ?? 0);
+    final selisih = hpp == null ? null : biaya - hpp;
+    return Text(
+      'INCOME / SELISIH  ${selisih == null ? '—' : 'Rp${selisih.toStringAsFixed(0)}'}',
+      style: TextStyle(
+        fontWeight: FontWeight.w700,
+        color: selisih != null && selisih < 0
+            ? context.warna.bahaya
+            : context.warna.aksen,
+      ),
+    );
+  }
+
+  Widget _pilihanBiayaTambahanGaransi() {
+    return CheckboxListTile(
+      value: _adaBiayaTambahanGaransi,
+      onChanged: (v) => _aturBiayaTambahanGaransi(v ?? false),
+      controlAffinity: ListTileControlAffinity.leading,
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      title: const Text(
+        'Ada biaya layanan atau part tambahan',
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        _adaBiayaTambahanGaransi
+            ? 'Biaya dan cara bayarnya wajib diisi.'
+            : 'Tidak dicentang: garansi ini 100% gratis.',
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
+    );
+  }
+
+  Widget _pilihanTanpaBiayaServis() {
+    return CheckboxListTile(
+      value: _tanpaBiayaServis,
+      onChanged: (v) => _aturTanpaBiayaServis(v ?? false),
+      controlAffinity: ListTileControlAffinity.leading,
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      title: const Text(
+        'Tanpa biaya servis',
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        _tanpaBiayaServis
+            ? 'Nominal Rp0; cara bayar dan tanggal lunas dikosongkan.'
+            : 'Centang bila servis ini tidak memiliki tagihan.',
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
+    );
+  }
+
+  Widget _pilihanBiayaDikirimCabang() {
+    final w = context.warna;
+    return LabeledField(
+      label: 'Biaya Pengiriman Cabang',
+      required: true,
+      hint: switch (_biayaDikirimCabang) {
+        null => 'Tentukan apakah pekerjaan cabang ini gratis atau berbiaya.',
+        true => 'Isi jumlah biaya dan cara bayarnya.',
+        false => 'Tidak ada tagihan untuk pengiriman ini.',
+      },
+      child: Wrap(
+        spacing: AppSpacing.xs,
+        children: [
+          ChoiceChip(
+            label: const Text('TANPA BIAYA'),
+            selected: _biayaDikirimCabang == false,
+            onSelected: (_) => _pilihBiayaDikirimCabang(false),
+            selectedColor: w.aksen.withValues(alpha: 0.15),
+          ),
+          ChoiceChip(
+            label: const Text('ADA BIAYA'),
+            selected: _biayaDikirimCabang == true,
+            onSelected: (_) => _pilihBiayaDikirimCabang(true),
+            selectedColor: w.aksen.withValues(alpha: 0.15),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Bagian ini hidup di editor nota, bukan dialog terpisah. Status partner
+  /// dan biaya partner disimpan bersama perubahan nota saat tombol Simpan
+  /// ditekan, sehingga pembayaran pelanggan tetap dapat dikoreksi pada
+  /// momen yang sama.
+  Widget _bagianPartner() {
+    final tersimpan = _partnerTersimpan();
+
+    if (!_partnerAktif) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: AppSpacing.sm),
+        const SectionLabel('Kirim Partner'),
+        const SizedBox(height: AppSpacing.s),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.s),
+          decoration: BoxDecoration(
+            color: context.warna.teredam,
+            border: Border.all(color: context.warna.garisHalus),
+            borderRadius: BorderRadius.circular(AppRadius.small),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.handshake_outlined, color: context.warna.aksen),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(
+                child: Text(
+                  tersimpan == null
+                      ? 'UNIT AKAN DIKIRIM KE PARTNER SAAT NOTA DISIMPAN'
+                      : 'UNIT DIKIRIM KE PARTNER',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s),
+        LabeledField(
+          label: 'Status Pengerjaan Partner',
+          child: DropdownButtonFormField<String>(
+            key: ValueKey('partner-$_statusPartner'),
+            initialValue: _statusPartner,
+            items: const [
+              DropdownMenuItem(
+                value: 'dikirim',
+                child: Text('Dikirim ke Partner'),
+              ),
+              DropdownMenuItem(value: 'selesai', child: Text('Selesai')),
+            ],
+            onChanged: (v) => setState(() => _statusPartner = v!),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s),
+        LabeledField(
+          label: 'Catatan Partner',
+          child: TextFormField(controller: _catatanPartner, maxLines: 2),
         ),
       ],
     );
@@ -1273,62 +1777,49 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     );
   }
 
-  /// Status nota biasa -- atau, pada nota garansi brand, status klaimnya.
-  ///
-  /// Klaimnya diikuti, bukan dibaca sekali saat formulir dibuka: daftar
-  /// klaim bisa saja belum termuat saat itu, dan formulir yang terlanjur
-  /// memilih daftar status nota biasa tidak akan pernah berpindah.
+  /// Status nota selalu ada. Klaim brand menambahkan statusnya sendiri,
+  /// sehingga posisi unit dan proses ke brand dapat diubah secara terpisah.
   Widget _kolomStatus() {
     final klaim = ref.watch(klaimBrandNotaProvider(widget.nota?.claimId));
-
-    if (klaim == null) {
-      // Nota yang akan menjadi garansi brand memakai status klaimnya, dan
-      // klaim tidak mengenal pengiriman ke cabang: nota yang terlanjur
-      // Dikirim ke Cabang akan ditarik kembali begitu status klaimnya
-      // digerakkan.
-      // Hanya bila klaim brand memang akan lahir dari simpanan ini --
-      // pemilih jenis garansi hanya tampil dalam keadaan itu. Nota arsip
-      // yang sudah bertanda garansi tanpa klaim tidak punya klaim yang
-      // akan menurunkan statusnya, dan jenis garansi bawaannya ("brand")
-      // tidak berarti apa-apa di sana.
-      final garansiBrand =
-          _garansi && _bolehUbahGaransi && _jenisGaransi == ClaimJenis.brand;
-      return LabeledField(
-        label: 'Status',
-        child: DropdownButtonFormField<String>(
-          initialValue: _status,
-          isExpanded: true,
-          items: [
-            for (final s in ServiceStatus.all)
-              if (!(garansiBrand &&
-                  s == ServiceStatus.dikirimCabang &&
-                  _status != s))
-                DropdownMenuItem(value: s, child: Text(ServiceStatus.label(s))),
-          ],
-          onChanged: (v) => _gantiStatus(v!),
-        ),
-      );
-    }
-
-    final brand = ref.watch(namaBrandProvider)[klaim.brandId];
-    return LabeledField(
-      label: 'Status Garansi',
-      hint:
-          'Sama dengan status klaimnya — mengubahnya di sini ikut '
-          'mengubah klaim.',
+    final statusNota = LabeledField(
+      label: klaim == null ? 'Status' : 'Status Nota',
+      hint: klaim == null ? null : 'Posisi unit: meja, pelanggan, atau cabang.',
       child: DropdownButtonFormField<String>(
-        key: ValueKey(klaim.id),
-        initialValue: _statusKlaim ?? klaim.status,
+        initialValue: _status,
         isExpanded: true,
         items: [
-          for (final s in ClaimStatus.all)
-            DropdownMenuItem(
-              value: s,
-              child: Text(ClaimStatus.label(s, brand: brand)),
-            ),
+          for (final s in ServiceStatus.all)
+            DropdownMenuItem(value: s, child: Text(ServiceStatus.label(s))),
         ],
-        onChanged: (v) => setState(() => _statusKlaim = v),
+        onChanged: (v) => _gantiStatus(v!),
       ),
+    );
+    if (klaim == null) return statusNota;
+
+    final brand = ref.watch(namaBrandProvider)[klaim.brandId];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        statusNota,
+        const SizedBox(height: AppSpacing.s),
+        LabeledField(
+          label: 'Status Garansi',
+          hint: 'Proses pengajuan dan part ke brand.',
+          child: DropdownButtonFormField<String>(
+            key: ValueKey(klaim.id),
+            initialValue: _statusKlaim ?? klaim.status,
+            isExpanded: true,
+            items: [
+              for (final s in ClaimStatus.all)
+                DropdownMenuItem(
+                  value: s,
+                  child: Text(ClaimStatus.label(s, brand: brand)),
+                ),
+            ],
+            onChanged: (v) => setState(() => _statusKlaim = v),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1474,6 +1965,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   );
 
   Widget _footer() {
+    final isAdmin = ref.watch(isAdminProvider);
     return Container(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.sm,
@@ -1505,6 +1997,16 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
           ),
           // Cetak hanya untuk nota yang sudah tersimpan: sebelum itu
           // nomornya belum ada, dan nota tanpa nomor tidak ada gunanya.
+          if (!widget.isNew && isAdmin) ...[
+            OutlinedButton.icon(
+              onPressed: _busy
+                  ? null
+                  : () => setState(() => _partnerAktif = true),
+              icon: const Icon(Icons.handshake_outlined, size: 16),
+              label: Text(_partnerAktif ? 'PARTNER' : 'KIRIM PARTNER'),
+            ),
+            const SizedBox(width: AppSpacing.s),
+          ],
           if (!widget.isNew && RawPrinter.didukung) ...[
             OutlinedButton(
               onPressed: _busy ? null : () => _cetak(JenisNota.masuk),

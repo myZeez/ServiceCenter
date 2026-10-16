@@ -37,6 +37,7 @@ ServiceOrderEntry _nota(
   biaya: biaya,
   tanggalLunas: lunas,
   tanggalSelesai: _hari,
+  tanggalDiambil: _hari,
   updatedAt: DateTime(2026, 9, 8),
 );
 
@@ -159,7 +160,6 @@ void main() {
   group('Excel', () {
     test('tabel nota keluar memakai urutan kelompok', () {
       final campur = [
-        _nota('SVR-08092628305', status: 'batal', nama: 'D'),
         _nota('SVR-08092628301', garansi: true, nama: 'C'),
         _nota('SVR-08092628304', biaya: 90000, nama: 'B'),
         _nota('SVR-08092628303', biaya: 200000, lunas: _hari, nama: 'A'),
@@ -169,7 +169,23 @@ void main() {
           .map((r) => (r.first as TextCellValue).value.text)
           .toList();
 
-      expect(nama, ['A', 'B', 'C', 'D']);
+      expect(nama, ['A', 'B', 'C']);
+    });
+    test('tabel nota keluar memuat unit yang sudah keluar', () {
+      final lembar = ExcelExport.lembarHarian(
+        semua: [
+          _nota('SVR-DIAMBIL', nama: 'Diambil'),
+          _nota('SVR-SELESAI', status: 'selesai', nama: 'Selesai'),
+          _nota('SVR-BATAL', status: 'batal', nama: 'Batal'),
+          _nota('SVR-DIKERJAKAN', status: 'dikerjakan', nama: 'Dikerjakan'),
+        ],
+        tanggal: _hari,
+      );
+      final nama = lembar.tabel.first.baris
+          .map((r) => (r.first as TextCellValue).value.text)
+          .toList();
+
+      expect(nama, ['Diambil', 'Batal']);
     });
   });
 
@@ -179,7 +195,6 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       final campur = [
-        _nota('SVR-08092628305', status: 'batal', nama: 'Dono'),
         _nota('SVR-08092628301', garansi: true, nama: 'Cici'),
         _nota('SVR-08092628304', biaya: 90000, nama: 'Beni'),
         _nota('SVR-08092628303', biaya: 200000, lunas: _hari, nama: 'Andi'),
@@ -202,7 +217,6 @@ void main() {
       double y(String nama) => tester.getTopLeft(find.text(nama).first).dy;
       expect(y('Andi'), lessThan(y('Beni')));
       expect(y('Beni'), lessThan(y('Cici')));
-      expect(y('Cici'), lessThan(y('Dono')));
     });
   });
 }

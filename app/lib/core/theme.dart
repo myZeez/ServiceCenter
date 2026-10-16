@@ -76,7 +76,7 @@ class AppTheme {
     kaca ? GayaKaca.terang : null,
   );
 
-  /// Malam: blueprint -- garis terang di atas biru tua.
+  /// Malam: abu arang berlapis dengan kontras yang tetap nyaman dibaca.
   static ThemeData gelap({bool kaca = false}) => _susun(
     kaca ? WarnaApp.gelapKaca : WarnaApp.gelap,
     Brightness.dark,
@@ -384,9 +384,7 @@ class AppTheme {
         // Buramnya disisipkan PesanKaca; yang diatur di sini hanya
         // warnanya. Bayangan dimatikan: bayangan di bawah bidang tembus
         // pandang terlihat sebagai kaca yang kotor.
-        backgroundColor: kaca == null
-            ? w.teks
-            : w.teks.withValues(alpha: 0.82),
+        backgroundColor: kaca == null ? w.teks : w.teks.withValues(alpha: 0.82),
         elevation: kaca == null ? null : 0,
         contentTextStyle: TextStyle(
           color: w.diTeks,

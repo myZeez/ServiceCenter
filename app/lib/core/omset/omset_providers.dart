@@ -8,11 +8,12 @@ final omsetSettingsProvider = StreamProvider<ServiceSettingsRow?>(
   (ref) => ref.watch(databaseProvider).watchServiceSettings(),
 );
 
-/// Menghitung omset satu periode dari nota yang pekerjaannya sudah selesai
-/// pada rentang itu.
+/// Menghitung omzet jasa satu periode dari pekerjaan yang sudah rampung.
 ///
-/// Yang menentukan periode adalah tanggal selesai, bukan tanggal masuk atau
-/// tanggal pelunasan: omset adalah pekerjaan yang dikerjakan bulan itu.
+/// Yang menentukan periode adalah tanggal selesai; ini mencatat nilai jasa
+/// saat pekerjaan dihasilkan. Piutang ikut omzet utama dan target teknisi,
+/// tetapi nominalnya tetap terpisah di [OmsetResult.piutang] agar mudah
+/// ditagih dari halaman Piutang.
 OmsetResult hitungOmsetPeriode({
   required List<ServiceOrderEntry> nota,
   required DateTime dari,
@@ -20,9 +21,17 @@ OmsetResult hitungOmsetPeriode({
   required ServiceSettingsRow? aturan,
 }) {
   final dipakai = nota.where((n) {
-    final selesai = n.tanggalSelesai;
-    if (selesai == null) return false;
     if (n.status == 'batal') return false;
+    if (n.status != 'selesai' &&
+        n.status != 'diambil' &&
+        n.status != 'dikirim_cabang') {
+      return false;
+    }
+    // Arsip lama kadang hanya punya tanggal diambil. Jadikan ia cadangan
+    // supaya omzet historis tidak hilang hanya karena kolom selesai belum
+    // tercatat pada aplikasi lama.
+    final selesai = n.tanggalSelesai ?? n.tanggalDiambil ?? n.tanggalKirim;
+    if (selesai == null) return false;
     return !selesai.isBefore(dari) && !selesai.isAfter(sampai);
   });
 
@@ -32,7 +41,9 @@ OmsetResult hitungOmsetPeriode({
         OmsetNota(
           teknisiId: n.teknisiId,
           biaya: n.biaya,
-          lunas: n.tanggalLunas != null,
+          // Tanggal lunas pada kirim cabang adalah tanggal buku pengiriman,
+          // bukan bukti kas diterima. Piutang ditentukan oleh metodenya.
+          lunas: n.tanggalLunas != null && n.caraBayar != 'piutang',
         ),
     ],
     settings: OmsetSettings(

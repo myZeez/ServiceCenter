@@ -2,8 +2,8 @@
 //
 // Yang dijaga: kalimatnya tepat seperti yang diminta toko, cabang dan
 // tanggal hanya bermakna selama unitnya memang sedang dikirim, tanggalnya
-// terisi hari ini tetapi bisa diubah, dan nota garansi brand -- yang
-// statusnya milik klaim -- tidak ikut menawarkannya.
+// terisi hari ini tetapi bisa diubah. Status nota tetap tersedia pada nota
+// garansi brand karena posisinya terpisah dari proses klaim.
 
 import 'dart:io';
 
@@ -27,6 +27,7 @@ ServiceOrderEntry _nota({
   String status = 'masuk',
   String? cabang,
   DateTime? kirim,
+  bool? biayaKirimCabang,
   bool garansi = false,
   String? claimId,
 }) => ServiceOrderEntry(
@@ -41,6 +42,7 @@ ServiceOrderEntry _nota({
   status: status,
   cabangTujuan: cabang,
   tanggalKirim: kirim,
+  biayaDikirimCabang: biayaKirimCabang,
   updatedAt: DateTime(2026, 9, 8),
 );
 
@@ -371,6 +373,19 @@ void main() {
       expect(find.text('KE SAMPIT'), findsOneWidget);
     });
 
+    testWidgets('chip membedakan pengiriman gratis', (tester) async {
+      await lukis(
+        tester,
+        _nota(
+          status: 'dikirim_cabang',
+          cabang: 'Sampit',
+          kirim: DateTime(2026, 9, 8),
+          biayaKirimCabang: false,
+        ),
+      );
+      expect(find.text('DIKIRIM KE SAMPIT • TANPA BIAYA'), findsOneWidget);
+    });
+
     testWidgets('tanpa cabang tetap terbaca sebagai status', (tester) async {
       await lukis(tester, _nota(status: 'dikirim_cabang'));
       expect(find.text('DIKIRIM KE CABANG'), findsOneWidget);
@@ -604,8 +619,9 @@ void main() {
       expect(find.text('Dikirim ke Cabang'), findsOneWidget);
     });
 
-    testWidgets('nota baru bergaransi brand tidak menawarkannya, '
-        'bergaransi toko menawarkannya', (tester) async {
+    testWidgets('nota baru bergaransi brand dan toko sama-sama menawarkannya', (
+      tester,
+    ) async {
       await lukis(tester);
 
       // Sebelum garansi dicentang: ada.
@@ -614,14 +630,14 @@ void main() {
       await tester.tap(find.text('Masuk').last);
       await tester.pumpAndSettle();
 
-      // Garansi brand: klaimnya akan lahir dan memegang statusnya.
+      // Garansi brand: klaimnya lahir, tetapi posisi unit tetap status nota.
       final centang = find.text('Unit bergaransi');
       await tester.ensureVisible(centang);
       await tester.pumpAndSettle();
       await tester.tap(centang);
       await tester.pumpAndSettle();
       await bukaDaftarStatus(tester, 'Masuk');
-      expect(find.text('Dikirim ke Cabang'), findsNothing);
+      expect(find.text('Dikirim ke Cabang'), findsOneWidget);
       await tester.tap(find.text('Masuk').last);
       await tester.pumpAndSettle();
 
@@ -640,16 +656,19 @@ void main() {
       expect(find.text('Dikirim ke Cabang'), findsOneWidget);
     });
 
-    testWidgets('nota garansi brand memakai status klaimnya, tanpa pilihan '
-        'kirim ke cabang', (tester) async {
+    testWidgets('nota garansi brand menawarkan status nota dan klaim', (
+      tester,
+    ) async {
       await lukis(
         tester,
         nota: _nota(claimId: 'k1'),
         klaim: [_klaim('k1')],
       );
 
+      expect(find.text('STATUS NOTA'), findsOneWidget);
       expect(find.text('STATUS GARANSI'), findsOneWidget);
-      expect(find.text('Dikirim ke Cabang'), findsNothing);
+      await bukaDaftarStatus(tester, 'Masuk');
+      expect(find.text('Dikirim ke Cabang'), findsOneWidget);
     });
   });
 

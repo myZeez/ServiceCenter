@@ -20,6 +20,7 @@ import '../settlement/settlement_page.dart';
 import 'claim_detail_page.dart';
 import 'claim_form_page.dart';
 import 'dock_utama.dart';
+import 'part_kembali_page.dart';
 import 'widgets/klaim_saya_summary.dart';
 
 final _dateFmt = DateFormat('dd/MM/yy');
@@ -88,6 +89,8 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
               switch (v) {
                 case 'part':
                   _push(context, const PartsPage());
+                case 'part_kembali':
+                  _push(context, const PartKembaliPage());
                 case 'rekap':
                   _push(context, const ReportsPage());
                 case 'rekap_brand':
@@ -103,6 +106,10 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
               if (adaPart)
                 const PopupMenuItem(value: 'part', child: Text('Part')),
               if (isAdmin) ...[
+                const PopupMenuItem(
+                  value: 'part_kembali',
+                  child: Text('Part Kembali'),
+                ),
                 const PopupMenuItem(value: 'rekap', child: Text('Rekap')),
                 const PopupMenuItem(
                   value: 'rekap_brand',
@@ -224,6 +231,12 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
   final _search = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _sinkronkanPencarian(ref.read(claimFilterProvider).query);
+  }
+
+  @override
   void dispose() {
     _search.dispose();
     super.dispose();
@@ -233,9 +246,24 @@ class _FilterBarState extends ConsumerState<_FilterBar> {
       .read(claimFilterProvider.notifier)
       .update((s) => s.copyWith(query: v));
 
+  /// Filter tersimpan di provider agar scan dan dua tata letak membaca
+  /// nilai yang sama. Controller dapat dibuat ulang saat tampilan berganti,
+  /// jadi nilai penyaring wajib dipantulkan ke kotak pencarian.
+  void _sinkronkanPencarian(String nilai) {
+    if (_search.text == nilai) return;
+    _search.value = TextEditingValue(
+      text: nilai,
+      selection: TextSelection.collapsed(offset: nilai.length),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filter = ref.watch(claimFilterProvider);
+    ref.listen<ClaimFilter>(claimFilterProvider, (_, berikutnya) {
+      _sinkronkanPencarian(berikutnya.query);
+    });
+    _sinkronkanPencarian(filter.query);
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
     final counts = ref.watch(statusCountsProvider).valueOrNull ?? const {};
 

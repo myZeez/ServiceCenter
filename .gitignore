@@ -18,3 +18,18 @@ supabase/scripts/gen/LAPORAN-VALIDASI.md
 # Dataset baru untuk isi ulang 2026 (Januari-September): laporan bulanan,
 # harian SVS, dan klaim garansi. Isinya nama, telepon, dan SN pelanggan.
 DATASET BARU/
+
+# Status lokal Supabase CLI setelah `supabase link` -- pooler URL dan versi
+# komponen, bukan sumber. Dibuat ulang otomatis oleh CLI.
+supabase/.temp/
+
+# Keadaan alat bantu Codex/graphify: bukan kode proyek, dan dibangun ulang
+# sendiri oleh alatnya. Lihat memori repo-format-dan-agen-lain.
+.codex/
+graphify-out/
+AGENTS.md
+
+# Cache bytecode Python dan log build lokal -- bukan bagian dari rekonsiliasi
+# yang dicatat tools/ dan tmp/, hanya sampah build mesin ini.
+tools/__pycache__/
+tmp/*.log

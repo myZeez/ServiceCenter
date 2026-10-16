@@ -13,7 +13,9 @@ import 'widgets/claims_table.dart';
 
 /// Halaman utama untuk layar lebar.
 class ClaimsView extends ConsumerStatefulWidget {
-  const ClaimsView({super.key});
+  const ClaimsView({super.key, this.readOnly = false});
+
+  final bool readOnly;
 
   @override
   ConsumerState<ClaimsView> createState() => _ClaimsViewState();
@@ -21,6 +23,12 @@ class ClaimsView extends ConsumerStatefulWidget {
 
 class _ClaimsViewState extends ConsumerState<ClaimsView> {
   final _search = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _sinkronkanPencarian(ref.read(claimFilterProvider).query);
+  }
 
   @override
   void dispose() {
@@ -32,16 +40,32 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
       .read(claimFilterProvider.notifier)
       .update((s) => s.copyWith(query: v));
 
+  /// Filter tersimpan di provider agar scan dan dua tata letak membaca
+  /// nilai yang sama. Controller dapat dibuat ulang saat tampilan berganti,
+  /// jadi nilai penyaring wajib dipantulkan ke kotak pencarian.
+  void _sinkronkanPencarian(String nilai) {
+    if (_search.text == nilai) return;
+    _search.value = TextEditingValue(
+      text: nilai,
+      selection: TextSelection.collapsed(offset: nilai.length),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final claims = ref.watch(claimsProvider).valueOrNull ?? const <Claim>[];
     final counts = ref.watch(statusCountsProvider).valueOrNull ?? const {};
     final filter = ref.watch(claimFilterProvider);
+    ref.listen<ClaimFilter>(claimFilterProvider, (_, berikutnya) {
+      _sinkronkanPencarian(berikutnya.query);
+    });
+    _sinkronkanPencarian(filter.query);
     final brands = ref.watch(brandsProvider).valueOrNull ?? const <Brand>[];
     final allBrands =
         ref.watch(allBrandsProvider).valueOrNull ?? const <Brand>[];
     final techs =
         ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[];
+    final hanyaBaca = widget.readOnly || ref.watch(isAdminScProvider);
 
     final total = counts.values.fold(0, (a, b) => a + b);
 
@@ -96,11 +120,12 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
                 ),
               ),
               const SizedBox(width: AppSpacing.s),
-              FilledButton.icon(
-                onPressed: () => showClaimDialog(context),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('KLAIM BARU'),
-              ),
+              if (!hanyaBaca)
+                FilledButton.icon(
+                  onPressed: () => showClaimDialog(context),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('KLAIM BARU'),
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -126,19 +151,19 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
                 if (ClaimStatus.utama.contains(s) ||
                     (counts[s] ?? 0) > 0 ||
                     filter.status == s) ...[
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: StatTile(
-                    value: '${counts[s] ?? 0}',
-                    label: ClaimStatus.pendek(s),
-                    accent: ClaimStatus.color(context, s),
-                    selected: filter.status == s,
-                    onTap: () => ref
-                        .read(claimFilterProvider.notifier)
-                        .update((f) => f.copyWith(status: s)),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: StatTile(
+                      value: '${counts[s] ?? 0}',
+                      label: ClaimStatus.pendek(s),
+                      accent: ClaimStatus.color(context, s),
+                      selected: filter.status == s,
+                      onTap: () => ref
+                          .read(claimFilterProvider.notifier)
+                          .update((f) => f.copyWith(status: s)),
+                    ),
                   ),
-                ),
-              ],
+                ],
             ],
           ),
           const SizedBox(height: AppSpacing.s),
@@ -213,18 +238,25 @@ class _ClaimsViewState extends ConsumerState<ClaimsView> {
                   ? EmptyState(
                       icon: Icons.inbox_outlined,
                       title: 'Tidak ada klaim yang cocok',
-                      description:
-                          'Ubah filter di atas, atau catat klaim baru.',
-                      action: OutlinedButton(
-                        onPressed: () => showClaimDialog(context),
-                        child: const Text('CATAT KLAIM BARU'),
-                      ),
+                      description: hanyaBaca
+                          ? 'Ubah filter di atas untuk melihat klaim lain.'
+                          : 'Ubah filter di atas, atau catat klaim baru.',
+                      action: hanyaBaca
+                          ? null
+                          : OutlinedButton(
+                              onPressed: () => showClaimDialog(context),
+                              child: const Text('CATAT KLAIM BARU'),
+                            ),
                     )
                   : ClaimsTable(
                       items: claims,
                       brands: {for (final b in allBrands) b.id: b.nama},
                       technicians: {for (final p in techs) p.id: p.nama},
-                      onOpen: (c) => showClaimDialog(context, claim: c),
+                      onOpen: (c) => showClaimDialog(
+                        context,
+                        claim: c,
+                        readOnly: hanyaBaca,
+                      ),
                     ),
             ),
           ),

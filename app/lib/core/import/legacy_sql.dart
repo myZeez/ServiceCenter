@@ -118,8 +118,17 @@ List<Map<String, dynamic>> parseLegacySql(String text) {
       if (cost == null || !cost.isFinite || cost < 0) {
         throw FormatException('Biaya tidak valid pada $number.');
       }
+      // Aplikasi lama tidak pernah mengisi kolom dibatalkan. Garansi dan
+      // cancel ditulis admin sebagai keterangan saat unit diserahkan, dan
+      // keterangan itu cocok dengan buku SVS untuk setiap nota yang sudah
+      // diperiksa (1-15 Oktober 2026: 28 dari 28 cancel, 48 dari 48 garansi).
+      final note = field('keterangan_saat_sudah_cek').toUpperCase();
+      final markedWarranty = note.contains('GARANSI');
+      final markedCancel = note.startsWith('CANC');
       final taken = field('sudahdiambil').toLowerCase() == 'true';
-      final cancelled = field('dibatalkan').toLowerCase() == 'true';
+      final cancelled =
+          field('dibatalkan').toLowerCase() == 'true' ||
+          (taken && markedCancel);
       final returned = field('tanggal_kembali');
       final outgoing = returned == '1899-12-30' || returned.isEmpty
           ? null
@@ -132,8 +141,19 @@ List<Map<String, dynamic>> parseLegacySql(String text) {
       }
       var tech = field('teknisi');
       if (tech.toUpperCase() == 'AIRS') tech = 'ARIS';
+      if (tech.toUpperCase() == 'IIRWAN') tech = 'IRWAN';
+      // Jam unit diserahkan. Nota berbayar mengisinya di jamkembali; nota
+      // garansi dan cancel membiarkannya kosong, tetapi kolom jam ikut
+      // bergeser ke saat penyerahan -- terlihat dari dua backup berurutan.
+      final handedAt = RegExp(r'^\d{1,2}:\d{2}(:\d{2})?$');
+      final outTime = [
+        field('jamkembali'),
+        field('jam'),
+      ].firstWhere(handedAt.hasMatch, orElse: () => '');
       final record = <String, dynamic>{
-        'no_nota': number, 'tanggal_masuk': incoming,
+        'no_nota': number,
+        'urut': int.parse(number.substring(10)),
+        'tanggal_masuk': incoming,
         'customer_nama': field('nama_pelanggan'),
         'customer_telp': field('telp_pelanggan'),
         // Legacy no_imei often contains the remaining model, not a serial number.
@@ -152,7 +172,8 @@ List<Map<String, dynamic>> parseLegacySql(String text) {
           'kelengkapan2',
           'kelengkapan3',
         ].map(field).where((s) => s.isNotEmpty).join(', '),
-        'teknisi': tech, 'biaya': cancelled ? 0 : cost,
+        'teknisi': tech,
+        'biaya': cancelled || (taken && markedWarranty) ? 0 : cost,
         'status': cancelled
             ? 'batal'
             : taken
@@ -160,7 +181,11 @@ List<Map<String, dynamic>> parseLegacySql(String text) {
             : field('selesai').toLowerCase() == 'true'
             ? 'selesai'
             : 'masuk',
+        'garansi': taken && !cancelled && markedWarranty,
         'tanggal_diambil': taken || cancelled ? outgoing : null,
+        'jam_diambil': (taken || cancelled) && outTime.isNotEmpty
+            ? outTime
+            : null,
       };
       if (records.containsKey(number)) {
         throw FormatException('Nota ganda dalam file: $number.');

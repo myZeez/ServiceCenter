@@ -3,34 +3,49 @@ import 'dart:convert';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/import/banding_impor.dart';
 import '../../core/import/legacy_sql.dart';
+import '../../core/import/svs_xlsx.dart';
+import '../../core/providers.dart';
 
-class SqlImportDialog extends StatefulWidget {
+/// Impor backup aplikasi lama, dengan buku SVS sebagai data pendukung.
+///
+/// Tidak ada yang ditulis sebelum CEK DATA: setiap nota di file dipilah
+/// menjadi baru, perlu koreksi, sama, atau perlu diperiksa, dan admin
+/// mencentang yang mau diterapkan.
+class SqlImportDialog extends ConsumerStatefulWidget {
   const SqlImportDialog({super.key});
 
   @override
-  State<SqlImportDialog> createState() => _SqlImportDialogState();
+  ConsumerState<SqlImportDialog> createState() => _SqlImportDialogState();
 }
 
-class _SqlImportDialogState extends State<SqlImportDialog> {
+class _SqlImportDialogState extends ConsumerState<SqlImportDialog> {
   DateTime _from = DateTime(DateTime.now().year, DateTime.now().month);
   DateTime _to = DateTime.now();
-  List<Map<String, dynamic>> _rows = [];
-  Map<String, dynamic>? _preview;
-  String? _file, _error;
-  bool _busy = false, _done = false;
-  bool _syncTechnicians = true;
+  List<NotaBackup> _backup = [];
+  BukuSvs? _svs;
+  String? _fileBackup, _fileSvs, _error;
+  List<BarisBanding>? _hasil;
+  final Set<int> _dipilih = {};
+  KategoriImpor? _saring;
+  Map<String, dynamic>? _diterapkan;
+  bool _busy = false;
 
   String _date(DateTime d) => d.toIso8601String().substring(0, 10);
-  List<Map<String, dynamic>> get _selected => _rows
-      .where(
-        (r) =>
-            (r['tanggal_masuk'] as String).compareTo(_date(_from)) >= 0 &&
-            (r['tanggal_masuk'] as String).compareTo(_date(_to)) <= 0,
-      )
-      .toList();
+  String _tgl(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+  /// Hasil cek tidak berlaku lagi begitu masukannya berubah.
+  void _lupakanHasil() {
+    _hasil = null;
+    _dipilih.clear();
+    _saring = null;
+    _diterapkan = null;
+  }
 
   Future<void> _pickDate(bool start) async {
     final picked = await showDatePicker(
@@ -46,190 +61,460 @@ class _SqlImportDialogState extends State<SqlImportDialog> {
         } else {
           _to = picked;
         }
-        _preview = null;
-        _done = false;
+        _lupakanHasil();
       });
     }
   }
 
-  Future<void> _choose() async {
+  Future<void> _kerja(Future<void> Function() isi) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await isi();
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _pilihBackup() async {
     final file = await openFile(
       acceptedTypeGroups: [
         const XTypeGroup(label: 'Backup SQL', extensions: ['sql', 'SQL']),
       ],
     );
     if (file == null || !mounted) return;
-    setState(() {
-      _busy = true;
-      _error = null;
-      _preview = null;
-      _rows = [];
-      _done = false;
-      _file = file.name;
-    });
-    try {
+    await _kerja(() async {
+      setState(() {
+        _fileBackup = file.name;
+        _backup = [];
+        _lupakanHasil();
+      });
       if (await file.length() > 100 * 1024 * 1024) {
         throw const FormatException('File melebihi 100 MB.');
       }
       final text = utf8.decode(await file.readAsBytes());
       final rows = await compute(parseLegacySql, text);
-      if (mounted) setState(() => _rows = rows);
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+      if (mounted) {
+        setState(() => _backup = [for (final r in rows) NotaBackup.fromMap(r)]);
+      }
+    });
   }
 
-  Future<void> _run(bool apply) async {
-    setState(() {
-      _busy = true;
-      _error = null;
+  Future<void> _pilihSvs() async {
+    final file = await openFile(
+      acceptedTypeGroups: [
+        const XTypeGroup(label: 'Buku SVS', extensions: ['xlsx', 'XLSX']),
+      ],
+    );
+    if (file == null || !mounted) return;
+    await _kerja(() async {
+      setState(() {
+        _fileSvs = file.name;
+        _svs = null;
+        _lupakanHasil();
+      });
+      final buku = await compute(bacaSvsXlsx, await file.readAsBytes());
+      if (mounted) setState(() => _svs = buku);
     });
-    try {
-      final rows = _selected;
-      if (_from.isAfter(_to)) {
-        throw const FormatException('Rentang tanggal terbalik.');
-      }
-      if (rows.isEmpty) {
-        throw const FormatException(
-          'Tidak ada nota dalam rentang tanggal ini.',
-        );
-      }
-      if (rows.length > 5000) {
-        throw const FormatException(
-          'Pilih rentang maksimal 5.000 nota per impor.',
-        );
-      }
-      final result = await Supabase.instance.client.rpc(
-        'impor_backup_servis',
-        params: {
-          'p_rows': rows,
-          'p_apply': apply,
-          'p_sync_teknisi': _syncTechnicians,
-        },
-      );
-      if (mounted) {
-        setState(() {
-          _preview = Map<String, dynamic>.from(result as Map);
-          _done = apply;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = 'Impor belum berhasil. $e';
-          _preview = null;
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
   }
+
+  Future<void> _cek() => _kerja(() async {
+    if (_from.isAfter(_to)) {
+      throw const FormatException('Rentang tanggal terbalik.');
+    }
+    final nota = ref.read(serviceOrdersProvider).valueOrNull;
+    final profil = ref.read(allProfilesProvider).valueOrNull;
+    final metode = ref.read(allMetodeBayarProvider).valueOrNull;
+    if (nota == null || profil == null || metode == null) {
+      throw const FormatException(
+        'Data aplikasi belum termuat penuh. Tunggu sebentar lalu cek lagi.',
+      );
+    }
+    final hasil = bandingkanImpor(
+      backup: _backup,
+      svs: _svs,
+      konteks: KonteksImpor(
+        nota: nota,
+        profil: profil,
+        metodeBayar: {for (final m in metode) m.kode},
+        jamTutup: ref.read(jamTutupProvider),
+        libur: ref.read(hariLiburProvider),
+      ),
+      dari: _from,
+      sampai: _to,
+    );
+    if (hasil.isEmpty) {
+      throw const FormatException(
+        'Tidak ada nota yang masuk atau keluar dalam rentang tanggal ini.',
+      );
+    }
+    setState(() {
+      _lupakanHasil();
+      _hasil = hasil;
+      _dipilih.addAll([
+        for (final h in hasil)
+          if (_bisaDipilih(h)) h.urut,
+      ]);
+      _saring = [
+        KategoriImpor.koreksi,
+        KategoriImpor.baru,
+        KategoriImpor.periksa,
+        KategoriImpor.sama,
+      ].firstWhere((k) => hasil.any((h) => h.kategori == k));
+    });
+  });
+
+  bool _bisaDipilih(BarisBanding h) =>
+      h.kategori == KategoriImpor.baru || h.kategori == KategoriImpor.koreksi;
+
+  Future<void> _terapkan() => _kerja(() async {
+    final pilihan = [
+      for (final h in _hasil ?? const <BarisBanding>[])
+        if (_dipilih.contains(h.urut) && _bisaDipilih(h)) h,
+    ];
+    final baru = [
+      for (final h in pilihan)
+        if (h.notaBaru != null) h.notaBaru!,
+    ];
+    final ubah = [
+      for (final h in pilihan)
+        if (h.ubah != null) h.ubah!,
+    ];
+    if (baru.isEmpty && ubah.isEmpty) {
+      throw const FormatException('Belum ada nota yang dicentang.');
+    }
+    final hasil = await Supabase.instance.client.rpc(
+      'terapkan_impor_servis',
+      params: {'p_baru': baru, 'p_ubah': ubah},
+    );
+    if (mounted) {
+      setState(() {
+        _diterapkan = Map<String, dynamic>.from(hasil as Map);
+        _hasil = null;
+        _dipilih.clear();
+      });
+    }
+  });
 
   @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: !_busy,
-    child: AlertDialog(
-      title: const Text('Impor backup SQL'),
-      content: SizedBox(
-        width: 560,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Pilih backup aplikasi lama (_SP4.SQL) terbaru. Rentang tanggal mengacu ke tanggal masuk nota.',
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _busy ? null : _choose,
-                icon: const Icon(Icons.upload_file),
-                label: Text(_file ?? 'PILIH FILE SQL'),
-              ),
-              Wrap(
-                spacing: 12,
-                children: [
-                  TextButton(
-                    onPressed: _busy ? null : () => _pickDate(true),
-                    child: Text('Dari: ${_date(_from)}'),
+  Widget build(BuildContext context) {
+    final skema = Theme.of(context).colorScheme;
+    final hasil = _hasil;
+    final svs = _svs;
+    final lewatRentang =
+        svs != null && (svs.akhir.isBefore(_from) || svs.awal.isAfter(_to));
+    final jumlahDipilih = hasil == null
+        ? 0
+        : hasil
+              .where((h) => _dipilih.contains(h.urut) && _bisaDipilih(h))
+              .length;
+
+    return PopScope(
+      canPop: !_busy,
+      child: AlertDialog(
+        title: const Text('Impor backup SQL'),
+        content: SizedBox(
+          width: 640,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Backup aplikasi lama (_SP4.SQL) menentukan nota yang ada, '
+                  'teknisinya, dan unit yang sudah keluar. Buku SVS (xlsx) '
+                  'melengkapi cara bayar, biaya, perbaikan, dan keluhan. '
+                  'Tanpa SVS, isi database dipertahankan.',
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : _pilihBackup,
+                      icon: const Icon(Icons.upload_file),
+                      label: Text(_fileBackup ?? 'PILIH BACKUP SQL'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : _pilihSvs,
+                      icon: const Icon(Icons.table_view_outlined),
+                      label: Text(_fileSvs ?? 'PILIH SVS (PILIHAN)'),
+                    ),
+                    if (_fileSvs != null)
+                      IconButton(
+                        tooltip: 'Lepas berkas SVS',
+                        onPressed: _busy
+                            ? null
+                            : () => setState(() {
+                                _fileSvs = null;
+                                _svs = null;
+                                _lupakanHasil();
+                              }),
+                        icon: const Icon(Icons.close),
+                      ),
+                  ],
+                ),
+                if (_backup.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text('${_backup.length} nota pada backup.'),
                   ),
-                  TextButton(
-                    onPressed: _busy ? null : () => _pickDate(false),
-                    child: Text('Sampai: ${_date(_to)}'),
-                  ),
-                ],
-              ),
-              if (_rows.isNotEmpty)
-                Text(
-                  '${_rows.length} nota pada file • ${_selected.length} dalam rentang',
-                ),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Samakan teknisi nota yang sudah ada'),
-                subtitle: const Text(
-                  'Teknisi kosong pada file tetap memakai penugasan yang sudah ada.',
-                ),
-                value: _syncTechnicians,
-                onChanged: _busy
-                    ? null
-                    : (v) => setState(() {
-                        _syncTechnicians = v!;
-                        _preview = null;
-                        _done = false;
-                      }),
-              ),
-              const Text(
-                'Nota baru ditambahkan beserta status dan tanggal keluar. Biaya, pelunasan, garansi, dan status nota yang sudah ada tetap dipertahankan. Backup lama tidak memiliki bukti pelunasan; nota baru berbiaya perlu dikroscek pembayarannya.',
-              ),
-              if (_busy)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: LinearProgressIndicator(),
-                ),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                if (svs != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'SVS ${_tgl(svs.awal)} - ${_tgl(svs.akhir)} '
+                      '(${svs.hari.length} lembar): ${svs.masuk.length} masuk, '
+                      '${svs.keluar.length} keluar.'
+                      '${svs.peringatan.isEmpty ? '' : ' ${svs.peringatan.length} peringatan.'}',
                     ),
                   ),
-                ),
-              if (_preview != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Text(
-                    '${_done ? "Impor berhasil" : "Ringkasan impor"}\n'
-                    'Nota baru: ${_preview!["baru"]}\n'
-                    'Teknisi diperbarui: ${_preview!["teknisi_diubah"]}\n'
-                    'Nota sudah sesuai: ${_preview!["tetap"]}\n'
-                    'Teknisi belum terdaftar: ${(_preview!["teknisi_tidak_dikenal"] as List).join(", ")}\n'
-                    'Nota sumber tanpa teknisi: ${_preview!["tanpa_teknisi"]}',
+                if (lewatRentang)
+                  Text(
+                    'Tanggal SVS ini di luar rentang yang dipilih; '
+                    'isinya tidak akan terpakai.',
+                    style: TextStyle(color: skema.error),
                   ),
+                Wrap(
+                  spacing: 12,
+                  children: [
+                    TextButton(
+                      onPressed: _busy ? null : () => _pickDate(true),
+                      child: Text('Dari: ${_date(_from)}'),
+                    ),
+                    TextButton(
+                      onPressed: _busy ? null : () => _pickDate(false),
+                      child: Text('Sampai: ${_date(_to)}'),
+                    ),
+                  ],
                 ),
-            ],
+                const Text(
+                  'Rentang mencakup nota yang masuk ATAU keluar pada tanggal itu.',
+                ),
+                if (_busy)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: LinearProgressIndicator(),
+                  ),
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(_error!, style: TextStyle(color: skema.error)),
+                  ),
+                if (_diterapkan != null) _RingkasanTerapkan(_diterapkan!),
+                if (hasil != null) ..._daftarHasil(context, hasil),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _busy ? null : () => Navigator.pop(context),
+            child: const Text('TUTUP'),
+          ),
+          OutlinedButton(
+            onPressed: _busy || _backup.isEmpty ? null : _cek,
+            child: const Text('CEK DATA'),
+          ),
+          FilledButton(
+            onPressed: _busy || jumlahDipilih == 0 ? null : _terapkan,
+            child: Text(
+              jumlahDipilih == 0 ? 'TERAPKAN' : 'TERAPKAN ($jumlahDipilih)',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _daftarHasil(BuildContext context, List<BarisBanding> hasil) {
+    final skema = Theme.of(context).colorScheme;
+    int hitung(KategoriImpor k) => hasil.where((h) => h.kategori == k).length;
+    final tampil = hasil.where((h) => h.kategori == _saring).toList();
+    final perluBayar = hasil.where((h) => h.perluCaraBayar).length;
+    final bisaPilih = tampil.where(_bisaDipilih).toList();
+    return [
+      const SizedBox(height: 12),
+      Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          for (final (k, label) in const [
+            (KategoriImpor.koreksi, 'Perlu koreksi'),
+            (KategoriImpor.baru, 'Baru'),
+            (KategoriImpor.periksa, 'Perlu diperiksa'),
+            (KategoriImpor.sama, 'Sama'),
+          ])
+            ChoiceChip(
+              label: Text('$label ${hitung(k)}'),
+              selected: _saring == k,
+              onSelected: hitung(k) == 0
+                  ? null
+                  : (_) => setState(() => _saring = k),
+            ),
+        ],
+      ),
+      if (perluBayar > 0)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            '$perluBayar nota sudah diambil dengan bayar tetapi cara bayarnya '
+            'belum diketahui${_svs == null ? '. Sertakan buku SVS untuk melengkapinya.' : ' di SVS ini.'}',
+            style: TextStyle(color: skema.error),
+          ),
+        ),
+      if (bisaPilih.isNotEmpty)
+        Row(
+          children: [
+            TextButton(
+              onPressed: () =>
+                  setState(() => _dipilih.addAll(bisaPilih.map((h) => h.urut))),
+              child: const Text('Centang semua'),
+            ),
+            TextButton(
+              onPressed: () => setState(
+                () => _dipilih.removeAll(bisaPilih.map((h) => h.urut)),
+              ),
+              child: const Text('Kosongkan'),
+            ),
+          ],
+        ),
+      SizedBox(
+        height: 360,
+        child: ListView.separated(
+          itemCount: tampil.length,
+          separatorBuilder: (_, _) => const Divider(height: 1),
+          itemBuilder: (context, i) => _BarisHasil(
+            hasil: tampil[i],
+            profil: {
+              for (final p
+                  in ref.read(allProfilesProvider).valueOrNull ?? const [])
+                p.id: p.nama,
+            },
+            dipilih: _dipilih.contains(tampil[i].urut),
+            bisaDipilih: _bisaDipilih(tampil[i]),
+            aktif: !_busy,
+            ubahPilihan: (v) => setState(() {
+              if (v) {
+                _dipilih.add(tampil[i].urut);
+              } else {
+                _dipilih.remove(tampil[i].urut);
+              }
+            }),
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _busy ? null : () => Navigator.pop(context),
-          child: const Text('TUTUP'),
+    ];
+  }
+}
+
+class _BarisHasil extends StatelessWidget {
+  const _BarisHasil({
+    required this.hasil,
+    required this.profil,
+    required this.dipilih,
+    required this.bisaDipilih,
+    required this.aktif,
+    required this.ubahPilihan,
+  });
+
+  final BarisBanding hasil;
+  final Map<String, String> profil;
+  final bool dipilih;
+  final bool bisaDipilih;
+  final bool aktif;
+  final ValueChanged<bool> ubahPilihan;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final redup = TextStyle(color: tema.colorScheme.onSurfaceVariant);
+    final baru = hasil.notaBaru;
+    final baris = <Widget>[
+      if (baru != null)
+        Text(
+          [
+            'Ditambahkan: ${baru['status']}',
+            if (baru['garansi'] == true) 'garansi',
+            if ((baru['biaya'] as num) > 0)
+              'Rp${(baru['biaya'] as num).round()}',
+            if (baru['cara_bayar'] != null) '${baru['cara_bayar']}',
+            if (baru['tanggal_diambil'] != null)
+              'keluar ${baru['tanggal_diambil']}',
+            'teknisi ${profil[baru['teknisi_id']] ?? '-'}',
+          ].join(', '),
         ),
-        if (!_done)
-          OutlinedButton(
-            onPressed: _busy || _rows.isEmpty ? null : () => _run(false),
-            child: const Text('CEK DATA'),
+      for (final u in hasil.usulan)
+        Text('${u.label}: ${u.dari} -> ${u.ke}  (${u.sumber})'),
+      for (final c in hasil.catatan) Text(c, style: redup),
+    ];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Checkbox(
+          value: bisaDipilih && dipilih,
+          onChanged: bisaDipilih && aktif
+              ? (v) => ubahPilihan(v ?? false)
+              : null,
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${hasil.noNota}  ${hasil.nama}',
+                  style: tema.textTheme.titleSmall,
+                ),
+                ...baris,
+              ],
+            ),
           ),
-        if (!_done)
-          FilledButton(
-            onPressed: _busy || _preview == null ? null : () => _run(true),
-            child: const Text('IMPOR KE DATABASE'),
-          ),
+        ),
       ],
-    ),
-  );
+    );
+  }
+}
+
+class _RingkasanTerapkan extends StatelessWidget {
+  const _RingkasanTerapkan(this.hasil);
+
+  final Map<String, dynamic> hasil;
+
+  @override
+  Widget build(BuildContext context) {
+    final lewat = (hasil['dilewati'] as List?) ?? const [];
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Impor berhasil: ${hasil['baru']} nota baru, '
+            '${hasil['diubah']} nota dikoreksi.',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          if (lewat.isNotEmpty) ...[
+            Text('Dilewati ${lewat.length}:'),
+            for (final l in lewat.take(30))
+              Text(
+                '${(l as Map)['no_nota'] ?? l['id']}: ${l['alasan']}',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+          ],
+          const Text(
+            'Tekan CEK DATA lagi untuk memastikan semuanya sudah sama.',
+          ),
+        ],
+      ),
+    );
+  }
 }

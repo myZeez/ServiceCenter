@@ -57,7 +57,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             actions: [
               if (ref.watch(isAdminProvider))
                 OutlinedButton.icon(
-                  onPressed: () => showDialog<void>(
+                  onPressed: () => tampilkanDialog<void>(
                     context: context,
                     barrierDismissible: false,
                     builder: (_) => const SqlImportDialog(),

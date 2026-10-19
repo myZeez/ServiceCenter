@@ -33,3 +33,7 @@ AGENTS.md
 # yang dicatat tools/ dan tmp/, hanya sampah build mesin ini.
 tools/__pycache__/
 tmp/*.log
+
+# Kata sandi database Postgres Supabase untuk akses CLI/psql langsung dari
+# sesi kerja. Rahasia: satu baris teks, tidak boleh pernah ter-commit.
+supabase/.db-password

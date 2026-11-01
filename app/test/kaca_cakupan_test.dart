@@ -304,6 +304,17 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(_bidangPadat(tester), isEmpty);
+
+      // Tab Sudah Selesai (riwayat omset) dan tab Skor punya kartu sendiri.
+      // Chipnya bisa di luar layar uji; digulir masuk dulu.
+      for (final tab in ['SUDAH SELESAI', 'SKOR']) {
+        final chip = find.textContaining(tab, skipOffstage: false).first;
+        await tester.ensureVisible(chip);
+        await tester.pumpAndSettle();
+        await tester.tap(chip);
+        await tester.pumpAndSettle();
+        expect(_bidangPadat(tester), isEmpty, reason: tab);
+      }
     });
 
     testWidgets('lembar ubah pekerjaan ikut berkaca', (tester) async {

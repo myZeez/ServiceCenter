@@ -12,6 +12,7 @@ import '../../core/widgets/swiss_widgets.dart';
 import 'service_page.dart';
 import 'servisku.dart';
 import 'widgets/omset_saya_card.dart';
+import 'widgets/skor_saya_card.dart';
 
 final _tgl = DateFormat('dd-MM-yyyy');
 final _tglPendek = DateFormat('dd/MM/yy');
@@ -25,10 +26,11 @@ final notaBerjalanSayaProvider = Provider<List<ServiceOrderEntry>>(
   ),
 );
 
-enum _Tampilan { berjalan, selesai }
+enum _Tampilan { berjalan, selesai, skor }
 
-/// Servisku menyatukan daftar unit pribadi, pencarian cepat, dan omset bulan
-/// berjalan agar teknisi tidak perlu berpindah ke Pekerjaanku atau Servis.
+/// Servisku menyatukan daftar unit pribadi, pencarian cepat, omset bulan
+/// berjalan, riwayat omset, dan skor agar teknisi tidak perlu berpindah ke
+/// Pekerjaanku atau Servis.
 class ServiskuView extends ConsumerStatefulWidget {
   const ServiskuView({super.key, this.ruangBawah = 0});
 
@@ -63,7 +65,12 @@ class _ServiskuViewState extends ConsumerState<ServiskuView> {
     final sekarang = DateTime.now();
     final berjalan = ref.watch(notaBerjalanSayaProvider);
     final selesai = notaSelesaiSaya(semua, saya, sekarang);
-    final dipilih = _tampil == _Tampilan.berjalan ? berjalan : selesai;
+    final dipilih = switch (_tampil) {
+      _Tampilan.berjalan => berjalan,
+      _Tampilan.selesai => selesai,
+      _Tampilan.skor => const <ServiceOrderEntry>[],
+    };
+    final bintang = ref.watch(skorSayaProvider).setahun?.bintang;
     final tampil = [
       for (final n in dipilih)
         if (cocokCariNota(n, _kata)) n,
@@ -74,15 +81,17 @@ class _ServiskuViewState extends ConsumerState<ServiskuView> {
       kepala: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _PencarianServisku(
-            controller: _pencarian,
-            adaIsi: sedangMencari,
-            onUbah: (v) => setState(() => _kata = v),
-            onHapus: () {
-              _pencarian.clear();
-              setState(() => _kata = '');
-            },
-          ),
+          // Tab Skor tidak berisi nota, jadi tidak ada yang dicari.
+          if (_tampil != _Tampilan.skor)
+            _PencarianServisku(
+              controller: _pencarian,
+              adaIsi: sedangMencari,
+              onUbah: (v) => setState(() => _kata = v),
+              onHapus: () {
+                _pencarian.clear();
+                setState(() => _kata = '');
+              },
+            ),
           Container(
             decoration: context.kaca != null
                 ? null
@@ -107,6 +116,11 @@ class _ServiskuViewState extends ConsumerState<ServiskuView> {
                     label: 'SUDAH SELESAI  ${selesai.length}',
                     aktif: _tampil == _Tampilan.selesai,
                     onTap: () => setState(() => _tampil = _Tampilan.selesai),
+                  ),
+                  ChipSaringan(
+                    label: bintang == null ? 'SKOR' : 'SKOR  ★$bintang',
+                    aktif: _tampil == _Tampilan.skor,
+                    onTap: () => setState(() => _tampil = _Tampilan.skor),
                   ),
                 ],
               ),
@@ -158,7 +172,19 @@ class _ServiskuViewState extends ConsumerState<ServiskuView> {
                 child: OmsetSayaCard(),
               ),
               const SizedBox(height: AppSpacing.s),
-              if (tampil.isEmpty)
+              if (_tampil == _Tampilan.selesai && !sedangMencari) ...[
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.s),
+                  child: RiwayatOmsetCard(),
+                ),
+                const SizedBox(height: AppSpacing.s),
+              ],
+              if (_tampil == _Tampilan.skor)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.s),
+                  child: SkorSaya(),
+                )
+              else if (tampil.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.sm,

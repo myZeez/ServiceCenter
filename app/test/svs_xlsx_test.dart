@@ -180,4 +180,46 @@ void main() {
       expect((p.caraBayar, p.lunas, p.biaya), ('piutang', false, 200000));
     });
   });
+
+  group('gabungBukuSvs: rentang yang melewati akhir bulan', () {
+    SvsKeluar k(int urut, DateTime t) =>
+        SvsKeluar(urut: urut, tanggal: t, nama: 'X');
+
+    final oktober = BukuSvs(
+      masuk: {1: SvsMasuk(urut: 1, tanggal: DateTime(2026, 10, 30), nama: 'A')},
+      keluar: {2: k(2, DateTime(2026, 10, 30))},
+      hari: [DateTime(2026, 10, 1), DateTime(2026, 10, 30)],
+    );
+    final november = BukuSvs(
+      masuk: {3: SvsMasuk(urut: 3, tanggal: DateTime(2026, 11, 1), nama: 'B')},
+      keluar: {4: k(4, DateTime(2026, 11, 1))},
+      hari: [DateTime(2026, 11, 1)],
+    );
+
+    test('isi dua buku tergabung, harinya urut apa pun urutan pilihnya', () {
+      final g = gabungBukuSvs([november, oktober]);
+      expect(g.masuk.keys, containsAll([1, 3]));
+      expect(g.keluar.keys, containsAll([2, 4]));
+      expect(g.awal, DateTime(2026, 10, 1));
+      expect(g.akhir, DateTime(2026, 11, 1));
+      expect(g.peringatan, isEmpty);
+    });
+
+    test('satu buku saja tidak berubah', () {
+      final g = gabungBukuSvs([oktober]);
+      expect(g.masuk.length, 1);
+      expect(g.hari, oktober.hari);
+    });
+
+    test('nota di dua buku memakai yang awal, dan diberi peringatan', () {
+      final kembar = BukuSvs(
+        masuk: const {},
+        keluar: {2: k(2, DateTime(2026, 11, 1))},
+        hari: [DateTime(2026, 11, 1)],
+      );
+      final g = gabungBukuSvs([kembar, oktober]);
+      expect(g.keluar[2]!.tanggal, DateTime(2026, 10, 30));
+      expect(g.peringatan.single, contains('dua buku'));
+    });
+  });
 }

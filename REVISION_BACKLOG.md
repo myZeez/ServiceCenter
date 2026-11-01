@@ -37,6 +37,41 @@ atau membuat rilis hanya berdasarkan catatan di sini tanpa verifikasi.
   referensi dan beri peringatan bila selisihnya besar; jangan mengubah waktu
   transaksi yang sudah tercatat tanpa tindakan admin yang jelas.
 
+### Pemisahan role: admin dan super admin
+
+- Status: rencana, dicatat 1 November 2026. Belum dikerjakan.
+- Admin hanya menerima servis, melihat laporan omset bulanan dan laporan
+  garansi, dan tetap bisa impor data. Perubahan data krusial, seperti nota yang
+  sudah keluar atau sudah diambil, perlu persetujuan super admin.
+- Halaman super admin: laporan kerja teknisi (omset per teknisi, omset toko),
+  piutang, laporan servis, nota per bulan, laporan harian/mingguan/bulanan,
+  kirim partner, rekap dan rekap brand, pendapatan.
+- Pengaturan khusus super admin (tidak tampil di admin): pengguna, brand, jenis
+  part, fee awal, aturan per brand, bagi hasil, identitas toko, up toko
+  penjualan part, cara bayar, hari kerja.
+- Perlu diputuskan: impor tetap di admin, padahal koreksinya bisa menyentuh
+  nota yang sudah keluar; nasib role `admin_sc` yang ada sekarang. Pembatasan
+  wajib ditegakkan di RLS/RPC, bukan hanya menyembunyikan halaman.
+
+### Presensi karyawan
+
+- Status: rencana, dicatat 1 November 2026. Belum dikerjakan.
+- Dipasang di HP tiap karyawan; role per karyawan: teknisi, sales/marketing,
+  gudang, kasir. Teknisi tetap memakai aplikasi seperti sekarang ditambah
+  presensi sebagai halaman utama; selain teknisi hanya mendapat tampilan
+  presensi.
+- Aktif hanya di dalam jangkauan titik koordinat toko (rencana 5 meter) menurut
+  GPS realtime; lokasi wajib aktif.
+- Isi layar: sapaan pagi/siang/sore/malam dan nama, jam, status Belum Hadir/Hadir,
+  status hari ini (hadir, izin, sakit, dinas luar kota, lembur), jarak dari toko,
+  pesan tepat waktu atau terlambat sekian menit.
+- Tombol: Hadir, Sakit, Izin, Dinas Luar Kota. Hadir aktif hanya di dalam
+  jangkauan.
+- Perlu diputuskan: 5 meter lebih ketat dari ketelitian GPS HP (umumnya 5-20
+  meter, lebih buruk di dalam ruangan), jadi jaraknya perlu bisa diatur di
+  Pengaturan dan diuji di toko; jam masuk untuk menghitung terlambat; cara
+  mengisi Lembur yang belum punya tombol; tampilan admin di HP dan di Windows.
+
 ## Sudah diperbaiki
 
 ### Nota keluar tidak muncul karena tanggal pengambilan kosong

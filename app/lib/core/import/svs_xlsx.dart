@@ -66,6 +66,43 @@ class BukuSvs {
   DateTime get akhir => hari.last;
 }
 
+/// Menyatukan beberapa berkas SVS bulanan.
+///
+/// Akhir bulan butuh dua buku: Sabtu tidak punya lembar, jadi unit yang
+/// diambil Sabtu 31 Oktober tercatat di lembar 1 November, di buku berikutnya.
+/// Nota yang ada di dua buku memakai catatan dari buku yang lebih awal.
+BukuSvs gabungBukuSvs(List<BukuSvs> buku) {
+  final urutan = [...buku]..sort((a, b) => a.awal.compareTo(b.awal));
+  final masuk = <int, SvsMasuk>{};
+  final keluar = <int, SvsKeluar>{};
+  final hari = <DateTime>{};
+  final peringatan = <String>[];
+  for (final b in urutan) {
+    hari.addAll(b.hari);
+    peringatan.addAll(b.peringatan);
+    b.masuk.forEach((urut, m) {
+      if (masuk.containsKey(urut)) {
+        peringatan.add('Nota masuk $urut ada di dua buku; dipakai yang awal.');
+      } else {
+        masuk[urut] = m;
+      }
+    });
+    b.keluar.forEach((urut, k) {
+      if (keluar.containsKey(urut)) {
+        peringatan.add('Nota keluar $urut ada di dua buku; dipakai yang awal.');
+      } else {
+        keluar[urut] = k;
+      }
+    });
+  }
+  return BukuSvs(
+    masuk: masuk,
+    keluar: keluar,
+    hari: hari.toList()..sort(),
+    peringatan: peringatan,
+  );
+}
+
 /// Membaca berkas SVS (xlsx) dari [bytes].
 ///
 /// Tanggal tiap lembar dibaca dari judulnya ("LAPORAN PERHARI TGL

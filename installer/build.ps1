@@ -90,8 +90,12 @@ if ($Android) {
 }
 
 Write-Host '== Kemas installer ==' -ForegroundColor Cyan
-$iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
-if (-not (Test-Path $iscc)) { throw "Inno Setup tidak ada di $iscc" }
+# Winget memasangnya per pengguna; pemasang biasa ke Program Files.
+$iscc = @(
+  'C:\Program Files (x86)\Inno Setup 6\ISCC.exe',
+  (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe')
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $iscc) { throw 'Inno Setup 6 tidak ditemukan.' }
 
 & $iscc (Join-Path $PSScriptRoot 'setup.iss')
 if ($LASTEXITCODE -ne 0) { throw 'ISCC gagal.' }

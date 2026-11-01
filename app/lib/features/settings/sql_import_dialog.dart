@@ -24,8 +24,11 @@ class SqlImportDialog extends ConsumerStatefulWidget {
 }
 
 class _SqlImportDialogState extends ConsumerState<SqlImportDialog> {
-  DateTime _from = DateTime(DateTime.now().year, DateTime.now().month);
+  // Sampai berkas terbaca, rentangnya sudah mencakup bulan lalu; sesudah itu
+  // rentang mengikuti isi berkas (lihat rentangBawaanImpor).
+  DateTime _from = DateTime(DateTime.now().year, DateTime.now().month - 1);
   DateTime _to = DateTime.now();
+  DateTime? _akhirBackup;
   List<NotaBackup> _backup = [];
   BukuSvs? _svs;
   String? _fileBackup, _fileSvs, _error;
@@ -56,10 +59,16 @@ class _SqlImportDialogState extends ConsumerState<SqlImportDialog> {
     );
     if (picked != null && mounted) {
       setState(() {
+        // Ujung yang satunya ikut bergeser, supaya mengganti tanggal ke
+        // bulan lalu tidak berakhir di "rentang terbalik".
         if (start) {
           _from = picked;
+          if (_to.isBefore(picked)) _to = picked;
         } else {
           _to = picked;
+          if (_from.isAfter(picked)) {
+            _from = DateTime(picked.year, picked.month);
+          }
         }
         _lupakanHasil();
       });
@@ -91,6 +100,7 @@ class _SqlImportDialogState extends ConsumerState<SqlImportDialog> {
       setState(() {
         _fileBackup = file.name;
         _backup = [];
+        _akhirBackup = null;
         _lupakanHasil();
       });
       if (await file.length() > 100 * 1024 * 1024) {
@@ -99,26 +109,40 @@ class _SqlImportDialogState extends ConsumerState<SqlImportDialog> {
       final text = utf8.decode(await file.readAsBytes());
       final rows = await compute(parseLegacySql, text);
       if (mounted) {
-        setState(() => _backup = [for (final r in rows) NotaBackup.fromMap(r)]);
+        final backup = [for (final r in rows) NotaBackup.fromMap(r)];
+        final rentang = rentangBawaanImpor(backup, DateTime.now());
+        setState(() {
+          _backup = backup;
+          _from = rentang.dari;
+          _to = rentang.sampai;
+          _akhirBackup = rentang.sampai;
+        });
       }
     });
   }
 
+  /// Boleh beberapa berkas: rentang yang melewati akhir bulan butuh buku
+  /// bulan itu dan buku bulan berikutnya.
   Future<void> _pilihSvs() async {
-    final file = await openFile(
+    final files = await openFiles(
       acceptedTypeGroups: [
         const XTypeGroup(label: 'Buku SVS', extensions: ['xlsx', 'XLSX']),
       ],
     );
-    if (file == null || !mounted) return;
+    if (files.isEmpty || !mounted) return;
     await _kerja(() async {
       setState(() {
-        _fileSvs = file.name;
+        _fileSvs = files.length == 1
+            ? files.single.name
+            : '${files.length} BERKAS SVS';
         _svs = null;
         _lupakanHasil();
       });
-      final buku = await compute(bacaSvsXlsx, await file.readAsBytes());
-      if (mounted) setState(() => _svs = buku);
+      final buku = [
+        for (final f in files)
+          await compute(bacaSvsXlsx, await f.readAsBytes()),
+      ];
+      if (mounted) setState(() => _svs = gabungBukuSvs(buku));
     });
   }
 
@@ -148,8 +172,10 @@ class _SqlImportDialogState extends ConsumerState<SqlImportDialog> {
       sampai: _to,
     );
     if (hasil.isEmpty) {
-      throw const FormatException(
-        'Tidak ada nota yang masuk atau keluar dalam rentang tanggal ini.',
+      final akhir = _akhirBackup;
+      throw FormatException(
+        'Tidak ada nota yang masuk atau keluar dalam rentang tanggal ini.'
+        '${akhir == null ? '' : ' Data terakhir di backup: ${_tgl(akhir)}.'}',
       );
     }
     setState(() {
@@ -243,7 +269,7 @@ class _SqlImportDialogState extends ConsumerState<SqlImportDialog> {
                     OutlinedButton.icon(
                       onPressed: _busy ? null : _pilihSvs,
                       icon: const Icon(Icons.table_view_outlined),
-                      label: Text(_fileSvs ?? 'PILIH SVS (PILIHAN)'),
+                      label: Text(_fileSvs ?? 'PILIH SVS (BOLEH BEBERAPA)'),
                     ),
                     if (_fileSvs != null)
                       IconButton(
@@ -262,7 +288,10 @@ class _SqlImportDialogState extends ConsumerState<SqlImportDialog> {
                 if (_backup.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text('${_backup.length} nota pada backup.'),
+                    child: Text(
+                      '${_backup.length} nota pada backup, data terakhir '
+                      '${_tgl(_akhirBackup!)}.',
+                    ),
                   ),
                 if (svs != null)
                   Padding(
@@ -294,7 +323,9 @@ class _SqlImportDialogState extends ConsumerState<SqlImportDialog> {
                   ],
                 ),
                 const Text(
-                  'Rentang mencakup nota yang masuk ATAU keluar pada tanggal itu.',
+                  'Rentang mencakup nota yang masuk ATAU keluar pada tanggal itu, '
+                  'dan boleh mundur ke bulan-bulan sebelumnya. Nota yang sudah '
+                  'sama tidak disentuh.',
                 ),
                 if (_busy)
                   const Padding(

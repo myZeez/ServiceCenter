@@ -566,4 +566,144 @@ void main() {
       expect(_set(hasil.single)['tanggal_diambil'], '2026-10-19');
     });
   });
+
+  group('melewati akhir bulan', () {
+    // 31 Oktober 2026 hari Sabtu: toko libur, tidak ada lembar SVS-nya.
+    final sabtu = DateTime(2026, 10, 31);
+    final minggu = DateTime(2026, 11, 1);
+
+    test('tanggal 1: data tanggal 31 tetap masuk rentang bawaan', () {
+      final backup = [_bk(28900, masuk: sabtu)];
+      final r = rentangBawaanImpor(backup, DateTime(2026, 11, 1, 8, 30));
+      expect(r.sampai, sabtu);
+      expect(r.dari, DateTime(2026, 9, 1));
+
+      final h = _banding(backup, dari: r.dari, sampai: r.sampai).single;
+      expect(h.kategori, KategoriImpor.baru);
+      expect(h.notaBaru!['tanggal_masuk'], '2026-10-31');
+    });
+
+    test('berkas sudah memuat tanggal 1: bulan lalu tetap ikut', () {
+      final r = rentangBawaanImpor([
+        _bk(28900, masuk: sabtu),
+        _bk(28901, masuk: minggu),
+      ], DateTime(2026, 11, 1, 18));
+      expect(r.dari, DateTime(2026, 10, 1));
+      expect(r.sampai, minggu);
+    });
+
+    test('tanggal ambil juga dihitung sebagai data terakhir', () {
+      final r = rentangBawaanImpor([
+        _bk(
+          28333,
+          masuk: DateTime(2026, 9, 13),
+          status: 'diambil',
+          garansi: true,
+          diambil: minggu,
+        ),
+      ], DateTime(2026, 11, 2));
+      expect(r.sampai, minggu);
+    });
+
+    test('Januari mundur ke Desember tahun lalu', () {
+      final r = rentangBawaanImpor([
+        _bk(30000, masuk: DateTime(2027, 1, 5)),
+      ], DateTime(2027, 1, 6));
+      expect(r.dari, DateTime(2026, 12, 1));
+    });
+
+    test('tanggal masa depan di backup adalah salah ketik, diabaikan', () {
+      final r = rentangBawaanImpor([
+        _bk(28900, masuk: sabtu),
+        _bk(28901, masuk: DateTime(2062, 10, 31)),
+      ], minggu);
+      expect(r.sampai, sabtu);
+    });
+
+    test('backup kosong: rentang berakhir hari ini', () {
+      final r = rentangBawaanImpor(const [], DateTime(2026, 11, 1, 9));
+      expect(r.sampai, minggu);
+      expect(r.dari, DateTime(2026, 10, 1));
+    });
+
+    test('rentang 1 November menemukan unit yang diambil Sabtu 31', () {
+      final h = _banding(
+        [
+          _bk(
+            28901,
+            masuk: DateTime(2026, 10, 28),
+            status: 'diambil',
+            garansi: true,
+            diambil: sabtu,
+            jam: '11:00:00',
+          ),
+        ],
+        db: [_db(28901, masuk: DateTime(2026, 10, 28))],
+        dari: minggu,
+        sampai: minggu,
+      ).single;
+      expect(h.kategori, KategoriImpor.koreksi);
+      expect(_set(h)['tanggal_diambil'], '2026-11-01');
+    });
+
+    test('rentang yang berhenti di 31 Oktober tetap memuatnya', () {
+      final h = _banding(
+        [
+          _bk(
+            28901,
+            masuk: DateTime(2026, 10, 28),
+            status: 'batal',
+            diambil: sabtu,
+            jam: '19:30:00',
+          ),
+        ],
+        db: [_db(28901, masuk: DateTime(2026, 10, 28))],
+        dari: DateTime(2026, 10, 1),
+        sampai: sabtu,
+      ).single;
+      expect(_set(h)['status'], 'batal');
+      expect(_set(h)['tanggal_diambil'], '2026-11-01');
+    });
+
+    test('cara bayar unit Sabtu 31 datang dari buku November', () {
+      final oktober = BukuSvs(
+        masuk: const {},
+        keluar: const {},
+        hari: [DateTime(2026, 10, 30)],
+      );
+      final november = BukuSvs(
+        masuk: const {},
+        keluar: {
+          28902: SvsKeluar(
+            urut: 28902,
+            tanggal: minggu,
+            nama: 'X',
+            biaya: 150000,
+            keterangan: 'QR BTN',
+          ),
+        },
+        hari: [minggu],
+      );
+      final h = _banding(
+        [
+          _bk(
+            28902,
+            masuk: DateTime(2026, 10, 29),
+            status: 'diambil',
+            biaya: 150000,
+            diambil: sabtu,
+            jam: '11:00:00',
+          ),
+        ],
+        db: [_db(28902, masuk: DateTime(2026, 10, 29))],
+        svs: gabungBukuSvs([oktober, november]),
+        dari: DateTime(2026, 10, 1),
+        sampai: minggu,
+      ).single;
+      expect(h.perluCaraBayar, false);
+      expect(_set(h)['cara_bayar'], 'qris');
+      expect(_set(h)['tanggal_diambil'], '2026-11-01');
+      expect(_set(h)['tanggal_lunas'], '2026-11-01');
+    });
+  });
 }

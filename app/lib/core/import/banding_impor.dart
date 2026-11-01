@@ -193,6 +193,32 @@ const _belumKeluar = {
   'selesai',
 };
 
+/// Rentang bawaan begitu backup terbaca: bulan terakhir di berkas dan bulan
+/// sebelumnya.
+///
+/// Mengikuti isi berkas, bukan kalender perangkat. Rentang "bulan berjalan"
+/// membuat data akhir bulan tidak bisa diimpor begitu tanggalnya berganti:
+/// tanggal 1 rentangnya hanya sehari, dan tanggal 31 tersaring habis. Bulan
+/// sebelumnya selalu ikut karena perbandingan aman diulang -- nota yang sudah
+/// sama tidak disentuh, jadi rentang yang lebih lebar tidak menumpuk apa pun.
+///
+/// Tanggal sesudah [kini] diabaikan: itu salah ketik di aplikasi lama.
+({DateTime dari, DateTime sampai}) rentangBawaanImpor(
+  List<NotaBackup> backup,
+  DateTime kini,
+) {
+  final hariIni = _hari(kini);
+  DateTime? terakhir;
+  for (final b in backup) {
+    for (final t in [b.tanggalMasuk, b.tanggalDiambil]) {
+      if (t == null || t.isAfter(hariIni)) continue;
+      if (terakhir == null || t.isAfter(terakhir)) terakhir = t;
+    }
+  }
+  final sampai = terakhir == null ? hariIni : _hari(terakhir);
+  return (dari: DateTime(sampai.year, sampai.month - 1), sampai: sampai);
+}
+
 /// Membandingkan nota [backup] yang masuk atau keluar dalam rentang
 /// [dari]..[sampai] dengan database.
 List<BarisBanding> bandingkanImpor({
@@ -220,14 +246,22 @@ List<BarisBanding> bandingkanImpor({
 
   final hasil = <BarisBanding>[];
   for (final b in backup) {
-    final kel = svs?.keluar[b.urut];
+    final ctx = _Nota(
+      b,
+      svs?.masuk[b.urut],
+      svs?.keluar[b.urut],
+      konteks,
+      idTeknisi,
+    );
+    // Hari buku ikut menentukan: unit yang diambil Sabtu malam 31 Oktober
+    // tercatat di laporan 1 November, dan rentang 1 November harus
+    // menemukannya walau tanggal kalendernya masih bulan lalu.
     if (!dalam(b.tanggalMasuk) &&
         !dalam(b.tanggalDiambil) &&
-        !dalam(kel?.tanggal)) {
+        !dalam(ctx.hariKeluar)) {
       continue;
     }
     final cocok = perUrut[b.urut] ?? const [];
-    final ctx = _Nota(b, svs?.masuk[b.urut], kel, konteks, idTeknisi);
     hasil.add(switch (cocok.length) {
       0 => ctx.baru(),
       // Nomor urut yang sama tetapi tanggal masuknya berjauhan bukan nota

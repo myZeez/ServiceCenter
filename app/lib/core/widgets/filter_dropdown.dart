@@ -22,42 +22,43 @@ class FilterDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dipilih = value != null;
     return Container(
-      height: 36,
-      // Lebar tetap, bukan sekadar batas bawah. Di kepala halaman kotak ini
-      // berdiri tanpa lebar dari induknya, dan DropdownButton yang memuai
-      // di ruang tak terbatas melempar galat tata letak.
       width: 168,
+      height: 36,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: value == null ? context.warna.garisIsian : context.warna.teks,
-        ),
+        color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.small),
+        border: Border.all(
+          color: dipilih ? context.warna.teks : context.warna.garisIsian,
+        ),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          isDense: true,
-          isExpanded: true,
-          borderRadius: BorderRadius.circular(AppRadius.base),
-          // Tanpa ini, Flutter melukis blok abu di belakang teks saat
-          // dropdown mendapat fokus -- terlihat seperti kerusakan tampilan.
-          focusColor: Colors.transparent,
-          icon: const Icon(Icons.expand_more, size: 16),
-          style: TextStyle(
-            fontSize: 10.5,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.4,
-            color: context.warna.teks,
+      child: Center(
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T>(
+            value: value,
+            isDense: true,
+            isExpanded: true,
+            borderRadius: BorderRadius.circular(AppRadius.base),
+            // Tanpa ini, Flutter melukis blok abu di belakang teks saat
+            // dropdown mendapat fokus -- terlihat seperti kerusakan tampilan.
+            focusColor: Colors.transparent,
+            icon: const Icon(Icons.expand_more, size: 16),
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+              color: context.warna.teks,
+            ),
+            onChanged: onChanged,
+            items: [
+              if (placeholder != null)
+                DropdownMenuItem<T>(value: null, child: Text(placeholder!)),
+              for (final (v, label) in items)
+                DropdownMenuItem<T>(value: v, child: Text(label)),
+            ],
           ),
-          onChanged: onChanged,
-          items: [
-            if (placeholder != null)
-              DropdownMenuItem<T>(value: null, child: Text(placeholder!)),
-            for (final (v, label) in items)
-              DropdownMenuItem<T>(value: v, child: Text(label)),
-          ],
         ),
       ),
     );

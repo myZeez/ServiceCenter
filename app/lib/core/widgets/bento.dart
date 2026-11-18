@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../kaca/kursor_liquid.dart';
 import '../theme.dart';
 
 /// Kotak bento: satu unit isi dengan garis 1px dan judul kecil di atasnya.
@@ -97,14 +98,16 @@ class _StatTileState extends State<StatTile> {
   Widget build(BuildContext context) {
     final accent = widget.accent ?? context.warna.teks;
     final active = widget.selected;
+    final kursorLiquid = KursorLiquid.aktifDi(context);
 
     return MouseRegion(
       cursor: widget.onTap == null
-          ? SystemMouseCursors.basic
-          : SystemMouseCursors.click,
+          ? MouseCursor.defer
+          : (kursorLiquid ? SystemMouseCursors.none : SystemMouseCursors.click),
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
@@ -148,7 +151,9 @@ class _StatTileState extends State<StatTile> {
                   fontSize: 9.5,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.9,
-                  color: active ? context.warna.kertas : context.warna.teksLembut,
+                  color: active
+                      ? context.warna.kertas
+                      : context.warna.teksLembut,
                 ),
               ),
             ],
@@ -186,7 +191,10 @@ class PageHeader extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle!,
-                  style: TextStyle(fontSize: 13, color: context.warna.teksLembut),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: context.warna.teksLembut,
+                  ),
                 ),
               ],
             ],

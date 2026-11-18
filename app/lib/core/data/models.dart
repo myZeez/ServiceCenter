@@ -950,3 +950,54 @@ class MetodeBayar {
     aktif: r['aktif'] as bool? ?? true,
   );
 }
+
+/// Perubahan nota yang sudah keluar, menunggu keputusan super admin.
+class PermintaanUbahNota {
+  const PermintaanUbahNota({
+    required this.id,
+    required this.notaId,
+    this.noNota,
+    required this.perubahan,
+    required this.sebelum,
+    required this.alasan,
+    required this.status,
+    required this.diajukanOleh,
+    required this.diajukanPada,
+    this.diputusOleh,
+    this.diputusPada,
+    this.catatanPutusan,
+  });
+
+  final String id;
+  final String notaId;
+  final String? noNota;
+  final Map<String, dynamic> perubahan;
+  final Map<String, dynamic> sebelum;
+  final String alasan;
+  final String status;
+  final String diajukanOleh;
+  final DateTime diajukanPada;
+  final String? diputusOleh;
+  final DateTime? diputusPada;
+  final String? catatanPutusan;
+
+  bool get menunggu => status == 'menunggu';
+
+  factory PermintaanUbahNota.fromMap(Map<String, dynamic> r) =>
+      PermintaanUbahNota(
+        id: r['id'] as String,
+        notaId: r['service_order_id'] as String,
+        noNota: r['no_nota'] as String?,
+        perubahan: Map<String, dynamic>.from(r['perubahan'] as Map),
+        sebelum: Map<String, dynamic>.from(r['sebelum'] as Map),
+        alasan: r['alasan'] as String,
+        status: r['status'] as String,
+        diajukanOleh: r['diajukan_oleh'] as String,
+        diajukanPada: DateTime.parse(r['diajukan_pada'] as String),
+        diputusOleh: r['diputus_oleh'] as String?,
+        diputusPada: r['diputus_pada'] == null
+            ? null
+            : DateTime.parse(r['diputus_pada'] as String),
+        catatanPutusan: r['catatan_putusan'] as String?,
+      );
+}

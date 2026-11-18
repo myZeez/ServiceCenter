@@ -372,7 +372,10 @@ class _ShipmentDialogState extends ConsumerState<ShipmentDialog> {
                   isExpanded: true,
                   hint: const Text('—'),
                   items: const [
-                    DropdownMenuItem(value: 'garansi', child: Text('Garansi')),
+                    DropdownMenuItem(
+                      value: 'garansi',
+                      child: Text('Garansi'),
+                    ),
                     DropdownMenuItem(
                       value: 'non_garansi',
                       child: Text('Non Garansi'),

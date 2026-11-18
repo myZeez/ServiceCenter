@@ -55,6 +55,8 @@ Future<void> _lukis(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        isGudangProvider.overrideWithValue(false),
+        hakModalProvider.overrideWithValue(false),
         partOrdersProvider.overrideWith((ref) => Stream.value(pesanan)),
         partCostsProvider.overrideWith((ref) => Stream.value(const [])),
         partSettingsProvider.overrideWith((ref) => Stream.value(null)),

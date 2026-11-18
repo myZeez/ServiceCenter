@@ -302,32 +302,32 @@ class ChipSaringan extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bg = aktif
+        ? context.warna.teks
+        : (context.kaca == null ? context.warna.permukaan : Colors.transparent);
+    final fg = aktif ? context.warna.kertas : context.warna.teks;
+
     return Padding(
       padding: const EdgeInsets.only(right: AppSpacing.xs),
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          alignment: Alignment.center,
           decoration: BoxDecoration(
-            // Warna padat tetap diperlukan untuk pilihan aktif. Filter yang
-            // tidak dipilih cukup dibatasi garis agar tidak menjadi blok
-            // putih di mode kaca.
-            color: aktif
-                ? context.warna.teks
-                : (context.kaca == null
-                      ? context.warna.permukaan
-                      : Colors.transparent),
+            color: bg,
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: context.warna.teks),
-            borderRadius: BorderRadius.circular(AppRadius.small),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
-              color: aktif ? context.warna.kertas : context.warna.teks,
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+                color: fg,
+              ),
             ),
           ),
         ),
@@ -482,6 +482,11 @@ class _UbahKerjaan extends ConsumerStatefulWidget {
 class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
   late String _status = widget.nota.status;
   late String? _teknisiId = widget.nota.teknisiId;
+
+  /// Nota yang sudah keluar: hanya catatan yang masih bisa diubah dari sini.
+  late final bool _terkunci =
+      ServiceStatus.terkunci(widget.nota.status) &&
+      !ref.read(isSuperAdminProvider);
 
   /// Status klaim yang dipilih, pada nota garansi brand. Kosong berarti
   /// belum disentuh, dan yang belum disentuh tidak ditulis -- sama seperti
@@ -645,7 +650,9 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
           ],
           LabeledField(
             label: klaim == null ? 'Status' : 'Status Nota',
-            hint: klaim == null
+            hint: _terkunci
+                ? 'Nota sudah keluar. Catatan tetap bisa diubah.'
+                : klaim == null
                 ? null
                 : 'Posisi unit: meja, pelanggan, atau cabang.',
             child: DropdownButtonFormField<String>(
@@ -658,15 +665,17 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
                     child: Text(ServiceStatus.label(s)),
                   ),
               ],
-              onChanged: (v) => setState(() {
-                if (v == null) return;
-                if (v == ServiceStatus.dikirimCabang &&
-                    widget.nota.status != ServiceStatus.dikirimCabang) {
-                  _tanggalKirim = hariIniKalender();
-                  _biayaDikirimCabang = null;
-                }
-                _status = v;
-              }),
+              onChanged: _terkunci
+                  ? null
+                  : (v) => setState(() {
+                      if (v == null) return;
+                      if (v == ServiceStatus.dikirimCabang &&
+                          widget.nota.status != ServiceStatus.dikirimCabang) {
+                        _tanggalKirim = hariIniKalender();
+                        _biayaDikirimCabang = null;
+                      }
+                      _status = v;
+                    }),
             ),
           ),
           if (klaim != null) ...[
@@ -774,7 +783,9 @@ class _UbahKerjaanState extends ConsumerState<_UbahKerjaan> {
                 for (final t in techs)
                   DropdownMenuItem(value: t.id, child: Text(t.nama)),
               ],
-              onChanged: (v) => setState(() => _teknisiId = v),
+              onChanged: _terkunci
+                  ? null
+                  : (v) => setState(() => _teknisiId = v),
             ),
           ),
           const SizedBox(height: AppSpacing.s),

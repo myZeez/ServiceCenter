@@ -1,22 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Bagian aplikasi yang sengaja disimpan dulu, bukan dibuang.
+/// Bagian aplikasi yang bisa dimatikan tanpa membuang apa pun.
 ///
-/// Tanya Harga dan Pemesanan Part sudah jadi seluruhnya -- tabel, aturan
-/// akses, layar, ekspor, dan 946 baris arsip yang sudah diimpor -- tetapi
-/// pemakaiannya ditunda. Yang ditutup hanyalah pintu masuknya:
+/// Tanya Harga dan Pemesanan Part: tabel, aturan akses, layar, dan ekspor.
+/// Menyala sejak 11 November 2026. Tanya harga biasanya lahir dari nota
+/// servis dan tertaut kembali ke sana, seperti klaim garansi. Pelanggan yang
+/// hanya bertanya harga tanpa meninggalkan unit tidak punya nota, jadi
+/// halaman Tanya Harga juga bisa mencatatnya manual.
+///
+/// Yang ditutup bila dimatikan hanyalah pintu masuknya:
 ///
 ///   * dua bagian di sidebar layar lebar
 ///   * satu butir di menu layar sempit
 ///   * bagian tanya harga di formulir nota servis
 ///
-/// Datanya tidak disentuh sama sekali. Menyalakannya kembali cukup dengan
-/// mengubah `false` di bawah menjadi `true` -- tidak ada migrasi yang
-/// perlu diulang, tidak ada baris yang perlu dipulihkan.
+/// Datanya tidak disentuh sama sekali.
 ///
 /// Ditulis sebagai provider, bukan konstanta, dengan satu alasan yang
-/// praktis: tes tetap bisa menyalakannya lewat override, jadi kode yang
-/// sedang disimpan ini tidak ikut membusuk selama menunggu. Fitur yang
-/// disembunyikan dengan cara membiarkan tesnya mati akan kembali dalam
-/// keadaan rusak, dan yang menemukannya adalah orang yang memakainya.
-final fiturTanyaHargaProvider = Provider<bool>((ref) => false);
+/// praktis: tes bisa mengubahnya lewat override, jadi kode di balik pintu
+/// ini tetap diuji walau pintunya ditutup.
+final fiturTanyaHargaProvider = Provider<bool>((ref) => true);

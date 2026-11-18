@@ -155,7 +155,10 @@ class EmptyState extends StatelessWidget {
                 constraints: const BoxConstraints(maxWidth: 320),
                 child: Text(
                   description!,
-                  style: TextStyle(color: context.warna.teksLembut, height: 1.5),
+                  style: TextStyle(
+                    color: context.warna.teksLembut,
+                    height: 1.5,
+                  ),
                 ),
               ),
             ],
@@ -235,8 +238,9 @@ class InlineAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.small),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
         child: Text(
           label.toUpperCase(),
           style: TextStyle(

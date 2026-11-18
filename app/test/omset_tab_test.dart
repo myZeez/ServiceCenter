@@ -41,13 +41,18 @@ List<ServiceOrderEntry> _nota() => [
 
 Future<void> _bukaTabOmset(WidgetTester tester) => _bukaTab(tester, 'OMSET');
 
-Future<void> _bukaTab(WidgetTester tester, String tab) async {
+Future<void> _bukaTab(
+  WidgetTester tester,
+  String tab, {
+  bool depan = false,
+}) async {
   await tester.binding.setSurfaceSize(const Size(1366, 768));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        isAdminDepanProvider.overrideWithValue(depan),
         serviceOrdersProvider.overrideWith((ref) => Stream.value(_nota())),
         allProfilesProvider.overrideWith(
           (ref) => Stream.value([
@@ -80,6 +85,7 @@ Future<void> _bukaTab(WidgetTester tester, String tab) async {
         // Bulan dan tanggalnya diikat supaya hasilnya tidak berubah besok.
         bulanProvider.overrideWith((ref) => const Bulan(2026, 9)),
         tanggalHarianProvider.overrideWith((ref) => DateTime(2026, 9, 5)),
+        mingguLaporanProvider.overrideWith((ref) => DateTime(2026, 8, 31)),
       ],
       child: const MaterialApp(home: Scaffold(body: ServiceReportsView())),
     ),
@@ -131,6 +137,7 @@ void main() {
   // karena baris kirim tidak punya pelanggan.
   const penanda = {
     'HARIAN': 'Pelanggan',
+    'MINGGUAN': 'TOTAL',
     'OMSET': 'Aris',
     'PELUNASAN': 'Pelanggan',
     'KESELURUHAN': 'Pelanggan',
@@ -151,4 +158,48 @@ void main() {
       );
     });
   }
+
+  testWidgets('tab MINGGUAN sampai ke omset tiap teknisi', (tester) async {
+    await _bukaTab(tester, 'MINGGUAN');
+
+    expect(find.text('Rp2.850.000'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.text('Deril'),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(find.text('Rp350.000'), findsOneWidget);
+  });
+
+  group('Admin meja depan', () {
+    testWidgets('hanya mendapat Harian dan Omset', (tester) async {
+      await _bukaTab(tester, 'OMSET', depan: true);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('HARIAN'), findsOneWidget);
+      for (final tab in const [
+        'MINGGUAN',
+        'PELUNASAN',
+        'KESELURUHAN',
+        'KIRIM',
+      ]) {
+        expect(find.text(tab), findsNothing, reason: tab);
+      }
+    });
+
+    // Admin yang mendorong omset, jadi harus tahu siapa yang masih kurang.
+    testWidgets('melihat omset tiap teknisi', (tester) async {
+      await _bukaTab(tester, 'OMSET', depan: true);
+
+      expect(find.text('Rp2.850.000'), findsWidgets);
+      for (final n in _nama) {
+        expect(find.text(n), findsOneWidget, reason: n);
+      }
+    });
+  });
 }

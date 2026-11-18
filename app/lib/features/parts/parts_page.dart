@@ -267,7 +267,10 @@ class _Kartu extends ConsumerWidget {
                 p.barangType!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12.5, color: context.warna.teksLembut),
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: context.warna.teksLembut,
+                ),
               ),
             ],
             const SizedBox(height: 6),
@@ -409,7 +412,10 @@ class _UbahPartState extends ConsumerState<_UbahPart> {
                 isExpanded: true,
                 items: [
                   for (final t in PartTahap.all)
-                    DropdownMenuItem(value: t, child: Text(PartTahap.label(t))),
+                    DropdownMenuItem(
+                      value: t,
+                      child: Text(PartTahap.label(t)),
+                    ),
                 ],
                 onChanged: (v) => setState(() => _tahap = v ?? _tahap),
               ),
@@ -446,7 +452,9 @@ class _UbahPartState extends ConsumerState<_UbahPart> {
             padding: const EdgeInsets.all(AppSpacing.xs),
             decoration: BoxDecoration(
               color: context.warna.aksen.withValues(alpha: 0.05),
-              border: Border(left: BorderSide(color: context.warna.aksen, width: 3)),
+              border: Border(
+                left: BorderSide(color: context.warna.aksen, width: 3),
+              ),
             ),
             child: Text(
               'Harga, DP, dan pelunasan diatur dari meja depan.',

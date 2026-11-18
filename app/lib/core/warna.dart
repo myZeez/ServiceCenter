@@ -252,3 +252,19 @@ class WarnaApp extends ThemeExtension<WarnaApp> {
 extension WarnaKonteks on BuildContext {
   WarnaApp get warna => Theme.of(this).extension<WarnaApp>() ?? WarnaApp.terang;
 }
+
+/// Palet khusus efek Liquid Glass agar seluruh warna tetap terpusat di
+/// [warna.dart], terpisah dari palet datar [WarnaApp].
+abstract final class WarnaLiquid {
+  /// Warna kaca bening bawaan untuk header, dock, dan tombol menu.
+  static const tintTerang = Color(0x2EFFFFFF);
+  static const tintGelap = Color(0x33202024);
+
+  /// Warna kaca bening untuk tombol ikon navigasi di AppBar (kembali / tutup).
+  static const ikonTerang = Color(0x38FFFFFF);
+  static const ikonGelap = Color(0x1EFFFFFF);
+
+  /// Kaca bening tetesan kursor Liquid Glass di Windows.
+  static const tetesanTerang = Color(0x22FFFFFF);
+  static const tetesanGelap = Color(0x28FFFFFF);
+}

@@ -482,7 +482,10 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                         hint: const Text('Pilih brand'),
                         items: [
                           for (final b in brands)
-                            DropdownMenuItem(value: b.id, child: Text(b.nama)),
+                            DropdownMenuItem(
+                              value: b.id,
+                              child: Text(b.nama),
+                            ),
                         ],
                         onChanged: (v) => setState(() => _brandId = v),
                         validator: (v) =>
@@ -580,8 +583,9 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                                         child: PilihanPart(p),
                                       ),
                                   ],
-                                  onChanged: (v) =>
-                                      setState(() => _parts[i].partTypeId = v),
+                                  onChanged: (v) => setState(
+                                    () => _parts[i].partTypeId = v,
+                                  ),
                                 ),
                               ),
                             ),
@@ -630,7 +634,10 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                         isExpanded: true,
                         items: [
                           for (final t in techs)
-                            DropdownMenuItem(value: t.id, child: Text(t.nama)),
+                            DropdownMenuItem(
+                              value: t.id,
+                              child: Text(t.nama),
+                            ),
                         ],
                         onChanged: (v) => setState(() => _teknisiId = v),
                       ),
@@ -648,7 +655,9 @@ class _ClaimFormPageState extends ConsumerState<ClaimFormPage> {
                               child: Text(
                                 ClaimStatus.label(
                                   s,
-                                  brand: ref.watch(namaBrandProvider)[_brandId],
+                                  brand: ref.watch(
+                                    namaBrandProvider,
+                                  )[_brandId],
                                 ),
                               ),
                             ),

@@ -298,7 +298,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(DockUtama),
-          matching: find.text('Servisku'),
+          matching: find.text('Servisku').first,
         ),
       );
       await tester.pumpAndSettle();
@@ -416,7 +416,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(DockUtama),
-          matching: find.text('Servisku'),
+          matching: find.text('Servisku').first,
         ),
       );
       await tester.pumpAndSettle();

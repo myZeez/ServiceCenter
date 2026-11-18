@@ -23,6 +23,7 @@ class PanelKaca extends StatelessWidget {
     this.bayangan = false,
     this.tepi = Tepi.keliling,
     this.transparan = false,
+    this.tanpaBuram = false,
   });
 
   final Widget child;
@@ -38,6 +39,10 @@ class PanelKaca extends StatelessWidget {
   /// Cocok untuk kepala daftar yang hanya butuh pemisah dan blur, bukan
   /// blok warna tambahan di atas latar kaca.
   final bool transparan;
+
+  /// Mematikan buram bawaan PanelKaca agar kaca bening transparan tanpa
+  /// efek frosted saat memakai shader liquid glass.
+  final bool tanpaBuram;
 
   @override
   Widget build(BuildContext context) {
@@ -72,21 +77,31 @@ class PanelKaca extends StatelessWidget {
         bidang = ClipRRect(borderRadius: radius, child: bidang);
       }
     } else {
-      final s = GayaKaca.sigma(tingkat);
-      bidang = ClipRRect(
-        borderRadius: radius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: s, sigmaY: s),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: transparan ? Colors.transparent : kaca.isiUntuk(tingkat),
-              borderRadius: lengkung,
-              border: garis,
-            ),
-            child: child,
-          ),
+      final isi = DecoratedBox(
+        decoration: BoxDecoration(
+          color: transparan ? Colors.transparent : kaca.isiUntuk(tingkat),
+          borderRadius: lengkung,
+          border: garis,
         ),
+        child: child,
       );
+      if (tanpaBuram) {
+        // Tanpa BackdropFilter sama sekali: lapisan ini hanya penyedia garis
+        // tepi. Buram bawaan -- sekalipun sigma 0 -- menambah satu salinan
+        // layar yang menutupi pembiasan Liquid Glass di bawahnya.
+        bidang = radius == BorderRadius.zero
+            ? isi
+            : ClipRRect(borderRadius: radius, child: isi);
+      } else {
+        final s = GayaKaca.sigma(tingkat);
+        bidang = ClipRRect(
+          borderRadius: radius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: s, sigmaY: s),
+            child: isi,
+          ),
+        );
+      }
     }
 
     if (!bayangan) return bidang;

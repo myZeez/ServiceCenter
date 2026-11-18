@@ -139,12 +139,44 @@ class GayaKaca extends ThemeExtension<GayaKaca> {
   }
 }
 
+/// Penanda bahwa elemen navigasi atas & bawah (header mengambang, dock,
+/// tombol kembali, menu titik tiga) memakai Liquid Glass.
+///
+/// Hanya dinyalakan di Android (dan Web untuk pratinjau). Pada Windows efek
+/// permukaan kaca dimatikan agar tabel data dan formulir tetap ringan; yang
+/// dipertahankan di Windows hanya kursor kaca cair ([KursorLiquid]).
+@immutable
+class GayaLiquid extends ThemeExtension<GayaLiquid> {
+  const GayaLiquid();
+
+  static const biasa = GayaLiquid();
+
+  @override
+  GayaLiquid copyWith() => this;
+
+  @override
+  GayaLiquid lerp(covariant GayaLiquid? lain, double t) => this;
+}
+
 extension KacaKonteks on BuildContext {
   /// Gaya kaca yang berlaku, atau null kalau kaca tidak dinyalakan.
   GayaKaca? get kaca => Theme.of(this).extension<GayaKaca>();
+
+  /// Penanda Liquid Glass pada bilah navigasi Android.
+  GayaLiquid? get gayaLiquid => Theme.of(this).extension<GayaLiquid>();
+
+  /// Apakah elemen navigasi utama memakai Liquid Glass di konteks ini.
+  bool get liquid => gayaLiquid != null || kaca != null;
 }
 
-/// Apakah perangkat ini memakai kaca. Hanya Android -- di Windows, meja
-/// depan membaca tabel padat seharian, dan kaca hanya membuatnya lebih
-/// sulit dibaca.
-bool get kacaDidukung => defaultTargetPlatform == TargetPlatform.android;
+/// Apakah perangkat ini memakai mode kaca & Liquid Glass pada navigasi
+/// (Android dan Web untuk pratinjau).
+bool get kacaDidukung =>
+    defaultTargetPlatform == TargetPlatform.android || kIsWeb;
+
+/// Alias dukungan Liquid Glass UI pada perangkat (Android / Web).
+bool get liquidDidukung => kacaDidukung;
+
+/// Apakah perangkat ini mendukung kursor mouse Liquid Glass (khusus Windows).
+bool get kursorLiquidDidukung =>
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;

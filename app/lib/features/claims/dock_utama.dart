@@ -2,7 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    show GlassQuality, GlassTab, GlassTabBar, GlassTabBarExtraButton;
 
+import '../../core/kaca/liquid.dart';
 import '../../core/kaca/panel_kaca.dart';
 import '../../core/theme.dart';
 
@@ -130,8 +133,21 @@ class _DockUtamaState extends State<DockUtama>
 
   @override
   Widget build(BuildContext context) {
-    final w = context.warna;
+    // Mode kaca (Android): dock adalah GlassTabBar asli dari paket
+    // liquid_glass_widgets -- kapsul kaca bening dengan lensa penanda yang
+    // meluncur, ditekan, dan membiaskan isi di belakangnya. Susunan buatan
+    // sendiri di bawah dipakai kalau kacanya dimatikan di Pengaturan, dan
+    // di Windows.
+    if (context.kaca != null) {
+      return _DockLiquid(
+        tab: widget.tab,
+        jumlahServisku: widget.jumlahServisku,
+        onTab: _pilih,
+        onKlaimBaru: widget.onKlaimBaru,
+      );
+    }
 
+    final w = context.warna;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: DockUtama.lebarMaks),
       child: PanelKaca(
@@ -255,8 +271,7 @@ class _ItemDock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final w = context.warna;
-    final gerak = DockUtama.lamaGerak(context);
+    final w = context.warna;    final gerak = DockUtama.lamaGerak(context);
 
     return Semantics(
       button: true,
@@ -340,8 +355,7 @@ class _Lencana extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final w = context.warna;
-    return Container(
+    final w = context.warna;    return Container(
       constraints: const BoxConstraints(minWidth: 16),
       height: 16,
       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -382,7 +396,6 @@ class _TambahState extends State<_Tambah> {
   @override
   Widget build(BuildContext context) {
     final w = context.warna;
-
     return Center(
       child: Tooltip(
         message: 'Klaim Baru',
@@ -415,6 +428,84 @@ class _TambahState extends State<_Tambah> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dock mode kaca: `GlassTabBar.bottom` dari paket liquid_glass_widgets.
+///
+/// Dua tab -- Klaim Garansi dan Servisku -- duduk di satu kapsul kaca bening;
+/// penandanya lensa yang meluncur dengan pegas dan bisa diseret. Klaim Baru
+/// bukan tab, jadi ia tombol kaca bulat tersendiri di kanan kapsul
+/// (`extraButton`), seperti tombol tulis di aplikasi bawaan iOS 26.
+///
+/// Jarak tepi dan safe area diatur halaman pemakainya (lihat ClaimsPage),
+/// jadi padding bawaan tab bar -- 20 di tiap sisi -- dinolkan.
+class _DockLiquid extends StatelessWidget {
+  const _DockLiquid({
+    required this.tab,
+    required this.jumlahServisku,
+    required this.onTab,
+    required this.onKlaimBaru,
+  });
+
+  final TabUtama tab;
+  final int jumlahServisku;
+  final ValueChanged<TabUtama> onTab;
+  final VoidCallback onKlaimBaru;
+
+  static const _tinggiBar = 64.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = context.warna;
+
+    Widget ikonServisku(IconData ikon) => Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Icon(ikon),
+        if (jumlahServisku > 0)
+          Positioned(left: 17, top: -6, child: _Lencana(jumlahServisku)),
+      ],
+    );
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: DockUtama.lebarMaks),
+      child: GlassTabBar.bottom(
+        selectedIndex: tab.index,
+        onTabSelected: (i) => onTab(TabUtama.values[i]),
+        horizontalPadding: 0,
+        verticalPadding: 0,
+        barHeight: _tinggiBar,
+        quality: GlassQuality.premium,
+        settings: pengaturanLiquid(context, tebal: 30),
+        selectedIconColor: w.teks,
+        unselectedIconColor: w.teks.withValues(alpha: 0.62),
+        selectedLabelColor: w.teks,
+        unselectedLabelColor: w.teks.withValues(alpha: 0.62),
+        tabs: [
+          const GlassTab(
+            icon: Icon(Icons.verified_user_outlined),
+            activeIcon: Icon(Icons.verified_user),
+            label: 'Klaim Garansi',
+          ),
+          GlassTab(
+            icon: ikonServisku(Icons.build_outlined),
+            activeIcon: ikonServisku(Icons.build),
+            label: 'Servisku',
+          ),
+        ],
+        extraButton: GlassTabBarExtraButton(
+          icon: const Icon(Icons.add, size: 28),
+          label: 'Klaim Baru',
+          size: _tinggiBar,
+          iconColor: w.bahaya,
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onKlaimBaru();
+          },
         ),
       ),
     );

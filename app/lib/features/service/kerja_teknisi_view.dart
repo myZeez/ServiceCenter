@@ -849,37 +849,40 @@ class _PilihTeknisi extends StatelessWidget {
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       decoration: BoxDecoration(
+        color: context.warna.permukaan,
+        borderRadius: BorderRadius.circular(AppRadius.small),
         border: Border.all(
           color: kosong ? context.warna.bahaya : context.warna.garisIsian,
         ),
-        borderRadius: BorderRadius.circular(AppRadius.small),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: nilai,
-          isExpanded: true,
-          isDense: true,
-          focusColor: Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.base),
-          icon: const Icon(Icons.expand_more, size: 16),
-          hint: Text(
-            'PILIH TEKNISI',
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-              color: context.warna.bahaya,
-            ),
-          ),
-          style: TextStyle(fontSize: 12.5, color: context.warna.teks),
-          onChanged: pilihan.isEmpty ? null : onPilih,
-          items: [
-            for (final p in pilihan)
-              DropdownMenuItem(
-                value: p.id,
-                child: Text(p.nama, overflow: TextOverflow.ellipsis),
+      child: Center(
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: nilai,
+            isExpanded: true,
+            isDense: true,
+            focusColor: Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.base),
+            icon: const Icon(Icons.expand_more, size: 16),
+            hint: Text(
+              'PILIH TEKNISI',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                color: context.warna.bahaya,
               ),
-          ],
+            ),
+            style: TextStyle(fontSize: 12.5, color: context.warna.teks),
+            onChanged: pilihan.isEmpty ? null : onPilih,
+            items: [
+              for (final p in pilihan)
+                DropdownMenuItem(
+                  value: p.id,
+                  child: Text(p.nama, overflow: TextOverflow.ellipsis),
+                ),
+            ],
+          ),
         ),
       ),
     );

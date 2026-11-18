@@ -7,6 +7,7 @@ import 'data/db.dart';
 import 'data/models.dart';
 import 'data/prefs.dart';
 import 'hari_laporan.dart';
+import 'peran.dart';
 import 'status.dart';
 import 'widgets/grid_canvas.dart';
 
@@ -69,14 +70,41 @@ final currentProfileProvider = Provider<Profile?>((ref) {
   return null;
 });
 
-final isAdminProvider = Provider<bool>(
-  (ref) => ref.watch(currentProfileProvider)?.role == 'admin',
+/// Admin atau super admin: siapa pun yang boleh mengelola nota dan klaim.
+final isAdminProvider = Provider<bool>((ref) {
+  final peran = ref.watch(currentProfileProvider)?.role;
+  return peran == Peran.admin || peran == Peran.superAdmin;
+});
+
+/// Tim gudang: hanya pesanan part dan data pembeliannya.
+final isGudangProvider = Provider<bool>(
+  (ref) => ref.watch(currentProfileProvider)?.role == Peran.gudang,
+);
+
+/// Yang boleh membaca modal (HPP) pesanan part.
+final hakModalProvider = Provider<bool>(
+  (ref) => ref.watch(isAdminProvider) || ref.watch(isGudangProvider),
+);
+
+/// Super admin dan gudang tidak mengerjakan unit, jadi tidak muncul sebagai
+/// pilihan teknisi maupun pengerja.
+bool _bukanPekerja(String role) =>
+    role == Peran.superAdmin || role == Peran.gudang;
+
+/// Pengelola: pengguna, data master, laporan lengkap, dan pendapatan.
+final isSuperAdminProvider = Provider<bool>(
+  (ref) => ref.watch(currentProfileProvider)?.role == Peran.superAdmin,
+);
+
+/// Admin meja depan, yang hanya melihat sebagian laporan dan pengaturan.
+final isAdminDepanProvider = Provider<bool>(
+  (ref) => ref.watch(currentProfileProvider)?.role == Peran.admin,
 );
 
 /// Pemantau khusus klaim garansi. Ia dapat membaca seluruh klaim, tetapi
 /// tidak diberi akses nota, servis, maupun perubahan data apa pun.
 final isAdminScProvider = Provider<bool>(
-  (ref) => ref.watch(currentProfileProvider)?.role == 'admin_sc',
+  (ref) => ref.watch(currentProfileProvider)?.role == Peran.adminSc,
 );
 
 // ---------------------------------------------------------------------
@@ -175,7 +203,9 @@ final partTypesProvider = Provider<AsyncValue<List<PartType>>>(
 final techniciansProvider = Provider<AsyncValue<List<Profile>>>(
   (ref) => ref
       .watch(allProfilesProvider)
-      .whenData((l) => l.where((p) => p.aktif).toList()),
+      .whenData(
+        (l) => l.where((p) => p.aktif && !_bukanPekerja(p.role)).toList(),
+      ),
 );
 
 /// Siapa saja yang boleh ditunjuk mengerjakan sebuah unit.
@@ -194,7 +224,7 @@ final pengerjaProvider = Provider<List<Profile>>(
   (ref) => [
     for (final p
         in ref.watch(allProfilesProvider).valueOrNull ?? const <Profile>[])
-      if (p.aktif) p,
+      if (p.aktif && !_bukanPekerja(p.role)) p,
   ],
 );
 
@@ -364,6 +394,19 @@ final namaBrandProvider = Provider<Map<int, String>>(
 
 final serviceOrdersProvider = StreamProvider<List<ServiceOrderEntry>>(
   (ref) => ref.watch(databaseProvider).watchServiceOrders(),
+);
+
+final permintaanNotaProvider = StreamProvider<List<PermintaanUbahNota>>(
+  (ref) => ref.watch(databaseProvider).watchPermintaanNota(),
+);
+
+final permintaanMenungguProvider = Provider<List<PermintaanUbahNota>>(
+  (ref) => [
+    for (final p
+        in ref.watch(permintaanNotaProvider).valueOrNull ??
+            const <PermintaanUbahNota>[])
+      if (p.menunggu) p,
+  ],
 );
 
 final partnerServicesProvider = StreamProvider<List<PartnerServiceEntry>>(

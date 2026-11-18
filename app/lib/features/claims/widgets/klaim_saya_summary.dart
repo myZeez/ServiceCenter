@@ -325,28 +325,31 @@ class _PeriodeDropdown extends ConsumerWidget {
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s),
       decoration: BoxDecoration(
-        border: Border.all(color: context.warna.teks),
+        color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.small),
+        border: Border.all(color: context.warna.teks),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selected.label,
-          isDense: true,
-          focusColor: Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.base),
-          icon: const Icon(Icons.expand_more, size: 16),
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.6,
-            color: context.warna.teks,
+      child: Center(
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: selected.label,
+            isDense: true,
+            focusColor: Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.base),
+            icon: const Icon(Icons.expand_more, size: 16),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: context.warna.teks,
+            ),
+            onChanged: (v) => ref.read(periodeProvider.notifier).state = list
+                .firstWhere((e) => e.label == v),
+            items: [
+              for (final p in list)
+                DropdownMenuItem(value: p.label, child: Text(p.label)),
+            ],
           ),
-          onChanged: (v) => ref.read(periodeProvider.notifier).state = list
-              .firstWhere((e) => e.label == v),
-          items: [
-            for (final p in list)
-              DropdownMenuItem(value: p.label, child: Text(p.label)),
-          ],
         ),
       ),
     );

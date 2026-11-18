@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    show GlassContainer, GlassQuality, LiquidRoundedRectangle;
+
 
 import 'gaya_kaca.dart';
+import 'liquid.dart';
 import 'panel_kaca.dart';
 
 /// Kepala daftar yang melayang di atas isinya.
 ///
 /// Di mode kaca, kepala daftar -- kotak pencarian dan deretan saringan --
 /// tidak lagi mendorong daftarnya ke bawah melainkan berdiri di atasnya.
-/// Kartu yang digulir lewat di belakangnya dan menjadi kabur; itulah yang
-/// membuat kacanya terbaca sebagai kaca, bukan sekadar warna pudar.
+/// Kartu yang digulir lewat di belakangnya dan terbiaskan oleh lensa kaca
+/// liquid glass bening; itulah yang membuat kacanya terbaca sebagai kaca
+/// cair asli, bukan sekadar warna pudar atau frosted buram.
 ///
 /// Di luar mode kaca susunannya persis seperti sebelumnya: kepala di atas,
 /// daftar di bawahnya, tidak ada yang bertumpuk. Karena itu [isi] menerima
@@ -61,26 +66,34 @@ class _KepalaMengambangState extends State<KepalaMengambang> {
           left: 0,
           right: 0,
           top: 0,
+          // Liquid Glass dari paket liquid_glass_widgets: bening transparan
+          // tanpa efek frosted (blur/frost 0), dengan refraksi optik shader
+          // murni agar kartu dan teks yang melintas di bawahnya terbiaskan
+          // seperti air/kaca cair.
+          //
+          // Bentuk atas dan bawah tetap lurus tanpa sudut melengkung,
+          // menyatu dengan AppBar dan garis pembatas bawah.
           child: PanelKaca(
             tingkat: TingkatKaca.ringan,
             tepi: Tepi.bawah,
             transparan: true,
-            child: _Ukur(
-              onTinggi: (t) {
-                if ((t - _tinggi).abs() < 0.5) return;
-                // Tingginya baru diketahui setelah ia dilukis sekali,
-                // jadi daftarnya baru bisa diberi ruang di frame
-                // berikutnya. Menyetelnya di tengah layout terlarang.
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) setState(() => _tinggi = t);
-                });
-              },
-              // Diukur bersama ruang di atasnya: yang dilaporkan adalah
-              // seluruh tinggi panel, dan itu yang harus disisakan di
-              // puncak daftar.
-              child: Padding(
-                padding: EdgeInsets.only(top: atas),
-                child: widget.kepala,
+            tanpaBuram: true,
+            child: GlassContainer(
+              useOwnLayer: true,
+              quality: GlassQuality.premium,
+              shape: const LiquidRoundedRectangle(borderRadius: 0),
+              settings: pengaturanLiquid(context, tebal: 22),
+              child: _Ukur(
+                onTinggi: (t) {
+                  if ((t - _tinggi).abs() < 0.5) return;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) setState(() => _tinggi = t);
+                  });
+                },
+                child: Padding(
+                  padding: EdgeInsets.only(top: atas),
+                  child: widget.kepala,
+                ),
               ),
             ),
           ),

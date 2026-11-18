@@ -393,6 +393,37 @@ class Db {
     return hasil as String;
   }
 
+  Stream<List<PermintaanUbahNota>> watchPermintaanNota() => _semua(
+    'permintaan_ubah_nota',
+    PermintaanUbahNota.fromMap,
+  ).map((l) => l..sort((a, b) => b.diajukanPada.compareTo(a.diajukanPada)));
+
+  /// Menyimpan isi formulir nota yang sudah keluar. Tanpa [alasan], kolom
+  /// terkunci yang berubah dikembalikan dulu tanpa ada yang tertulis.
+  Future<Map<String, dynamic>> ajukanPerubahanNota(
+    String notaId,
+    Map<String, dynamic> data, {
+    String? alasan,
+  }) async {
+    final hasil = await _c.rpc<dynamic>(
+      'ajukan_perubahan_nota',
+      params: {'p_nota': notaId, 'p_data': data, 'p_alasan': alasan},
+    );
+    return Map<String, dynamic>.from(hasil as Map);
+  }
+
+  Future<void> putuskanPermintaanNota(
+    String id, {
+    required bool setuju,
+    String? catatan,
+  }) => _c.rpc<dynamic>(
+    'putuskan_perubahan_nota',
+    params: {'p_id': id, 'p_setuju': setuju, 'p_catatan': catatan},
+  );
+
+  Future<void> batalkanPermintaanNota(String id) =>
+      _c.rpc<dynamic>('batalkan_permintaan_nota', params: {'p_id': id});
+
   Stream<List<ShipmentEntry>> watchShipments() => _semua(
     'shipments',
     ShipmentEntry.fromMap,
@@ -461,6 +492,35 @@ class Db {
   /// pesanan berarti dua penulisan. Dikunci pada part_order_id supaya
   /// menyunting harga menimpa catatan modal sebelumnya alih-alih
   /// menumpuk baris kedua.
+  /// Data pembelian sebuah pesanan: yang diisi gudang. Hanya kolom ini yang
+  /// diizinkan server untuk akun gudang; HPP masuk ke tabel modal tanpa
+  /// menyentuh up toko.
+  Future<void> simpanPembelianPart(
+    String id, {
+    String? tanggalOrder,
+    String? noPo,
+    String? asal,
+    String? catatan,
+    double? hpp,
+  }) async {
+    await _pastikan(
+      _c
+          .from('part_orders')
+          .update({
+            'tanggal_order': tanggalOrder,
+            'no_po': noPo,
+            'keterangan': asal,
+            'catatan': catatan,
+          })
+          .eq('id', id)
+          .select('id'),
+      'pesanan part',
+    );
+    if (hpp != null) {
+      await simpanPartCost({'part_order_id': id, 'hpp': hpp});
+    }
+  }
+
   Future<void> simpanPartCost(Map<String, dynamic> baris) => _pastikan(
     _c
         .from('part_order_costs')

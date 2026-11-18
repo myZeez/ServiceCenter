@@ -7,7 +7,7 @@
 //
 // Alur:
 //   1. periksa token pemanggil
-//   2. pastikan dia admin yang aktif
+//   2. pastikan dia super admin yang aktif
 //   3. baru buat user-nya
 //
 // Deploy: Dashboard > Edge Functions > Deploy a new function > Via Editor
@@ -46,15 +46,15 @@ Deno.serve(async (req) => {
   const { data: { user }, error: authErr } = await caller.auth.getUser();
   if (authErr || !user) return reply({ error: 'Sesi tidak valid. Login ulang.' }, 401);
 
-  // --- 2. Hanya admin aktif yang boleh --------------------------------
+  // --- 2. Hanya super admin aktif yang boleh --------------------------
   const { data: profile } = await caller
     .from('profiles')
     .select('role, aktif')
     .eq('id', user.id)
     .single();
 
-  if (!profile || profile.role !== 'admin' || !profile.aktif) {
-    return reply({ error: 'Hanya admin yang dapat menambah pengguna.' }, 403);
+  if (!profile || profile.role !== 'super_admin' || !profile.aktif) {
+    return reply({ error: 'Hanya super admin yang dapat menambah pengguna.' }, 403);
   }
 
   // --- 3. Validasi masukan --------------------------------------------
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
   const email = (body.email ?? '').trim().toLowerCase();
   const password = body.password ?? '';
   const nama = (body.nama ?? '').trim();
-  const role = ['admin', 'admin_sc', 'teknisi'].includes(body.role ?? '')
+  const role = ['super_admin', 'admin', 'admin_sc', 'teknisi', 'gudang'].includes(body.role ?? '')
     ? body.role!
     : 'teknisi';
 

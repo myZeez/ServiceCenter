@@ -714,6 +714,31 @@ class ExcelExport {
     ];
   }
 
+  /// Seminggu, bentuknya sama dengan berkas bulanan: satu tab per tanggal.
+  static Future<String?> harianMingguan({
+    required List<ServiceOrderEntry> semua,
+    required DateTime senin,
+    Set<int> libur = hariLiburBawaan,
+  }) => simpanBanyak(
+    namaBerkas:
+        'Laporan Mingguan ${_aman(DateFormat('dd MM yyyy').format(senin))}.xlsx',
+    lembar: lembarHarianMingguan(semua: semua, senin: senin, libur: libur),
+  );
+
+  static List<LembarExcel> lembarHarianMingguan({
+    required List<ServiceOrderEntry> semua,
+    required DateTime senin,
+    Set<int> libur = hariLiburBawaan,
+  }) => [
+    for (var i = 0; i < 7; i++)
+      if (!hariLibur(DateTime(senin.year, senin.month, senin.day + i), libur))
+        lembarHarian(
+          semua: semua,
+          tanggal: DateTime(senin.year, senin.month, senin.day + i),
+          namaLembar: '${DateTime(senin.year, senin.month, senin.day + i).day}',
+        ),
+  ];
+
   /// Satu tanggal: dua tabel bertumpuk, nota keluar lalu nota masuk.
   ///
   /// Nota keluar memuat unit yang diambil maupun dibatalkan lalu
@@ -983,12 +1008,37 @@ class ExcelExport {
     ],
   );
 
+  /// Satu berkas berisi semuanya, satu lembar untuk tiap kelompok: Semua,
+  /// Belum Selesai, Selesai, dan Batal. Isinya yang dikirim ke pusat tanpa
+  /// ada yang perlu disaring lagi di Excel.
+  static Future<String?> partLengkap({
+    required Map<String, List<PartOrder>> kelompok,
+    required Map<String, String> teknisi,
+    required Map<String, PartCost> modal,
+    required String periode,
+    Map<String, String> caraBayar = const {},
+  }) => simpanBanyak(
+    namaBerkas: 'Penjualan Part ${_aman(periode)}.xlsx',
+    lembar: [
+      for (final e in kelompok.entries)
+        lembarPart(
+          pesanan: e.value,
+          teknisi: teknisi,
+          modal: modal,
+          periode: '$periode - ${e.key}',
+          caraBayar: caraBayar,
+          namaLembar: e.key,
+        ),
+    ],
+  );
+
   static LembarExcel lembarPart({
     required List<PartOrder> pesanan,
     required Map<String, String> teknisi,
     required Map<String, PartCost> modal,
     required String periode,
     Map<String, String> caraBayar = const {},
+    String namaLembar = 'Penjualan Part',
   }) {
     final urut = [...pesanan]..sort((a, b) => a.tanggal.compareTo(b.tanggal));
 
@@ -1042,7 +1092,7 @@ class ExcelExport {
     }
 
     return LembarExcel(
-      nama: 'Penjualan Part',
+      nama: namaLembar,
       tabel: [
         TabelExcel(
           judul: 'LAPORAN PENJUALAN PART  ·  ${periode.toUpperCase()}',

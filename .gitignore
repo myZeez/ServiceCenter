@@ -1,6 +1,7 @@
 
 # Hasil installer, dibangun ulang dari kode
 installer/output/
+installer/*.apk
 
 # Workbook sumber lengkap untuk migrasi 2026 (Penerimaan, Pelunasan,
 # Kirim, Tanya Harga/Pemesanan Part, klaim garansi per brand, dan laporan

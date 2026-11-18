@@ -91,6 +91,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            isAdminDepanProvider.overrideWithValue(false),
             serviceOrdersProvider.overrideWith((ref) => Stream.value(const [])),
             shipmentsProvider.overrideWith((ref) => Stream.value(data)),
           ],

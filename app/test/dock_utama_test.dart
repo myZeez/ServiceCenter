@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' show GlassTabBar;
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import 'package:sc_management/core/data/models.dart';
@@ -108,7 +109,7 @@ void main() {
     }) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: tema ?? AppTheme.terang(kaca: true),
+          theme: tema ?? AppTheme.terang(),
           home: Scaffold(
             body: Align(
               alignment: Alignment.bottomCenter,
@@ -305,7 +306,7 @@ void main() {
     ) async {
       Future<void> lukisTanpaGerak(TabUtama tab) => tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.terang(kaca: true),
+          theme: AppTheme.terang(),
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(disableAnimations: true),
             child: child!,
@@ -364,16 +365,34 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('kacanya mengaburkan yang ada di belakangnya', (tester) async {
-      await lukis(tester);
+    testWidgets('mode kaca: dock adalah GlassTabBar Liquid Glass asli', (
+      tester,
+    ) async {
+      await lukis(tester, tema: AppTheme.terang(kaca: true));
 
-      expect(
-        find.descendant(
-          of: find.byType(DockUtama),
-          matching: find.byType(BackdropFilter),
-        ),
-        findsOneWidget,
+      expect(find.byType(GlassTabBar), findsOneWidget);
+      // Susunan buatan sendiri tidak ikut tergambar di mode kaca.
+      expect(find.byKey(DockUtama.kunciPenanda), findsNothing);
+      expect(find.byIcon(Icons.add), findsOneWidget);
+    });
+
+    testWidgets('mode kaca: tab dan Klaim Baru memanggil yang semestinya', (
+      tester,
+    ) async {
+      final tab = <TabUtama>[];
+      var baru = 0;
+      await lukis(
+        tester,
+        tema: AppTheme.terang(kaca: true),
+        onTab: tab.add,
+        onBaru: () => baru++,
       );
+
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pump();
+
+      expect(baru, 1);
+      expect(find.byType(GlassTabBar), findsOneWidget);
     });
 
     testWidgets('tanpa mode kaca dock tetap padat, tanpa buram', (

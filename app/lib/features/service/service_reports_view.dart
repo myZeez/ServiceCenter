@@ -6,6 +6,7 @@ import '../../core/export/excel_export.dart';
 import '../../core/data/models.dart';
 import '../../core/nota/nomor_nota.dart';
 import '../../core/nota/urutan_harian.dart';
+import '../../core/omset/laporan_mingguan.dart';
 import '../../core/omset/omset_providers.dart';
 import '../../core/hari_laporan.dart';
 import '../../core/providers.dart';
@@ -27,6 +28,7 @@ final _tglJam = DateFormat('dd/MM/yyyy HH:mm');
 final _tglPanjang = DateFormat('EEEE, d MMMM yyyy', 'id');
 final _namaBulan = DateFormat('MMMM yyyy', 'id');
 final _namaHari = DateFormat('EEEE', 'id');
+final _tglPendek = DateFormat('d MMM', 'id');
 
 /// Laporan servis dihitung per bulan, mengikuti cara laporan ini dibaca:
 /// tutup buku bulanan, bukan kuartalan seperti bagi hasil garansi.
@@ -71,9 +73,12 @@ class ServiceReportsView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bulan = ref.watch(bulanProvider);
+    // Admin meja depan: laporan harian untuk pusat dan omset bulanan.
+    final depan = ref.watch(isAdminDepanProvider);
 
     return DefaultTabController(
-      length: 5,
+      key: ValueKey(depan),
+      length: depan ? 2 : 6,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.s,
@@ -94,15 +99,18 @@ class ServiceReportsView extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(AppRadius.base),
                 border: Border.all(color: context.warna.garisHalus),
               ),
-              child: const TabBar(
+              child: TabBar(
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 tabs: [
-                  Tab(text: 'HARIAN'),
-                  Tab(text: 'OMSET'),
-                  Tab(text: 'PELUNASAN'),
-                  Tab(text: 'KESELURUHAN'),
-                  Tab(text: 'KIRIM'),
+                  const Tab(text: 'HARIAN'),
+                  if (!depan) const Tab(text: 'MINGGUAN'),
+                  const Tab(text: 'OMSET'),
+                  if (!depan) ...const [
+                    Tab(text: 'PELUNASAN'),
+                    Tab(text: 'KESELURUHAN'),
+                    Tab(text: 'KIRIM'),
+                  ],
                 ],
               ),
             ),
@@ -111,10 +119,13 @@ class ServiceReportsView extends ConsumerWidget {
               child: TabBarView(
                 children: [
                   const _Harian(),
+                  if (!depan) const _Mingguan(),
                   _Omset(bulan: bulan),
-                  _Pelunasan(bulan: bulan),
-                  _Keseluruhan(bulan: bulan),
-                  const _Kirim(),
+                  if (!depan) ...[
+                    _Pelunasan(bulan: bulan),
+                    _Keseluruhan(bulan: bulan),
+                    const _Kirim(),
+                  ],
                 ],
               ),
             ),
@@ -516,6 +527,273 @@ class _TabelHarian extends StatelessWidget {
 // =====================================================================
 // Omset jasa — kartu ringkasan toko, admin, dan tiap teknisi
 // =====================================================================
+
+/// Senin dari minggu yang sedang dibuka di tab Mingguan.
+final mingguLaporanProvider = StateProvider<DateTime>(
+  (ref) => seninDari(DateTime.now()),
+);
+
+class _Mingguan extends ConsumerWidget {
+  const _Mingguan();
+
+  void _geser(WidgetRef ref, DateTime senin, int hari) =>
+      ref.read(mingguLaporanProvider.notifier).state = DateTime(
+        senin.year,
+        senin.month,
+        senin.day + hari,
+      );
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final senin = ref.watch(mingguLaporanProvider);
+    final semua =
+        ref.watch(serviceOrdersProvider).valueOrNull ??
+        const <ServiceOrderEntry>[];
+    final libur = ref.watch(hariLiburProvider);
+    final nama = {
+      for (final p
+          in ref.watch(techniciansProvider).valueOrNull ?? const <Profile>[])
+        p.id: p.nama,
+    };
+    final laporan = hitungLaporanMingguan(
+      nota: semua,
+      senin: senin,
+      aturan: ref.watch(omsetSettingsProvider).valueOrNull,
+    );
+    final mingguDepan = !DateTime(
+      senin.year,
+      senin.month,
+      senin.day + 7,
+    ).isAfter(DateTime.now());
+    final rentang =
+        '${_tglPendek.format(senin)} – '
+        '${_tglPendek.format(laporan.hari.last.tanggal)} ${senin.year}';
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      children: [
+        Row(
+          children: [
+            IconButton(
+              tooltip: 'Minggu sebelumnya',
+              onPressed: () => _geser(ref, senin, -7),
+              icon: const Icon(Icons.chevron_left),
+            ),
+            Text(
+              rentang.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Minggu berikutnya',
+              onPressed: mingguDepan ? () => _geser(ref, senin, 7) : null,
+              icon: const Icon(Icons.chevron_right),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            OutlinedButton(
+              onPressed: () => ref.read(mingguLaporanProvider.notifier).state =
+                  seninDari(DateTime.now()),
+              child: const Text('MINGGU INI'),
+            ),
+            const Spacer(),
+            _TombolExport(
+              aktif: semua.isNotEmpty,
+              onExport: () => ExcelExport.harianMingguan(
+                semua: semua,
+                senin: senin,
+                libur: libur,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.s),
+        SizedBox(
+          height: 190,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 2,
+                child: _KartuAngka(
+                  judul: 'Omset Toko',
+                  nilai: _rp.format(laporan.omset.omsetToko),
+                  catatan: '${laporan.omset.jumlahNota} nota selesai',
+                  aksen: context.warna.bahaya,
+                  rincian: [
+                    ('Uang sudah masuk', _rp.format(laporan.omset.sudahMasuk)),
+                    ('Masih piutang', _rp.format(laporan.omset.piutang)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(
+                child: _KartuAngka(
+                  judul: 'Nota Masuk',
+                  nilai: '${laporan.masuk}',
+                  catatan: 'Unit diterima minggu ini',
+                  aksen: context.warna.aksen,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(
+                child: _KartuAngka(
+                  judul: 'Nota Keluar',
+                  nilai: '${laporan.keluar}',
+                  catatan: _rp.format(laporan.nilaiKeluar),
+                  aksen: context.warna.aksen,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s),
+        _Kartu(
+          judul: 'Per Hari',
+          ringkas: 'Keluar dan omset mengikuti hari laporan',
+          kosong: false,
+          pesanKosong: '',
+          padat: true,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.s,
+            ),
+            child: Column(
+              children: [
+                const _BarisMingguan(
+                  hari: 'HARI',
+                  masuk: 'MASUK',
+                  keluar: 'KELUAR',
+                  nilai: 'NILAI KELUAR',
+                  omset: 'OMSET',
+                  tebal: true,
+                ),
+                const Divider(),
+                for (final h in laporan.hari)
+                  _BarisMingguan(
+                    hari:
+                        '${_namaHari.format(h.tanggal)}, '
+                        '${_tglPendek.format(h.tanggal)}'
+                        '${hariLibur(h.tanggal, libur) ? ' (libur)' : ''}',
+                    masuk: '${h.masuk}',
+                    keluar: '${h.keluar}',
+                    nilai: _rp.format(h.nilaiKeluar),
+                    omset: _rp.format(h.omset),
+                  ),
+                const Divider(),
+                _BarisMingguan(
+                  hari: 'TOTAL',
+                  masuk: '${laporan.masuk}',
+                  keluar: '${laporan.keluar}',
+                  nilai: _rp.format(laporan.nilaiKeluar),
+                  omset: _rp.format(laporan.omset.omsetToko),
+                  tebal: true,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s),
+        _Kartu(
+          judul: 'Omset per Teknisi',
+          ringkas: 'Pekerjaan yang selesai minggu ini',
+          kosong: laporan.omset.teknisi.isEmpty,
+          pesanKosong: 'Belum ada pekerjaan selesai minggu ini.',
+          padat: true,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.s,
+            ),
+            child: Column(
+              children: [
+                for (final t in laporan.omset.teknisi)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            nama[t.teknisiId] ?? '—',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${t.jumlahNota} nota',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: context.warna.teksLembut,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.s),
+                        Text(
+                          _rp.format(t.omset),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BarisMingguan extends StatelessWidget {
+  const _BarisMingguan({
+    required this.hari,
+    required this.masuk,
+    required this.keluar,
+    required this.nilai,
+    required this.omset,
+    this.tebal = false,
+  });
+
+  final String hari;
+  final String masuk;
+  final String keluar;
+  final String nilai;
+  final String omset;
+  final bool tebal;
+
+  @override
+  Widget build(BuildContext context) {
+    final gaya = TextStyle(
+      fontSize: 13,
+      fontWeight: tebal ? FontWeight.w700 : FontWeight.w400,
+    );
+
+    Widget angka(String teks, double lebar) => SizedBox(
+      width: lebar,
+      child: Text(teks, textAlign: TextAlign.right, style: gaya),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(child: Text(hari, style: gaya)),
+          angka(masuk, 72),
+          angka(keluar, 72),
+          angka(nilai, 130),
+          angka(omset, 130),
+        ],
+      ),
+    );
+  }
+}
 
 class _Omset extends ConsumerWidget {
   const _Omset({required this.bulan});
@@ -1493,28 +1771,31 @@ class _BulanDropdown extends ConsumerWidget {
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s),
       decoration: BoxDecoration(
-        border: Border.all(color: context.warna.teks),
+        color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.small),
+        border: Border.all(color: context.warna.teks),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: kini.label,
-          isDense: true,
-          focusColor: Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.base),
-          icon: const Icon(Icons.expand_more, size: 16),
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.6,
-            color: context.warna.teks,
+      child: Center(
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: kini.label,
+            isDense: true,
+            focusColor: Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.base),
+            icon: const Icon(Icons.expand_more, size: 16),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: context.warna.teks,
+            ),
+            onChanged: (v) => ref.read(bulanProvider.notifier).state = daftar
+                .firstWhere((b) => b.label == v),
+            items: [
+              for (final b in daftar)
+                DropdownMenuItem(value: b.label, child: Text(b.label)),
+            ],
           ),
-          onChanged: (v) => ref.read(bulanProvider.notifier).state = daftar
-              .firstWhere((b) => b.label == v),
-          items: [
-            for (final b in daftar)
-              DropdownMenuItem(value: b.label, child: Text(b.label)),
-          ],
         ),
       ),
     );

@@ -43,6 +43,21 @@ class ServiceStatus {
 
   static bool sedangDikerjakan(String status) => berjalan.contains(status);
 
+  /// Unit sudah keluar dari toko, jadi angkanya sudah masuk laporan. Server
+  /// mengunci nota ini: selain catatan dan pelunasan, perubahannya perlu
+  /// persetujuan super admin. Lihat migrasi 0067.
+  static const keluar = [diambil, batal];
+
+  static bool terkunci(String status) => keluar.contains(status);
+
+  /// Unit keluar pada penyimpanan ini, jadi perlu dicap tanggal keluar.
+  ///
+  /// Nota yang sudah keluar tidak dicap ulang. Arsip lama memang tidak punya
+  /// tanggal keluar (migrasi 0045); mencapnya saat disunting memindahkan nota
+  /// itu ke Nota Keluar hari ini.
+  static bool baruKeluar({required String? sebelum, required String sesudah}) =>
+      terkunci(sesudah) && (sebelum == null || !terkunci(sebelum));
+
   static const _labels = {
     masuk: 'Masuk',
     dikerjakan: 'Dikerjakan',

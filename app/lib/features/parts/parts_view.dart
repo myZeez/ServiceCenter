@@ -11,6 +11,7 @@ import '../../core/widgets/swiss_widgets.dart';
 import '../scan/scan_page.dart';
 import 'part_dialog.dart';
 import 'part_status.dart';
+import 'tanya_harga_dari_nota.dart';
 
 final _rp = NumberFormat.currency(
   locale: 'id_ID',
@@ -124,6 +125,8 @@ class _PartsViewState extends ConsumerState<PartsView> {
 
     return CallbackShortcuts(
       bindings: {
+        // Pelanggan yang hanya bertanya harga tanpa meninggalkan unit tidak
+        // punya nota, jadi jalan pintasnya ke isian kosong.
         const SingleActivator(LogicalKeyboardKey.keyN, control: true): () =>
             showPartDialog(context),
       },
@@ -141,7 +144,7 @@ class _PartsViewState extends ConsumerState<PartsView> {
                 title: 'Tanya Harga',
                 subtitle:
                     '${semua.length} permintaan tercatat  ·  Ctrl+N untuk '
-                    'tambah',
+                    'tanya harga tanpa nota',
                 actions: [
                   SizedBox(
                     width: 300,
@@ -169,10 +172,16 @@ class _PartsViewState extends ConsumerState<PartsView> {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.s),
+                  OutlinedButton.icon(
+                    onPressed: () => tanyaHargaDariNota(context, ref),
+                    icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                    label: const Text('DARI NOTA'),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
                   FilledButton.icon(
                     onPressed: () => showPartDialog(context),
                     icon: const Icon(Icons.add, size: 18),
-                    label: const Text('TANYA HARGA'),
+                    label: const Text('MANUAL'),
                   ),
                 ],
               ),
@@ -223,12 +232,24 @@ class _PartsViewState extends ConsumerState<PartsView> {
                               ? 'Belum ada permintaan part'
                               : 'Tidak ada yang cocok',
                           description: semua.isEmpty
-                              ? 'Dicatat saat pelanggan menanyakan harga '
-                                    'part unit non-garansi.'
+                              ? 'Dari nota servis: buka notanya, lalu tekan '
+                                    'Tanya Harga Part. Pelanggan yang hanya '
+                                    'bertanya harga dicatat lewat Manual.'
                               : 'Ubah saringan atau kata pencarian di atas.',
-                          action: OutlinedButton(
-                            onPressed: () => showPartDialog(context),
-                            child: const Text('TANYA HARGA'),
+                          action: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              OutlinedButton(
+                                onPressed: () =>
+                                    tanyaHargaDariNota(context, ref),
+                                child: const Text('DARI NOTA'),
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              FilledButton(
+                                onPressed: () => showPartDialog(context),
+                                child: const Text('MANUAL'),
+                              ),
+                            ],
                           ),
                         )
                       : _Tabel(items: tampil, techs: techs),
@@ -373,13 +394,20 @@ class _BarisState extends State<_Baris> {
                 flex: 3,
                 child: Padding(
                   padding: const EdgeInsets.only(right: AppSpacing.s),
-                  child: Text(
-                    p.customerNama,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        p.customerNama,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      NomorNotaTanyaHarga(p.serviceOrderId),
+                    ],
                   ),
                 ),
               ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'kaca/gaya_kaca.dart';
 import 'kaca/lapisan_kaca.dart';
+import 'kaca/liquid.dart';
 import 'warna.dart';
 
 export 'kaca/gaya_kaca.dart';
@@ -67,23 +68,49 @@ TextStyle gayaAngka(BuildContext context, {double? ukuran, FontWeight? tebal}) {
 class AppTheme {
   /// Siang: Swiss/International Typographic Style, seperti sejak awal.
   ///
-  /// [kaca] menyalakan mode kaca: bidang tembus pandang di atas latar
-  /// berwarna, dengan buram yang berbeda-beda tebalnya. Hanya dipakai
-  /// Android -- lihat `kacaDidukung`.
-  static ThemeData terang({bool kaca = false}) => _susun(
-    kaca ? WarnaApp.terangKaca : WarnaApp.terang,
-    Brightness.light,
-    kaca ? GayaKaca.terang : null,
-  );
+  /// [kaca] menyalakan mode kaca penuh (Android). [liquid] menyalakan Liquid
+  /// Glass pada navigasi atas & bawah (header, dock, tombol kembali, menu
+  /// titik tiga) -- bawaannya mengikuti [kaca]. [kursor] menyalakan kursor
+  /// tetesan kaca cair di Windows tanpa menambahkan efek kaca pada tombol
+  /// maupun permukaan formulir.
+  static ThemeData terang({
+    bool kaca = false,
+    bool? liquid,
+    bool kursor = false,
+  }) {
+    final pakaiLiquid = liquid ?? kaca;
+    return _susun(
+      kaca ? WarnaApp.terangKaca : WarnaApp.terang,
+      Brightness.light,
+      kaca ? GayaKaca.terang : null,
+      pakaiLiquid ? GayaLiquid.biasa : null,
+      kursor: kursor,
+    );
+  }
 
   /// Malam: abu arang berlapis dengan kontras yang tetap nyaman dibaca.
-  static ThemeData gelap({bool kaca = false}) => _susun(
-    kaca ? WarnaApp.gelapKaca : WarnaApp.gelap,
-    Brightness.dark,
-    kaca ? GayaKaca.gelap : null,
-  );
+  static ThemeData gelap({
+    bool kaca = false,
+    bool? liquid,
+    bool kursor = false,
+  }) {
+    final pakaiLiquid = liquid ?? kaca;
+    return _susun(
+      kaca ? WarnaApp.gelapKaca : WarnaApp.gelap,
+      Brightness.dark,
+      kaca ? GayaKaca.gelap : null,
+      pakaiLiquid ? GayaLiquid.biasa : null,
+      kursor: kursor,
+    );
+  }
 
-  static ThemeData _susun(WarnaApp w, Brightness terang, GayaKaca? kaca) {
+  static ThemeData _susun(
+    WarnaApp w,
+    Brightness terang,
+    GayaKaca? kaca,
+    GayaLiquid? liquid, {
+    bool kursor = false,
+  }) {
     final scheme = ColorScheme(
       brightness: terang,
       primary: w.teks,
@@ -156,20 +183,34 @@ class AppTheme {
       borderSide: BorderSide(color: c, width: t),
     );
 
+    final kursorMouse = kursor
+        ? const WidgetStatePropertyAll<MouseCursor>(SystemMouseCursors.none)
+        : null;
+
     return ThemeData(
       colorScheme: scheme,
       useMaterial3: true,
-      extensions: [w, ?kaca],
+      extensions: [w, ?kaca, ?liquid],
       // Di mode kaca latar halaman bening: yang terlihat adalah LatarKaca
       // yang dipasang di dalam tiap halaman.
       scaffoldBackgroundColor: w.latar,
       textTheme: text,
       splashFactory: InkSparkle.splashFactory,
 
-      // Dipakai menu DropdownButton sebagai latarnya. Kacanya lebih pekat
-      // daripada kartu: menu berdiri sebentar di atas isi yang sedang
-      // dibaca, dan yang di bawahnya tidak boleh ikut terbaca.
+      // Dipakai menu DropdownButton sebagai latarnya. Di mode kaca ia tembus
+      // pandang supaya tidak berdiri sebagai balok putih di depan halaman.
       canvasColor: kaca?.isiUntuk(TingkatKaca.tebal),
+
+      // Tombol kembali & tutup di AppBar Android tetap memakai gelembung
+      // Liquid Glass agar serasi dengan header dan menu titik tiga.
+      actionIconTheme: liquid == null
+          ? null
+          : ActionIconThemeData(
+              backButtonIconBuilder: (_) =>
+                  const TombolIkonLiquid(icon: Icons.arrow_back),
+              closeButtonIconBuilder: (_) =>
+                  const TombolIkonLiquid(icon: Icons.close),
+            ),
 
       appBarTheme: AppBarTheme(
         backgroundColor: w.latar,
@@ -244,7 +285,7 @@ class AppTheme {
             fontWeight: FontWeight.w600,
             letterSpacing: 0.1,
           ),
-        ),
+        ).copyWith(mouseCursor: kursorMouse),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -256,15 +297,22 @@ class AppTheme {
             borderRadius: BorderRadius.circular(AppRadius.base),
           ),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
+        ).copyWith(mouseCursor: kursorMouse),
       ),
 
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: w.aksen,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.base),
+          ),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
+        ).copyWith(mouseCursor: kursorMouse),
       ),
+
+      iconButtonTheme: kursorMouse == null
+          ? null
+          : IconButtonThemeData(style: ButtonStyle(mouseCursor: kursorMouse)),
 
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: w.bahaya,
@@ -306,6 +354,10 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         showCheckmark: false,
       ),
+
+      checkboxTheme: kursorMouse == null
+          ? null
+          : CheckboxThemeData(mouseCursor: kursorMouse),
 
       dialogTheme: DialogThemeData(
         backgroundColor: kaca?.isiUntuk(TingkatKaca.tebal) ?? w.permukaan,

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -54,7 +56,7 @@ class TampilanCard extends ConsumerWidget {
                 ],
               ),
             ),
-            if (kacaDidukung) ...[
+            if (kacaDidukung || kursorLiquidDidukung) ...[
               const SizedBox(height: AppSpacing.s),
               _SakelarKaca(
                 nyala: ref.watch(efekKacaProvider).valueOrNull ?? true,
@@ -102,8 +104,12 @@ class _Baris extends StatelessWidget {
 
     return InkWell(
       onTap: onPilih,
+      borderRadius: BorderRadius.circular(AppRadius.base),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.xs,
+          horizontal: AppSpacing.xs,
+        ),
         child: Row(
           children: [
             Icon(
@@ -166,30 +172,64 @@ class _Contoh extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'SVR-09092628292',
-            style: TextStyle(
-              fontFamily: kFontAngka,
-              fontFamilyFallback: kFontAngkaCadangan,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: w.teks,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'Joe Topan — Laptop Axioo',
-            style: TextStyle(fontSize: 11, color: w.teksLembut),
-          ),
-          const SizedBox(height: AppSpacing.xs),
           Row(
             children: [
+              Text(
+                'CONTOH MODE GELAP',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                  color: w.teksLembut,
+                ),
+              ),
+              const Spacer(),
+              _Tanda('PROSES', w.aksen),
+              const SizedBox(width: 4),
               _Tanda('GARANSI', w.garansi),
-              const SizedBox(width: AppSpacing.xxs),
+              const SizedBox(width: 4),
               _Tanda('PIUTANG', w.bahaya),
-              const SizedBox(width: AppSpacing.xxs),
-              _Tanda('DIKERJAKAN', w.aksen),
             ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.xs),
+            decoration: BoxDecoration(
+              color: w.permukaan,
+              border: Border.all(color: w.garisHalus),
+              borderRadius: BorderRadius.circular(AppRadius.small),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Rudi Hartono',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: w.teks,
+                        ),
+                      ),
+                      Text(
+                        'Asus ROG · Ganti LCD',
+                        style: TextStyle(fontSize: 11, color: w.teksLembut),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  'Rp450.000',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: w.aksen,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -224,8 +264,7 @@ class _Tanda extends StatelessWidget {
   }
 }
 
-/// Sakelar efek kaca. Hanya muncul di Android -- di Windows efek itu
-/// memang tidak pernah dipakai.
+/// Sakelar efek kaca (Android) / kursor Liquid Glass (Windows).
 class _SakelarKaca extends StatelessWidget {
   const _SakelarKaca({required this.nyala, required this.onUbah});
 
@@ -235,16 +274,22 @@ class _SakelarKaca extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final w = context.warna;
+    final windows = defaultTargetPlatform == TargetPlatform.windows;
 
     return LabeledField(
-      label: 'Efek Kaca',
-      hint:
-          'Bidang tembus pandang dengan latar yang buram. Matikan kalau HP '
-          'ini terasa tersendat saat menggulir.',
+      label: windows ? 'Kursor Liquid Glass' : 'Efek Kaca',
+      hint: windows
+          ? 'Efek tetesan kaca cair pada kursor mouse di Windows.'
+          : 'Efek Liquid Glass pada header atas, dock bawah, tombol kembali, '
+                'dan menu titik tiga. Matikan kalau HP terasa tersendat.',
       child: InkWell(
         onTap: () => onUbah(!nyala),
+        borderRadius: BorderRadius.circular(AppRadius.base),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.xs,
+            horizontal: AppSpacing.xs,
+          ),
           child: Row(
             children: [
               Expanded(

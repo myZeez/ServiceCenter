@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    show GlassMenuDivider, GlassMenuItem, GlassPullDownButton;
 
 import '../../core/data/models.dart';
 import '../../core/fitur.dart';
 import '../../core/kaca/kepala_mengambang.dart';
+import '../../core/kaca/liquid.dart';
+import '../../core/peran.dart';
 import '../../core/providers.dart';
 import '../../core/status.dart';
 import '../../core/theme.dart';
@@ -12,6 +16,7 @@ import '../../core/widgets/gagal_muat.dart';
 import '../../core/widgets/koneksi.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import '../parts/parts_page.dart';
+import '../persetujuan/persetujuan_view.dart';
 import '../service/servisku_view.dart';
 import '../reports/reports_page.dart';
 import '../scan/scan_page.dart';
@@ -53,6 +58,7 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
     // separuh daftar; lebih baik dock menyingkir selama orang mengetik.
     final papanKetik = MediaQuery.viewInsetsOf(context).bottom > 0;
     final isAdmin = ref.watch(isAdminProvider);
+    final superAdmin = ref.watch(isSuperAdminProvider);
     final adaPart = ref.watch(fiturTanyaHargaProvider);
     final profile = ref.watch(currentProfileProvider);
 
@@ -70,7 +76,7 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
             Text(_tab == TabUtama.klaim ? 'Klaim Garansi' : 'Servisku'),
             if (profile != null)
               Text(
-                '${profile.nama} — ${profile.role}'.toUpperCase(),
+                '${profile.nama} — ${Peran.label(profile.role)}'.toUpperCase(),
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
@@ -82,48 +88,117 @@ class _ClaimsPageState extends ConsumerState<ClaimsPage> {
         ),
         actions: [
           const IndikatorKoneksi(),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, size: 20),
-            position: PopupMenuPosition.under,
-            onSelected: (v) {
-              switch (v) {
-                case 'part':
-                  _push(context, const PartsPage());
-                case 'part_kembali':
-                  _push(context, const PartKembaliPage());
-                case 'rekap':
-                  _push(context, const ReportsPage());
-                case 'rekap_brand':
-                  _push(context, const SettlementPage());
-                case 'pengaturan':
-                  _push(context, const SettingsPage());
-                case 'keluar':
-                  ref.read(supabaseProvider).auth.signOut();
-              }
-            },
-            itemBuilder: (_) => [
-              // Sedang disimpan -- lihat fiturTanyaHargaProvider.
-              if (adaPart)
-                const PopupMenuItem(value: 'part', child: Text('Part')),
-              if (isAdmin) ...[
-                const PopupMenuItem(
-                  value: 'part_kembali',
-                  child: Text('Part Kembali'),
-                ),
-                const PopupMenuItem(value: 'rekap', child: Text('Rekap')),
-                const PopupMenuItem(
-                  value: 'rekap_brand',
-                  child: Text('Rekap Brand'),
-                ),
-                const PopupMenuItem(
-                  value: 'pengaturan',
-                  child: Text('Pengaturan'),
-                ),
+          if (context.liquid)
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: GlassPullDownButton(
+                icon: const Icon(Icons.more_vert, size: 20),
+                semanticLabel: 'Menu lainnya',
+                menuSemanticLabel: 'Menu lainnya',
+                buttonWidth: 40,
+                buttonHeight: 40,
+                menuWidth: 210,
+                quality: kualitasLiquid(context, utama: true),
+                settings: pengaturanLiquid(context, tebal: 24),
+                items: [
+                  if (adaPart)
+                    GlassMenuItem(
+                      title: 'Part',
+                      icon: const Icon(Icons.inventory_2_outlined),
+                      onTap: () => _push(context, const PartsPage()),
+                    ),
+                  if (isAdmin)
+                    GlassMenuItem(
+                      title: 'Part Kembali',
+                      icon: const Icon(Icons.assignment_return_outlined),
+                      onTap: () => _push(context, const PartKembaliPage()),
+                    ),
+                  if (superAdmin) ...[
+                    GlassMenuItem(
+                      title: 'Rekap',
+                      icon: const Icon(Icons.insights_outlined),
+                      onTap: () => _push(context, const ReportsPage()),
+                    ),
+                    GlassMenuItem(
+                      title: 'Rekap Brand',
+                      icon: const Icon(Icons.fact_check_outlined),
+                      onTap: () => _push(context, const SettlementPage()),
+                    ),
+                  ],
+                  if (isAdmin) ...[
+                    GlassMenuItem(
+                      title: 'Persetujuan',
+                      icon: const Icon(Icons.rule_outlined),
+                      onTap: () => _push(context, const PersetujuanPage()),
+                    ),
+                    GlassMenuItem(
+                      title: 'Pengaturan',
+                      icon: const Icon(Icons.tune),
+                      onTap: () => _push(context, const SettingsPage()),
+                    ),
+                  ],
+                  const GlassMenuDivider(),
+                  GlassMenuItem(
+                    title: 'Keluar',
+                    icon: const Icon(Icons.logout),
+                    isDestructive: true,
+                    onTap: () => ref.read(supabaseProvider).auth.signOut(),
+                  ),
+                ],
+              ),
+            )
+          else
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, size: 20),
+              position: PopupMenuPosition.under,
+              onSelected: (v) {
+                switch (v) {
+                  case 'part':
+                    _push(context, const PartsPage());
+                  case 'part_kembali':
+                    _push(context, const PartKembaliPage());
+                  case 'rekap':
+                    _push(context, const ReportsPage());
+                  case 'rekap_brand':
+                    _push(context, const SettlementPage());
+                  case 'persetujuan':
+                    _push(context, const PersetujuanPage());
+                  case 'pengaturan':
+                    _push(context, const SettingsPage());
+                  case 'keluar':
+                    ref.read(supabaseProvider).auth.signOut();
+                }
+              },
+              itemBuilder: (_) => [
+                // Sedang disimpan -- lihat fiturTanyaHargaProvider.
+                if (adaPart)
+                  const PopupMenuItem(value: 'part', child: Text('Part')),
+                if (isAdmin)
+                  const PopupMenuItem(
+                    value: 'part_kembali',
+                    child: Text('Part Kembali'),
+                  ),
+                if (superAdmin) ...[
+                  const PopupMenuItem(value: 'rekap', child: Text('Rekap')),
+                  const PopupMenuItem(
+                    value: 'rekap_brand',
+                    child: Text('Rekap Brand'),
+                  ),
+                ],
+                if (isAdmin) ...[
+                  const PopupMenuItem(
+                    value: 'persetujuan',
+                    child: Text('Persetujuan'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'pengaturan',
+                    child: Text('Pengaturan'),
+                  ),
+                ],
+                const PopupMenuDivider(),
+                const PopupMenuItem(value: 'keluar', child: Text('Keluar')),
               ],
-              const PopupMenuDivider(),
-              const PopupMenuItem(value: 'keluar', child: Text('Keluar')),
-            ],
-          ),
+            ),
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
@@ -385,37 +460,41 @@ class _FilterDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dipilih = value != null;
     return Container(
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: value == null ? context.warna.garisIsian : context.warna.teks,
-        ),
+        color: context.warna.permukaan,
         borderRadius: BorderRadius.circular(AppRadius.small),
+        border: Border.all(
+          color: dipilih ? context.warna.teks : context.warna.garisIsian,
+        ),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          isDense: true,
-          isExpanded: true,
-          borderRadius: BorderRadius.circular(AppRadius.base),
-          // Tanpa ini, Flutter melukis blok abu di belakang teks saat
-          // dropdown mendapat fokus -- terlihat seperti kerusakan tampilan.
-          focusColor: Colors.transparent,
-          icon: const Icon(Icons.expand_more, size: 16),
-          style: TextStyle(
-            fontSize: 10.5,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.4,
-            color: context.warna.teks,
+      child: Center(
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T>(
+            value: value,
+            isDense: true,
+            isExpanded: true,
+            borderRadius: BorderRadius.circular(AppRadius.base),
+            // Tanpa ini, Flutter melukis blok abu di belakang teks saat
+            // dropdown mendapat fokus -- terlihat seperti kerusakan tampilan.
+            focusColor: Colors.transparent,
+            icon: const Icon(Icons.expand_more, size: 16),
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+              color: context.warna.teks,
+            ),
+            onChanged: (v) => onChanged(v as T),
+            items: [
+              DropdownMenuItem<T>(value: null, child: Text(placeholder)),
+              for (final (v, label) in items)
+                DropdownMenuItem<T>(value: v, child: Text(label)),
+            ],
           ),
-          onChanged: (v) => onChanged(v as T),
-          items: [
-            DropdownMenuItem<T>(value: null, child: Text(placeholder)),
-            for (final (v, label) in items)
-              DropdownMenuItem<T>(value: v, child: Text(label)),
-          ],
         ),
       ),
     );

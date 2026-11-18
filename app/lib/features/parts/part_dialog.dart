@@ -15,6 +15,7 @@ import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import '../scan/scan_page.dart';
 import '../service/customer_field.dart';
+import '../service/service_dialog.dart';
 import 'hitung_harga.dart';
 import 'part_status.dart';
 
@@ -52,6 +53,22 @@ class AwalTanyaHarga {
   final String? barangType;
   final String? barangSn;
   final String? teknisiId;
+
+  /// Dari kolom-kolom nota. Merek dan tipe digabung: di tanya harga
+  /// keduanya satu kolom, dan yang berguna saat mencari part adalah sebutan
+  /// lengkap unitnya.
+  factory AwalTanyaHarga.dariNota(ServiceOrderEntry n) => AwalTanyaHarga(
+    notaId: n.id,
+    customerNama: n.customerNama,
+    customerTelp: n.customerTelp,
+    customerId: n.customerId,
+    barangType: [
+      n.barangNama.trim(),
+      (n.barangType ?? '').trim(),
+    ].where((s) => s.isNotEmpty).join(' '),
+    barangSn: n.barangSn,
+    teknisiId: n.teknisiId,
+  );
 }
 
 Future<void> showPartDialog(
@@ -436,7 +453,9 @@ class _PartDialogState extends ConsumerState<PartDialog> {
         AppSpacing.s,
       ),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: context.warna.teks, width: 1.5)),
+        border: Border(
+          bottom: BorderSide(color: context.warna.teks, width: 1.5),
+        ),
       ),
       child: Row(
         children: [
@@ -748,6 +767,16 @@ class _PartDialogState extends ConsumerState<PartDialog> {
           n,
     ];
 
+    ServiceOrderEntry? notaTertaut;
+    for (final n
+        in ref.watch(serviceOrdersProvider).valueOrNull ??
+            const <ServiceOrderEntry>[]) {
+      if (n.id == _notaId) {
+        notaTertaut = n;
+        break;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -915,34 +944,76 @@ class _PartDialogState extends ConsumerState<PartDialog> {
         ],
 
         const SizedBox(height: AppSpacing.s),
-        LabeledField(
-          label: 'Nota Servis untuk Jasa Pasang',
-          hint: 'Biaya jasanya dicatat di nota itu, bukan di sini.',
-          child: DropdownButtonFormField<String>(
-            initialValue: notaPelanggan.any((n) => n.id == _notaId)
-                ? _notaId
-                : null,
-            isExpanded: true,
-            hint: Text(
-              _pelanggan == null
-                  ? 'Tautkan pelanggannya dulu'
-                  : (notaPelanggan.isEmpty
-                        ? 'Pelanggan ini belum punya nota servis'
-                        : 'Belum ditautkan'),
+        if (notaTertaut != null)
+          _notaTertaut(context, notaTertaut)
+        else
+          LabeledField(
+            label: 'Nota Servis untuk Jasa Pasang',
+            hint: 'Biaya jasanya dicatat di nota itu, bukan di sini.',
+            child: DropdownButtonFormField<String>(
+              initialValue: notaPelanggan.any((n) => n.id == _notaId)
+                  ? _notaId
+                  : null,
+              isExpanded: true,
+              hint: Text(
+                _pelanggan == null
+                    ? 'Tautkan pelanggannya dulu'
+                    : (notaPelanggan.isEmpty
+                          ? 'Pelanggan ini belum punya nota servis'
+                          : 'Belum ditautkan'),
+              ),
+              items: [
+                for (final n in notaPelanggan)
+                  DropdownMenuItem(
+                    value: n.id,
+                    child: Text('${n.noNota}  ·  ${n.barangNama}'),
+                  ),
+              ],
+              onChanged: notaPelanggan.isEmpty
+                  ? null
+                  : (v) => setState(() => _notaId = v),
             ),
-            items: [
-              for (final n in notaPelanggan)
-                DropdownMenuItem(
-                  value: n.id,
-                  child: Text('${n.noNota}  ·  ${n.barangNama}'),
-                ),
-            ],
-            onChanged: notaPelanggan.isEmpty
-                ? null
-                : (v) => setState(() => _notaId = v),
           ),
-        ),
       ],
+    );
+  }
+
+  /// Nota asal tanya harga ini, dengan jalan kembali ke sana.
+  Widget _notaTertaut(BuildContext context, ServiceOrderEntry n) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.s),
+      decoration: BoxDecoration(
+        color: context.warna.teredam,
+        borderRadius: BorderRadius.circular(AppRadius.small),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Nota ${n.noNota}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  'Biaya jasa pasang dicatat di nota itu, bukan di sini.',
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s),
+          OutlinedButton.icon(
+            onPressed: () => showServiceDialog(context, nota: n),
+            icon: const Icon(Icons.receipt_long_outlined, size: 17),
+            label: const Text('BUKA NOTA'),
+          ),
+        ],
+      ),
     );
   }
 

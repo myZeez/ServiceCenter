@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/data/models.dart';
 import '../../core/data/galat.dart';
 import '../../core/kaca/overlay_kaca.dart';
+import '../../core/peran.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/bento.dart';
@@ -40,6 +41,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
   @override
   Widget build(BuildContext context) {
+    // Pengguna, data master, dan aturan toko milik super admin.
+    if (ref.watch(isAdminDepanProvider)) return const _PengaturanAdmin();
+
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.s,
@@ -270,6 +274,71 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   }
 }
 
+/// Pengaturan admin meja depan: perangkat yang sedang dipakai, dan impor data.
+class _PengaturanAdmin extends StatelessWidget {
+  const _PengaturanAdmin();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.s,
+        vertical: AppSpacing.xs,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PageHeader(
+            title: 'Pengaturan',
+            subtitle: 'Printer dan tampilan di perangkat ini',
+            actions: [
+              OutlinedButton.icon(
+                onPressed: () => tampilkanDialog<void>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => const SqlImportDialog(),
+                ),
+                icon: const Icon(Icons.upload_file, size: 16),
+                label: const Text('IMPOR SQL'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, c) {
+                if (c.maxWidth > 900) {
+                  return const SingleChildScrollView(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(height: 540, child: PrinterCard()),
+                        ),
+                        SizedBox(width: AppSpacing.s),
+                        Expanded(
+                          child: SizedBox(height: 540, child: TampilanCard()),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return ListView(
+                  children: const [
+                    SizedBox(height: 400, child: PrinterCard()),
+                    SizedBox(height: AppSpacing.s),
+                    SizedBox(height: 540, child: TampilanCard()),
+                    SizedBox(height: AppSpacing.sm),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // =====================================================================
 // Pengguna
 // =====================================================================
@@ -316,7 +385,8 @@ class _UserRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isAdmin = profile.role == 'admin';
+    final peran = profile.role;
+    final isAdmin = peran == Peran.admin;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
@@ -357,7 +427,10 @@ class _UserRow extends ConsumerWidget {
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    _Tag(isAdmin ? 'ADMIN' : 'TEKNISI', filled: isAdmin),
+                    _Tag(
+                      Peran.label(peran).toUpperCase(),
+                      filled: isAdmin || peran == Peran.superAdmin,
+                    ),
                     if (!profile.aktif) ...[
                       const SizedBox(width: 5),
                       const _Tag('NONAKTIF'),
@@ -380,13 +453,17 @@ class _UserRow extends ConsumerWidget {
               ),
             )
           else ...[
-            InlineAction(
-              label: isAdmin ? 'Jadi Teknisi' : 'Jadi Admin',
-              onTap: () => _update(context, ref, {
-                'role': isAdmin ? 'teknisi' : 'admin',
-              }),
-            ),
-            const SizedBox(width: AppSpacing.xs),
+            // Tombol ini hanya menukar admin dan teknisi. Di peran lain,
+            // sekali klik bisa mencabut hak yang tidak dimaksud.
+            if (isAdmin || peran == Peran.teknisi) ...[
+              InlineAction(
+                label: isAdmin ? 'Jadi Teknisi' : 'Jadi Admin',
+                onTap: () => _update(context, ref, {
+                  'role': isAdmin ? Peran.teknisi : Peran.admin,
+                }),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+            ],
             InlineAction(
               label: profile.aktif ? 'Nonaktifkan' : 'Aktifkan',
               onTap: () => _update(context, ref, {'aktif': !profile.aktif}),
@@ -933,6 +1010,14 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
                         value: 'admin_sc',
                         child: Text('Admin SC — pantau klaim'),
                       ),
+                      DropdownMenuItem(
+                        value: 'super_admin',
+                        child: Text('Super Admin'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'gudang',
+                        child: Text('Gudang — pembelian part'),
+                      ),
                     ],
                     onChanged: (v) => setState(() => _role = v!),
                   ),
@@ -940,8 +1025,25 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
                 if (_role == 'admin') ...[
                   const SizedBox(height: AppSpacing.xs),
                   const _Notice(
-                    'Admin dapat mengubah semua data klaim dan menambah '
-                    'pengguna lain.',
+                    'Admin menerima servis, mengelola klaim, mencatat '
+                    'pelunasan, dan mengimpor data.',
+                  ),
+                ],
+                if (_role == 'super_admin') ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  const _Notice(
+                    'Super Admin mengelola pengguna, data master, laporan '
+                    'lengkap, dan pendapatan. Ia tidak muncul sebagai '
+                    'teknisi.',
+                  ),
+                ],
+                if (_role == 'gudang') ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  const _Notice(
+                    'Gudang melihat pesanan part beserta modalnya, dan '
+                    'mengisi data pembelian: HPP, tanggal order, No PO, dan '
+                    'asal part. Ia tidak melihat nota servis maupun klaim, '
+                    'dan tidak mengubah harga jual atau DP.',
                   ),
                 ],
                 if (_role == 'admin_sc') ...[

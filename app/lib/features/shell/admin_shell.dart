@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/fitur.dart';
+import '../../core/kaca/kursor_liquid.dart';
+import '../../core/peran.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/koneksi.dart';
@@ -10,6 +12,7 @@ import '../claims/part_kembali_view.dart';
 import '../mywork/my_work_view.dart';
 import '../parts/part_orders_view.dart';
 import '../parts/parts_view.dart';
+import '../persetujuan/persetujuan_view.dart';
 import '../reports/reports_view.dart';
 import '../revenue/revenue_view.dart';
 import '../service/all_notes_view.dart';
@@ -37,66 +40,11 @@ class _AdminShellState extends ConsumerState<AdminShell> {
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = ref.watch(isAdminProvider);
     final isAdminSc = ref.watch(isAdminScProvider);
-    final adaPart = ref.watch(fiturTanyaHargaProvider);
-
-    // Dikelompokkan supaya dua dunia yang berbeda tidak tercampur: layanan
-    // ke pelanggan di satu sisi, pengajuan ke brand di sisi lain. Keduanya
-    // menyangkut unit yang sama tetapi lawan bicaranya berbeda.
-    final sections = isAdminSc
-        ? const <_Section>[
-            _Section('Klaim', Icons.description_outlined, grup: 'Garansi'),
-            _Section('Part Kembali', Icons.assignment_return_outlined),
-            _Section('Rekap', Icons.insights_outlined),
-            _Section('Rekap Brand', Icons.fact_check_outlined),
-            _Section(
-              'Laporan Servis',
-              Icons.summarize_outlined,
-              grup: 'Servis',
-            ),
-            _Section('Piutang', Icons.account_balance_wallet_outlined),
-          ]
-        : <_Section>[
-            if (isAdmin) ...[
-              const _Section(
-                'Servis',
-                Icons.receipt_long_outlined,
-                grup: 'Pelanggan',
-              ),
-              const _Section('Semua Nota', Icons.inventory_2_outlined),
-              const _Section('Kerja Teknisi', Icons.assignment_ind_outlined),
-              const _Section('Laporan Servis', Icons.summarize_outlined),
-              const _Section('Piutang', Icons.account_balance_wallet_outlined),
-              const _Section('Kirim Partner', Icons.handshake_outlined),
-              // Dua layar atas satu tabel yang sama: yang pertama meja
-              // tanya-jawabnya, yang kedua pesanan yang sudah berjalan.
-              // Keduanya sedang disimpan -- lihat fiturTanyaHargaProvider.
-              if (adaPart) ...[
-                const _Section('Tanya Harga', Icons.request_quote_outlined),
-                const _Section('Pemesanan Part', Icons.local_shipping_outlined),
-              ],
-            ],
-            _Section(
-              'Klaim',
-              Icons.description_outlined,
-              grup: isAdmin ? 'Garansi' : null,
-            ),
-            if (isAdmin) ...[
-              const _Section('Part Kembali', Icons.assignment_return_outlined),
-              const _Section('Rekap', Icons.insights_outlined),
-              const _Section('Rekap Brand', Icons.fact_check_outlined),
-              const _Section('Pendapatan', Icons.payments_outlined),
-            ],
-            // Terbuka untuk semua peran: tiap orang berhak melihat hasil kerjanya
-            // sendiri, dan halaman ini tidak memuat angka rupiah.
-            _Section(
-              'Pekerjaanku',
-              Icons.engineering_outlined,
-              grup: isAdmin ? 'Lainnya' : null,
-            ),
-            if (isAdmin) const _Section('Pengaturan', Icons.tune),
-          ];
+    final sections = menuUntuk(
+      ref.watch(currentProfileProvider)?.role,
+      adaPart: ref.watch(fiturTanyaHargaProvider),
+    );
 
     // Peran bisa berubah saat sinkronisasi menurunkan profil; jangan sampai
     // tersisa di bagian yang tidak lagi boleh dibuka.
@@ -134,6 +82,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                 'Rekap' => const ReportsView(),
                 'Rekap Brand' => const SettlementView(),
                 'Pendapatan' => const RevenueView(),
+                'Persetujuan' => const PersetujuanView(),
                 'Pengaturan' => const SettingsView(),
                 _ => ClaimsView(readOnly: isAdminSc),
               },
@@ -145,8 +94,87 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   }
 }
 
-class _Section {
-  const _Section(this.label, this.icon, {this.grup});
+/// Isi navigasi tiap peran.
+///
+/// Admin dan super admin memegang halaman yang berbeda, bukan satu di atas
+/// yang lain: super admin mengelola dan membaca laporan, meja depan tetap di
+/// admin. Dikelompokkan supaya dua dunia yang berbeda tidak tercampur --
+/// layanan ke pelanggan di satu sisi, pengajuan ke brand di sisi lain.
+List<BagianMenu> menuUntuk(
+  String? peran, {
+  bool adaPart = false,
+}) => switch (peran) {
+  Peran.superAdmin => [
+    const BagianMenu('Semua Nota', Icons.inventory_2_outlined, grup: 'Servis'),
+    const BagianMenu('Persetujuan', Icons.rule_outlined),
+    const BagianMenu('Laporan Servis', Icons.summarize_outlined),
+    const BagianMenu('Kerja Teknisi', Icons.assignment_ind_outlined),
+    const BagianMenu('Piutang', Icons.account_balance_wallet_outlined),
+    const BagianMenu('Kirim Partner', Icons.handshake_outlined),
+    // Super admin membaca harga, HPP, dan up dari seluruh pesanan part.
+    // Keduanya sedang disimpan -- lihat fiturTanyaHargaProvider.
+    if (adaPart) ...[
+      const BagianMenu(
+        'Tanya Harga',
+        Icons.request_quote_outlined,
+        grup: 'Part',
+      ),
+      const BagianMenu('Pemesanan Part', Icons.local_shipping_outlined),
+    ],
+    // Super admin memegang seluruh garansi: klaim, part kembali, dan rekap.
+    const BagianMenu('Klaim', Icons.description_outlined, grup: 'Garansi'),
+    const BagianMenu('Part Kembali', Icons.assignment_return_outlined),
+    const BagianMenu('Rekap', Icons.insights_outlined),
+    const BagianMenu('Rekap Brand', Icons.fact_check_outlined),
+    const BagianMenu('Pendapatan', Icons.payments_outlined, grup: 'Keuangan'),
+    const BagianMenu('Pengaturan', Icons.tune, grup: 'Lainnya'),
+  ],
+  Peran.admin => [
+    const BagianMenu('Servis', Icons.receipt_long_outlined, grup: 'Pelanggan'),
+    const BagianMenu('Semua Nota', Icons.inventory_2_outlined),
+    const BagianMenu('Laporan Servis', Icons.summarize_outlined),
+    const BagianMenu('Piutang', Icons.account_balance_wallet_outlined),
+    // Dua layar atas satu tabel yang sama: yang pertama meja
+    // tanya-jawabnya, yang kedua pesanan yang sudah berjalan.
+    // Keduanya sedang disimpan -- lihat fiturTanyaHargaProvider.
+    if (adaPart) ...[
+      const BagianMenu('Tanya Harga', Icons.request_quote_outlined),
+      const BagianMenu('Pemesanan Part', Icons.local_shipping_outlined),
+    ],
+    const BagianMenu('Klaim', Icons.description_outlined, grup: 'Garansi'),
+    const BagianMenu('Part Kembali', Icons.assignment_return_outlined),
+    const BagianMenu(
+      'Pekerjaanku',
+      Icons.engineering_outlined,
+      grup: 'Lainnya',
+    ),
+    const BagianMenu('Persetujuan', Icons.rule_outlined),
+    const BagianMenu('Pengaturan', Icons.tune),
+  ],
+  // Gudang melihat satu hal: pesanan part beserta modalnya. Sengaja tidak
+  // bergantung pada fiturTanyaHargaProvider -- ini bukan pintu masuk tanya
+  // harga, melainkan laporan yang dikirim ke pusat.
+  Peran.gudang => const [
+    BagianMenu('Pemesanan Part', Icons.local_shipping_outlined, grup: 'Gudang'),
+  ],
+  Peran.adminSc => const [
+    BagianMenu('Klaim', Icons.description_outlined, grup: 'Garansi'),
+    BagianMenu('Part Kembali', Icons.assignment_return_outlined),
+    BagianMenu('Rekap', Icons.insights_outlined),
+    BagianMenu('Rekap Brand', Icons.fact_check_outlined),
+    BagianMenu('Laporan Servis', Icons.summarize_outlined, grup: 'Servis'),
+    BagianMenu('Piutang', Icons.account_balance_wallet_outlined),
+  ],
+  // Terbuka untuk semua peran: tiap orang berhak melihat hasil kerjanya
+  // sendiri, dan halaman ini tidak memuat angka rupiah.
+  _ => const [
+    BagianMenu('Klaim', Icons.description_outlined),
+    BagianMenu('Pekerjaanku', Icons.engineering_outlined),
+  ],
+};
+
+class BagianMenu {
+  const BagianMenu(this.label, this.icon, {this.grup});
 
   final String label;
   final IconData icon;
@@ -163,13 +191,110 @@ class _Sidebar extends ConsumerWidget {
     required this.onSelect,
   });
 
-  final List<_Section> sections;
+  final List<BagianMenu> sections;
   final int selected;
   final ValueChanged<int> onSelect;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(currentProfileProvider);
+    final menunggu = sections.any((s) => s.label == 'Persetujuan')
+        ? ref.watch(permintaanMenungguProvider).length
+        : 0;
+
+    final isiSidebar = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: AppSpacing.sm),
+        // Penanda merah, bukan logo. Blok warna adalah bahasa poster Swiss.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+          child: Row(
+            children: [
+              Container(width: 22, height: 22, color: context.warna.bahaya),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  'KLAIM\nGARANSI',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    height: 1.25,
+                    color: context.warna.teks,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+
+        for (var i = 0; i < sections.length; i++) ...[
+          if (sections[i].grup != null)
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.sm,
+                i == 0 ? 0 : AppSpacing.s,
+                AppSpacing.sm,
+                6,
+              ),
+              child: Text(
+                sections[i].grup!.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                  color: context.warna.teksLembut,
+                ),
+              ),
+            ),
+          _NavItem(
+            section: sections[i],
+            selected: i == selected,
+            onTap: () => onSelect(i),
+            jumlah: sections[i].label == 'Persetujuan' ? menunggu : 0,
+          ),
+        ],
+
+        const Spacer(),
+        const IndikatorKoneksi(),
+        const Divider(),
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.s),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      profile?.nama ?? '—',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      Peran.label(profile?.role).toUpperCase(),
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Keluar',
+                iconSize: 18,
+                color: context.warna.teksLembut,
+                icon: const Icon(Icons.logout),
+                onPressed: () => ref.read(supabaseProvider).auth.signOut(),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
 
     return Container(
       width: 228,
@@ -179,98 +304,7 @@ class _Sidebar extends ConsumerWidget {
         borderRadius: BorderRadius.circular(AppRadius.base),
         border: Border.all(color: context.warna.garis),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: AppSpacing.sm),
-          // Penanda merah, bukan logo. Blok warna adalah bahasa poster Swiss.
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-            child: Row(
-              children: [
-                Container(width: 22, height: 22, color: context.warna.bahaya),
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: Text(
-                    'KLAIM\nGARANSI',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      height: 1.25,
-                      color: context.warna.teks,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          for (var i = 0; i < sections.length; i++) ...[
-            if (sections[i].grup != null)
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpacing.sm,
-                  i == 0 ? 0 : AppSpacing.s,
-                  AppSpacing.sm,
-                  6,
-                ),
-                child: Text(
-                  sections[i].grup!.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                    color: context.warna.teksLembut,
-                  ),
-                ),
-              ),
-            _NavItem(
-              section: sections[i],
-              selected: i == selected,
-              onTap: () => onSelect(i),
-            ),
-          ],
-
-          const Spacer(),
-          const IndikatorKoneksi(),
-          const Divider(),
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.s),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        profile?.nama ?? '—',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        (profile?.role ?? '').toUpperCase(),
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Keluar',
-                  iconSize: 18,
-                  color: context.warna.teksLembut,
-                  icon: const Icon(Icons.logout),
-                  onPressed: () => ref.read(supabaseProvider).auth.signOut(),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      child: isiSidebar,
     );
   }
 }
@@ -280,11 +314,15 @@ class _NavItem extends StatefulWidget {
     required this.section,
     required this.selected,
     required this.onTap,
+    this.jumlah = 0,
   });
 
-  final _Section section;
+  final BagianMenu section;
   final bool selected;
   final VoidCallback onTap;
+
+  /// Yang menunggu ditangani di bagian ini. Nol tidak ditampilkan.
+  final int jumlah;
 
   @override
   State<_NavItem> createState() => _NavItemState();
@@ -296,12 +334,14 @@ class _NavItemState extends State<_NavItem> {
   @override
   Widget build(BuildContext context) {
     final active = widget.selected;
+    final kursorLiquid = KursorLiquid.aktifDi(context);
 
     return MouseRegion(
-      cursor: SystemMouseCursors.click,
+      cursor: kursorLiquid ? SystemMouseCursors.none : SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(
@@ -330,15 +370,41 @@ class _NavItemState extends State<_NavItem> {
                 color: active ? context.warna.teks : context.warna.teksLembut,
               ),
               const SizedBox(width: AppSpacing.s),
-              Text(
-                widget.section.label.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                  letterSpacing: 0.9,
-                  color: active ? context.warna.teks : context.warna.teksLembut,
+              Expanded(
+                child: Text(
+                  widget.section.label.toUpperCase(),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                    letterSpacing: 0.9,
+                    color: active
+                        ? context.warna.teks
+                        : context.warna.teksLembut,
+                  ),
                 ),
               ),
+              if (widget.jumlah > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: context.warna.bahaya,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${widget.jumlah}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: context.warna.kertas,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

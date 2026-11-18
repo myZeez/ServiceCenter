@@ -144,6 +144,31 @@ void main() {
   // Supabase, dan memalsukannya butuh lebih banyak perancah daripada nilai
   // yang didapat. Yang diperiksa cukup penyaringnya.
 
+  group('Super admin bukan pekerja', () {
+    final orang = [
+      _orang('b', 'Budi', 'teknisi'),
+      _orang('a', 'Andi', 'admin'),
+      _orang('s', 'Pengelola', 'super_admin'),
+    ];
+
+    test('tidak muncul di daftar teknisi', () async {
+      final c = _wadah(orang);
+      await c.read(allProfilesProvider.future);
+
+      expect(c.read(techniciansProvider).valueOrNull!.map((p) => p.nama), [
+        'Budi',
+        'Andi',
+      ]);
+    });
+
+    test('tidak bisa ditunjuk mengerjakan unit', () async {
+      final c = _wadah(orang);
+      await c.read(allProfilesProvider.future);
+
+      expect(c.read(pengerjaProvider).map((p) => p.nama), ['Budi', 'Andi']);
+    });
+  });
+
   group('Filter klaim', () {
     Claim k(
       String id,

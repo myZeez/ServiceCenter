@@ -13,7 +13,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/export/excel_export.dart';
 import 'package:sc_management/core/nota/urutan_harian.dart';
-import 'package:sc_management/core/providers.dart' show serviceOrdersProvider;
+import 'package:sc_management/core/providers.dart'
+    show isAdminDepanProvider, serviceOrdersProvider;
 import 'package:sc_management/core/theme.dart';
 import 'package:sc_management/features/service/service_reports_view.dart';
 
@@ -203,6 +204,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            isAdminDepanProvider.overrideWithValue(false),
             serviceOrdersProvider.overrideWith((ref) => Stream.value(campur)),
             tanggalHarianProvider.overrideWith((ref) => _hari),
           ],

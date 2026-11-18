@@ -1,7 +1,7 @@
-import 'dart:io' show Platform;
-
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -16,6 +16,7 @@ import 'core/theme.dart';
 import 'features/auth/login_page.dart';
 import 'features/claims/claims_page.dart';
 import 'features/shell/admin_shell.dart';
+import 'features/shell/gudang_page.dart';
 import 'features/shell/peringatan_omset.dart';
 
 Future<void> main() async {
@@ -25,6 +26,14 @@ Future<void> main() async {
   // Tanpa pemuatan ini, DateFormat dengan locale 'id' melempar galat saat
   // halamannya dibuka.
   await initializeDateFormatting('id', null);
+
+  // Shader Liquid Glass dimuat sebelum frame pertama pada perangkat yang
+  // mendukung efek navigasi kaca (Android/Web) maupun kursor cair (Windows).
+  if (kacaDidukung || kursorLiquidDidukung) {
+    await LiquidGlassWidgets.initialize(
+      warmUpMode: kIsWeb ? GlassWarmUpMode.auto : GlassWarmUpMode.always,
+    );
+  }
 
   if (!AppConfig.isConfigured) {
     runApp(const _ConfigMissingApp());
@@ -47,7 +56,7 @@ Future<void> main() async {
   // sesi di Android/perangkat lain tidak ikut keluar. Penghapusan lokal
   // terjadi sebelum permintaan jaringan; bila sedang offline, login tetap
   // dipaksa ulang pada komputer ini.
-  if (Platform.isWindows) {
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
     try {
       await Supabase.instance.client.auth.signOut(scope: SignOutScope.local);
     } catch (_) {
@@ -61,9 +70,16 @@ Future<void> main() async {
   final prefs = await Prefs.buka();
 
   runApp(
-    ProviderScope(
-      overrides: [prefsProvider.overrideWithValue(prefs)],
-      child: const ScManagementApp(),
+    // Pembungkus Liquid Glass: tema kaca, aksesibilitas (Reduce Motion /
+    // High Contrast), dan penerus ThemeMode MaterialApp -- tanpa
+    // brightnessResolver kacanya mengikuti terang-gelap OS, bukan pilihan
+    // tema di Pengaturan.
+    LiquidGlassWidgets.wrap(
+      brightnessResolver: Theme.maybeBrightnessOf,
+      child: ProviderScope(
+        overrides: [prefsProvider.overrideWithValue(prefs)],
+        child: const ScManagementApp(),
+      ),
     ),
   );
 }
@@ -77,12 +93,21 @@ class ScManagementApp extends ConsumerWidget {
     // benar untuk sebagian besar orang, jadi tidak ada kedipan terang ke
     // gelap pada perangkat yang memang disetel gelap.
     final mode = ref.watch(modeTemaProvider).valueOrNull ?? ThemeMode.system;
-    // Kaca hanya di Android, dan bisa dimatikan sendiri dari Pengaturan
-    // kalau HP-nya terasa berat.
-    final kaca =
-        kacaDidukung && (ref.watch(efekKacaProvider).valueOrNull ?? true);
+    final efek = ref.watch(efekKacaProvider).valueOrNull ?? true;
+    // Di Android/Web efek kaca & Liquid Glass aktif pada navigasi (header,
+    // dock, tombol kembali, menu titik tiga). Di Windows hanya kursor cair
+    // agar tampilan desktop tetap ringan dan tajam.
+    final kaca = kacaDidukung && efek;
+    final liquid = liquidDidukung && efek;
+    final kursor = kursorLiquidDidukung && efek;
 
-    return KerangkaApp(mode: mode, kaca: kaca, home: const _AuthGate());
+    return KerangkaApp(
+      mode: mode,
+      kaca: kaca,
+      liquid: liquid,
+      kursor: kursor,
+      home: const _AuthGate(),
+    );
   }
 }
 
@@ -134,8 +159,16 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
     // Dibungkus pemeriksa peringatan omset: setiap kali aplikasi dibuka, admin
     // diingatkan siapa yang masih di bawah target pada hari-hari terakhir
     // bulan.
+    //
+    // Gudang tidak punya klaim atau servis; layar sempit pun hanya memuat
+    // pesanan part.
+    final gudang = ref.watch(isGudangProvider);
     return PeringatanOmsetPembuka(
-      child: wide ? const AdminShell() : const ClaimsPage(),
+      child: gudang && !wide
+          ? const GudangPage()
+          : wide
+          ? const AdminShell()
+          : const ClaimsPage(),
     );
   }
 }

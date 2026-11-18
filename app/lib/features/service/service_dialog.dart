@@ -19,6 +19,8 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/swiss_widgets.dart';
 import '../parts/part_dialog.dart';
+import '../parts/part_status.dart';
+import '../persetujuan/simpan_nota_terkunci.dart';
 import '../scan/scan_page.dart';
 import 'antrian_teknisi.dart';
 import 'customer_field.dart';
@@ -461,6 +463,14 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       widget.nota == null ||
       (!widget.nota!.garansi && widget.nota!.claimId == null);
 
+  /// Nota yang sudah keluar, di tangan admin. Super admin menyimpan langsung;
+  /// teknisi hanya bisa mengubah catatan, dan itu lolos lewat simpan biasa.
+  bool get _perluPersetujuan =>
+      !widget.isNew &&
+      ServiceStatus.terkunci(widget.nota!.status) &&
+      ref.read(isAdminProvider) &&
+      !ref.read(isSuperAdminProvider);
+
   /// Pembatalan hanya berlaku pada nota lama yang memang sudah garansi.
   /// Server memutus tautannya secara atomik setelah admin menekan Simpan.
   bool get _membatalkanGaransi =>
@@ -556,15 +566,17 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
     // tidak selalu sama dengan zona waktu toko. Tanggal ikut kalender lokal
     // perangkat; pemilih manual di atas tetap dapat menimpa bawaan ini.
     final sekarangPerangkat = DateTime.now();
-    final unitKeluar =
-        _status == ServiceStatus.diambil || _status == ServiceStatus.batal;
     final pelunasanTunai =
         !_kunciBiaya &&
         (_status == ServiceStatus.diambil ||
             (_status == ServiceStatus.batal && jumlah > 0)) &&
         _caraBayar != null &&
         !ref.read(metodePiutang(_caraBayar));
-    if (unitKeluar && _tanggalDiambil == null) {
+    final baruKeluar = ServiceStatus.baruKeluar(
+      sebelum: widget.nota?.status,
+      sesudah: _status,
+    );
+    if (baruKeluar && _tanggalDiambil == null) {
       _waktuDiambil = sekarangPerangkat;
       _tanggalDiambil = _hariLaporanPerangkat(sekarangPerangkat);
     }
@@ -700,6 +712,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
 
       String notaId;
       ServiceOrderEntry? notaTersimpan;
+      var hasilTerkunci = HasilSimpanTerkunci.tersimpan;
       if (widget.isNew) {
         final idPart = _tanyaHarga ? (_partBaru ??= _uuid.v4()) : null;
         // Satu request, satu transaksi. Jika respons hilang di perjalanan,
@@ -734,7 +747,13 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         notaTersimpan = ServiceOrderEntry.fromMap(baru);
       } else {
         notaId = widget.nota!.id;
-        await client.from('service_orders').update(data).eq('id', notaId);
+        if (_perluPersetujuan) {
+          if (!mounted) return;
+          hasilTerkunci = await simpanNotaTerkunci(context, ref, notaId, data);
+          if (hasilTerkunci == HasilSimpanTerkunci.dibatalkan) return;
+        } else {
+          await client.from('service_orders').update(data).eq('id', notaId);
+        }
       }
 
       // Satu tombol Simpan untuk nota dan partner. Detail unit tetap milik
@@ -809,7 +828,11 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(widget.isNew ? 'Nota tersimpan' : 'Nota diperbarui'),
+          content: Text(switch (hasilTerkunci) {
+            HasilSimpanTerkunci.diajukan => 'Perubahan diajukan ke super admin',
+            _ when widget.isNew => 'Nota tersimpan',
+            _ => 'Nota diperbarui',
+          }),
         ),
       );
     } on PostgrestException catch (e) {
@@ -918,6 +941,9 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   void _sinkronPartnerTersimpan() {
     final tersimpan = _partnerTersimpan();
     if (tersimpan == null || _partnerDimuat == tersimpan.id) return;
+    // Kirim partner milik super admin. Kalau panelnya aktif di tangan admin,
+    // Simpan ikut menulis tabel partner dan seluruh penyimpanan nota ditolak.
+    if (!ref.read(isSuperAdminProvider)) return;
     _partnerDimuat = tersimpan.id;
     _partnerAktif = true;
     _statusPartner = tersimpan.status;
@@ -968,6 +994,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _header(),
+                  if (_perluPersetujuan) _pemberitahuanTerkunci(),
                   Flexible(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.fromLTRB(
@@ -992,6 +1019,28 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _pemberitahuanTerkunci() {
+    final menunggu = ref
+        .watch(permintaanMenungguProvider)
+        .any((p) => p.notaId == widget.nota!.id);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      color: context.warna.bahaya.withValues(alpha: 0.06),
+      child: Text(
+        menunggu
+            ? 'Nota ini masih punya permintaan yang menunggu keputusan super '
+                  'admin. Catatan tetap bisa diubah.'
+            : 'Nota ini sudah keluar. Catatan dan pelunasan langsung '
+                  'tersimpan, perubahan lain perlu persetujuan super admin.',
+        style: TextStyle(fontSize: 12, color: context.warna.bahaya),
       ),
     );
   }
@@ -1274,7 +1323,8 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
         // ternyata habis; klaim terdahulu tetap disimpan sebagai riwayat.
         CheckboxListTile(
           value: _garansi,
-          onChanged: _bolehUbahGaransi || (isAdmin && _garansi)
+          onChanged:
+              _bolehUbahGaransi || (isAdmin && _garansi && !_perluPersetujuan)
               ? (v) {
                   final aktif = v ?? false;
                   if (!aktif && widget.nota?.garansi == true) {
@@ -1292,7 +1342,10 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
           subtitle: Text(
-            isAdmin && widget.nota?.garansi == true && _garansi
+            isAdmin &&
+                    widget.nota?.garansi == true &&
+                    _garansi &&
+                    !_perluPersetujuan
                 ? 'Admin dapat membatalkan garansi jika masa garansi part '
                       'sudah habis. Perubahan berlaku saat disimpan.'
                 : widget.nota?.claimId != null
@@ -1320,7 +1373,10 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
               isExpanded: true,
               items: [
                 for (final j in ClaimJenis.all)
-                  DropdownMenuItem(value: j, child: Text(ClaimJenis.label(j))),
+                  DropdownMenuItem(
+                    value: j,
+                    child: Text(ClaimJenis.label(j)),
+                  ),
               ],
               onChanged: (v) =>
                   setState(() => _jenisGaransi = v ?? ClaimJenis.brand),
@@ -1918,14 +1974,33 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              sudahAda == null
-                  ? 'Ternyata perlu ganti part? Datanya dibawa dari nota '
-                        'ini — tinggal sebut partnya.'
-                  : 'Sudah ada tanya harga untuk nota ini: '
-                        '${sudahAda.partReq}.',
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
+            child: sudahAda == null
+                ? Text(
+                    'Ternyata perlu ganti part? Datanya dibawa dari nota '
+                    'ini — tinggal sebut partnya.',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  )
+                : Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        'Tanya harga: ${sudahAda.partReq}',
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                      PartTahapChip(sudahAda.tahap, compact: true),
+                      if (sudahAda.harga != null)
+                        Text(
+                          NumberFormat.currency(
+                            locale: 'id_ID',
+                            symbol: 'Rp',
+                            decimalDigits: 0,
+                          ).format(sudahAda.harga),
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                    ],
+                  ),
           ),
           const SizedBox(width: AppSpacing.s),
           OutlinedButton.icon(
@@ -1965,7 +2040,6 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
   );
 
   Widget _footer() {
-    final isAdmin = ref.watch(isAdminProvider);
     return Container(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.sm,
@@ -1997,7 +2071,7 @@ class _ServiceDialogState extends ConsumerState<ServiceDialog> {
           ),
           // Cetak hanya untuk nota yang sudah tersimpan: sebelum itu
           // nomornya belum ada, dan nota tanpa nomor tidak ada gunanya.
-          if (!widget.isNew && isAdmin) ...[
+          if (!widget.isNew && ref.watch(isSuperAdminProvider)) ...[
             OutlinedButton.icon(
               onPressed: _busy
                   ? null

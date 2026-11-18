@@ -15,7 +15,8 @@ import 'package:sc_management/core/export/excel_export.dart';
 import 'package:sc_management/core/data/models.dart';
 import 'package:sc_management/core/theme.dart';
 import 'package:sc_management/features/service/service_reports_view.dart';
-import 'package:sc_management/core/providers.dart' show serviceOrdersProvider;
+import 'package:sc_management/core/providers.dart'
+    show isAdminDepanProvider, serviceOrdersProvider;
 
 ServiceOrderEntry _nota({
   required String noNota,
@@ -61,6 +62,7 @@ Future<void> _lukis(WidgetTester tester, List<ServiceOrderEntry> data) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        isAdminDepanProvider.overrideWithValue(false),
         serviceOrdersProvider.overrideWith((ref) => Stream.value(data)),
         tanggalHarianProvider.overrideWith(
           (ref) => DateTime(_hari.year, _hari.month, _hari.day),
@@ -95,6 +97,7 @@ Future<void> _lukisTanggal(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        isAdminDepanProvider.overrideWithValue(false),
         serviceOrdersProvider.overrideWith((ref) => Stream.value(data)),
         tanggalHarianProvider.overrideWith((ref) => tanggal),
       ],

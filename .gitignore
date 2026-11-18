@@ -38,3 +38,22 @@ tmp/*.log
 # Kata sandi database Postgres Supabase untuk akses CLI/psql langsung dari
 # sesi kerja. Rahasia: satu baris teks, tidak boleh pernah ter-commit.
 supabase/.db-password
+
+# Data operasional, ekspor/dump pelanggan, skrip impor, dan migrasi data pelanggan
+supabase/manual/
+supabase/scripts/
+tmp/
+supabase/migrations/0042_import_staging_2026.sql
+supabase/migrations/0055_koreksi_laporan_2026_10_01.sql
+supabase/migrations/0057_hapus_uji_coba_kirim_partner.sql
+supabase/migrations/0058_impor_svs_2026_10_01_sd_11.sql
+supabase/migrations/0059_sinkron_backup_legacy_oktober_01_sd_12.sql
+supabase/migrations/0060_impor_backup_sql.sql
+supabase/migrations/0061_rekonsiliasi_oktober_svs_sql_sd_13.sql
+supabase/migrations/0062_rekonsiliasi_oktober_svs_sql_sd_15.sql
+supabase/migrations/0063_sinkron_dump_oktober_16_18.sql
+supabase/migrations/0068_koreksi_klaim_msi_agustus.sql
+supabase/migrations/0069_gabung_klaim_rosita.sql
+supabase/migrations/0070_impor_tanya_harga_2026.sql
+supabase/migrations/0071_impor_pemesanan_part_2026.sql
+supabase/migrations/0073_impor_hpp_gudang_2026.sql
